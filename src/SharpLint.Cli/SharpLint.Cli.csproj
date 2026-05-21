@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>SharpLint.Cli</RootNamespace>
+    <AssemblyName>sharplint</AssemblyName>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>sharplint</ToolCommandName>
+    <PackageId>sharplint</PackageId>
+    <Version>0.1.0-alpha</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SharpLint.Core\SharpLint.Core.csproj" />
+    <ProjectReference Include="..\SharpLint.Configuration\SharpLint.Configuration.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Spectre.Console" Version="0.49.1" />
+    <PackageReference Include="Spectre.Console.Cli" Version="0.49.1" />
+  </ItemGroup>
+
+</Project>

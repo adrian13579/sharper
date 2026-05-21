@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SharpLint.Cli/SharpLint.Cli.csproj" />
+    <Project Path="src/SharpLint.Configuration/SharpLint.Configuration.csproj" />
+    <Project Path="src/SharpLint.Core/SharpLint.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SharpLint.Tests/SharpLint.Tests.csproj" />
+  </Folder>
+</Solution>

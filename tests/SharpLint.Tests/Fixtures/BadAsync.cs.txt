@@ -1,0 +1,6 @@
+using System.Threading.Tasks;
+class Bad
+{
+    public async Task DoWork() { await Task.Yield(); }
+    public async Task DoOtherWork() { await Task.Yield(); }
+}
