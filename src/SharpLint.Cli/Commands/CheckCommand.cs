@@ -46,15 +46,14 @@ public sealed class CheckCommand : AsyncCommand<CheckCommand.Settings>
         }
         else
         {
-            RenderPretty(result, config.Preset);
+            RenderPretty(result);
         }
 
         return result.HasErrors ? 1 : 0;
     }
 
-    private static void RenderPretty(AnalysisResult result, string preset)
+    private static void RenderPretty(AnalysisResult result)
     {
-        AnsiConsole.MarkupLine($"[dim]Preset:[/] {preset}");
         AnsiConsole.MarkupLine($"[dim]Files analyzed:[/] {result.FilesAnalyzed}");
         AnsiConsole.MarkupLine($"[dim]Elapsed:[/] {result.Elapsed.TotalMilliseconds:F0} ms");
         AnsiConsole.WriteLine();

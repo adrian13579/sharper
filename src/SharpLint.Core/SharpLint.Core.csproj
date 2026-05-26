@@ -5,6 +5,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
+    <!-- Ship XML docs so DSL-facing types (e.g. NamingConvention) surface descriptions during autocomplete.
+         CS1591 is suppressed because only the DSL-facing surface is documented, not every public type. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
     <PackageId>SharpLint.Core</PackageId>
     <Version>1.0.0-dev</Version>
     <Authors>SharpLint</Authors>

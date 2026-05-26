@@ -3,10 +3,21 @@ using System.Text.Json;
 
 namespace SharpLint.Configuration;
 
+/// <summary>
+/// Loads a <c>sharplint.config.cs</c> file by running it and reading back the emitted configuration.
+/// Used by the CLI; not part of the config-authoring DSL.
+/// </summary>
 public static class ConfigLoader
 {
+    /// <summary>The conventional file name SharpLint looks for: <c>sharplint.config.cs</c>.</summary>
     public const string DefaultFileName = "sharplint.config.cs";
 
+    /// <summary>
+    /// Runs the config file at <paramref name="path"/> via <c>dotnet run</c> and deserializes its output.
+    /// </summary>
+    /// <param name="path">Path to the config file.</param>
+    /// <param name="cancellationToken">Cancels the load.</param>
+    /// <returns>The configuration the file emitted via <c>.Apply()</c>.</returns>
     public static async Task<SharpLintConfig> LoadAsync(string path, CancellationToken cancellationToken = default)
     {
         var outputPath = Path.Combine(Path.GetTempPath(), $"sharplint-config-{Guid.NewGuid():N}.json");
@@ -31,7 +42,8 @@ public static class ConfigLoader
         }
     }
 
-    public static SharpLintConfig Default() => new(Preset.Recommended, []);
+    /// <summary>Returns an empty configuration with no rules, used when no config file is present.</summary>
+    public static SharpLintConfig Default() => new([]);
 
     private static async Task RunConfigScriptAsync(string scriptPath, string outputPath, CancellationToken cancellationToken)
     {

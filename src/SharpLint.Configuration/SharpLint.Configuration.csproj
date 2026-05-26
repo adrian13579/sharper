@@ -5,6 +5,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
+    <!-- Ship XML docs in the package so the DSL surfaces descriptions during autocomplete. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
     <PackageId>SharpLint.Configuration</PackageId>
     <Version>1.0.0-dev</Version>
     <Authors>SharpLint</Authors>
