@@ -104,6 +104,35 @@ Lint.Configure(config =>
 `config.Naming(...)` may be called multiple times in the same config; calls
 accumulate. Rule ordering does not affect correctness.
 
+### 3.1 Presets
+
+A preset is **not** a separate execution path. It is an `Action<ConfigBuilder>`
+that calls the same DSL described in this document. `UsePreset` is sugar:
+
+```csharp
+public ConfigBuilder UsePreset(Action<ConfigBuilder> preset)
+{
+    preset(this);
+    return this;
+}
+```
+
+Calling `config.UsePreset(Preset.Recommended)` is exactly equivalent to
+inlining the body of `Preset.Recommended` at that point in the config. "Go to
+definition" on `Preset.Recommended` lands on the DSL calls it bundles —
+nothing else happens behind the scenes, and nothing is persisted on the
+config besides the rules the preset adds.
+
+This means:
+
+- Presets and inline rules can be freely mixed; calls accumulate.
+- A user can define their own `Action<ConfigBuilder>` and pass it to
+  `UsePreset` — there is no special preset registry.
+- Presets compose: `config.UsePreset(Preset.Recommended); config.UsePreset(MyTeamPreset);`
+  simply runs both in order.
+
+The shipped `Preset.Recommended` matches the worked example in [§9](#9-worked-example).
+
 ---
 
 ## 4. Selectors
