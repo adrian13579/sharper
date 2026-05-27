@@ -17,10 +17,6 @@ public sealed class Analyzer
             .Where(p => !p.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
             .ToList();
 
-        var activeRules = context.NamingRules
-            .Where(r => r.Severity != Severity.Hidden)
-            .ToList();
-
         foreach (var file in files)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -33,9 +29,9 @@ public sealed class Analyzer
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                foreach (var rule in activeRules)
+                foreach (var rule in ResolveRules(context.NamingRules, symbol))
                 {
-                    if (!NamingRuleEvaluator.Applies(rule, symbol)) continue;
+                    if (rule.Severity == Severity.Hidden) continue;
                     if (NamingRuleEvaluator.IsExempt(symbol, rule)) continue;
                     if (!NamingRuleEvaluator.IsViolated(rule, symbol.Name)) continue;
 
@@ -47,4 +43,16 @@ public sealed class Analyzer
         stopwatch.Stop();
         return new AnalysisResult(diagnostics, stopwatch.Elapsed, files.Count);
     }
+
+    // Resolves rule precedence for a single symbol. Declaration order is precedence order (presets run
+    // first, user rules append after), so among the rules that apply to the symbol the *last-declared*
+    // one wins within each verb group. A later rule therefore overrides an earlier one — even a more
+    // specific preset rule. Grouping by verb lets different constraint kinds coexist (e.g. a prefix rule
+    // and a convention rule on the same field both apply); only same-verb rules compete. Hidden rules are
+    // kept in the running so a later `.Disabled()` can win its group and shadow the rules it supersedes.
+    private static IEnumerable<NamingRule> ResolveRules(IReadOnlyList<NamingRule> rules, SymbolInfo symbol) =>
+        rules
+            .Where(r => NamingRuleEvaluator.Applies(r, symbol))
+            .GroupBy(r => r.Verb)
+            .Select(g => g.Last());
 }

@@ -177,4 +177,85 @@ public sealed class AnalyzerTests : IDisposable
         var diag = Assert.Single(diags);
         Assert.Equal("naming.namespace.prefix", diag.RuleId);
     }
+
+    [Fact]
+    public async Task Later_general_rule_overrides_earlier_specific_rule()
+    {
+        // A later, broader rule wins over an earlier, more specific one (e.g. a preset's public rule).
+        WriteFile("C.cs", """
+            class C
+            {
+                public void DoWork() { }
+                public void helper() { }
+            }
+            """);
+
+        var diags = await AnalyzeAsync(c => c.Naming(n =>
+        {
+            n.Methods(m => m.Public()).RequireConvention(NamingConvention.CamelCase); // earlier, specific
+            n.Methods().RequireConvention(NamingConvention.PascalCase);               // later, general → wins
+        }));
+
+        // The general PascalCase rule governs public methods now: 'DoWork' passes, 'helper' fails.
+        // The earlier public-camelCase rule is fully overridden (it would have flagged 'DoWork').
+        var diag = Assert.Single(diags);
+        Assert.Equal("naming.method.convention", diag.RuleId);
+        Assert.Contains("helper", diag.Message);
+    }
+
+    [Fact]
+    public async Task Later_specific_rule_overrides_earlier_general_rule()
+    {
+        // Declaring the specific rule last lets it win for the scope it covers, while the general
+        // rule still governs everything the specific rule does not match.
+        // 'Do_Work' violates *both* PascalCase and camelCase, so the old "every rule fires" behavior
+        // would flag it twice (general + public). With resolution, only the winning public rule fires.
+        WriteFile("C.cs", """
+            class C
+            {
+                public void Do_Work() { }
+                private void helper() { }
+            }
+            """);
+
+        var diags = await AnalyzeAsync(c => c.Naming(n =>
+        {
+            n.Methods().RequireConvention(NamingConvention.PascalCase);               // earlier, general
+            n.Methods(m => m.Public()).RequireConvention(NamingConvention.CamelCase); // later, specific → wins for public
+        }));
+
+        Assert.Equal(2, diags.Count);
+        Assert.Contains(diags, d => d.RuleId == "naming.method.public.convention" && d.Message.Contains("Do_Work"));
+        Assert.Contains(diags, d => d.RuleId == "naming.method.convention" && d.Message.Contains("helper"));
+    }
+
+    [Fact]
+    public async Task Later_disabled_rule_shadows_earlier_active_rule()
+    {
+        // Re-declaring a rule and calling .Disabled() switches off an earlier (e.g. preset) rule.
+        WriteFile("A.cs", "class fooBar { }");
+
+        var diags = await AnalyzeAsync(c => c.Naming(n =>
+        {
+            n.Classes().RequireConvention(NamingConvention.PascalCase);            // earlier, active
+            n.Classes().RequireConvention(NamingConvention.PascalCase).Disabled(); // later, disables it
+        }));
+
+        Assert.Empty(diags);
+    }
+
+    [Fact]
+    public async Task Later_rule_overrides_earlier_rule_with_same_scope()
+    {
+        // Two rules with the same scope + verb (both naming.class.convention): the later declaration wins.
+        WriteFile("A.cs", "public class fooBar { }");
+
+        var diags = await AnalyzeAsync(c => c.Naming(n =>
+        {
+            n.Classes().RequireConvention(NamingConvention.UpperSnakeCase); // earlier, active
+            n.Classes().RequireConvention(NamingConvention.PascalCase); 
+        }));
+
+        Assert.Contains(diags, d => d.RuleId == "naming.class.convention" && d.Message.Contains("fooBar"));
+    }
 }
