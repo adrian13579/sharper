@@ -13,6 +13,9 @@ public sealed class NamingBuilder
 
     internal NamingBuilder(List<NamingRule> rules) { _rules = rules; }
 
+    /// <summary>Targets all methods, regardless of accessibility or modifiers.</summary>
+    public NamingRuleChain Methods() => new(_rules, SymbolKind.Method, PredicateFlags.None);
+
     /// <summary>
     /// Targets methods, optionally narrowed by accessibility or <c>async</c>
     /// (e.g. <c>m =&gt; m.Public()</c>, <c>m =&gt; m.Async()</c>).
@@ -25,6 +28,9 @@ public sealed class NamingBuilder
         predicates(pb);
         return new NamingRuleChain(_rules, SymbolKind.Method, pb.Flags);
     }
+
+    /// <summary>Targets all fields, regardless of accessibility or modifiers.</summary>
+    public NamingRuleChain Fields() => new(_rules, SymbolKind.Field, PredicateFlags.None);
 
     /// <summary>
     /// Targets fields, optionally narrowed by accessibility or <c>const</c>
