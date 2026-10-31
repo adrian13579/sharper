@@ -203,3 +203,7 @@ python3 benchmarks/daemon.py --sizes 100 1000 --iterations 10
 ```
 
 The benchmark creates temporary source repositories, stops their daemons on completion, and writes results to `benchmarks/results.json` by default. Results include median and p95 elapsed time, document reuse, cache hit rates, and daemon peak memory where available.
+
+## License
+
+SharpLint is licensed under the [Apache License 2.0](LICENSE).
