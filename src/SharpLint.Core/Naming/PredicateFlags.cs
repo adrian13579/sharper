@@ -10,4 +10,7 @@ public enum PredicateFlags
     Private = 1 << 3,
     Async = 1 << 4,
     Const = 1 << 5,
+    Static = 1 << 6,
+    Abstract = 1 << 7,
+    Sealed = 1 << 8,
 }

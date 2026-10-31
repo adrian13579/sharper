@@ -19,9 +19,11 @@ and regex matches on every named element in a C# program.
 
 - Selectors for **methods, classes, interfaces, records, enums, properties,
   fields, parameters, local variables, namespaces**.
-- Method accessibility predicates (`Public`, `Internal`, `Protected`, `Private`)
-  and the `Async` modifier predicate.
-- Field modifier predicates (`Public`, `Private`, `Const`).
+- Accessibility predicates (`Public`, `Internal`, `Protected`, `Private`) on
+  methods, classes, interfaces, records, enums, and properties.
+- Modifier predicates: `Async` (methods), `Const` (fields),
+  `Static`/`Abstract`/`Sealed` (classes), `Abstract`/`Sealed` (records),
+  `Static` (properties).
 - Five verb pairs: `Convention`, `Prefix`, `Suffix`, `Name`, `Regex` — each
   with a `Require…` and a `Forbid…` form.
 - Four naming conventions: `PascalCase`, `CamelCase`, `SnakeCase`,
@@ -145,18 +147,18 @@ exposes a small predicate vocabulary specific to its symbol kind.
 | Selector | Predicates (v1) |
 | --- | --- |
 | `n.Methods(m => …)` | `Public()`, `Internal()`, `Protected()`, `Private()`, `Async()` |
-| `n.Classes()` | *(no predicates in v1)* |
-| `n.Interfaces()` | *(no predicates in v1)* |
-| `n.Records()` | *(no predicates in v1)* |
-| `n.Enums()` | *(no predicates in v1)* |
-| `n.Properties()` | *(no predicates in v1)* |
+| `n.Classes(c => …)` | `Public()`, `Internal()`, `Protected()`, `Private()`, `Static()`, `Abstract()`, `Sealed()` |
+| `n.Interfaces(i => …)` | `Public()`, `Internal()`, `Protected()`, `Private()` |
+| `n.Records(r => …)` | `Public()`, `Internal()`, `Protected()`, `Private()`, `Abstract()`, `Sealed()` |
+| `n.Enums(e => …)` | `Public()`, `Internal()`, `Protected()`, `Private()` |
+| `n.Properties(p => …)` | `Public()`, `Internal()`, `Protected()`, `Private()`, `Static()` |
 | `n.Fields(f => …)` | `Public()`, `Private()`, `Const()` |
 | `n.Parameters()` | *(no predicates in v1)* |
 | `n.LocalVariables()` | *(no predicates in v1)* |
 | `n.Namespaces()` | *(no predicates in v1)* |
 
-Selectors without predicates use the no-arg form: `n.Classes()`,
-`n.Namespaces()`.
+Every selector also has a no-arg form that targets the kind regardless of
+accessibility or modifiers: `n.Classes()`, `n.Properties()`, `n.Namespaces()`.
 
 ### 4.2 Predicate semantics
 
@@ -183,8 +185,15 @@ n.Methods(m => m.Internal()).RequireConvention(NamingConvention.PascalCase);
 | `.Internal()` | `internal` accessibility |
 | `.Protected()` | `protected` accessibility |
 | `.Private()` | `private` accessibility (and unqualified members where private is the default) |
-| `.Async()` | declared with the `async` keyword |
+| `.Async()` | method declared with the `async` keyword |
 | `.Const()` | `const` field |
+| `.Static()` | `static` class or property |
+| `.Abstract()` | `abstract` class or record |
+| `.Sealed()` | `sealed` class or record |
+
+Accessibility on a type follows C#'s defaults when unqualified: top-level types
+are `internal`, types nested in a class/struct/record are `private`, and types
+nested in an interface are `public`.
 
 ---
 
@@ -257,7 +266,7 @@ n.Methods(m => m.Public())
     .RequireConvention(NamingConvention.PascalCase)
     .AsError();
 
-n.Classes(c => c.Abstract())          // (NOTE: c.Abstract() is roadmap, not v1)
+n.Classes(c => c.Abstract())
     .RequirePrefix("Abstract")
     .AsInfo();
 
@@ -310,9 +319,10 @@ naming.<kind>.<predicate?>.<verb>
 ```
 
 - `<kind>` ∈ `method` `class` `interface` `record` `enum` `property` `field` `parameter` `local` `namespace`
-- `<predicate?>` ∈ accessibility (`public`/`internal`/`protected`/`private`),
-  the `async` modifier, the `const` field modifier — omitted when no
-  predicate is used.
+- `<predicate?>` ∈ accessibility (`public`/`internal`/`protected`/`private`)
+  and the modifiers `async`/`const`/`static`/`abstract`/`sealed` — omitted when
+  no predicate is used. When a selector combines predicates, the tokens appear
+  accessibility-first (e.g. `naming.class.public.abstract.suffix`).
 - `<verb>` ∈ `convention` `prefix` `suffix` `name` `regex`
 
 ### 8.2 Examples
@@ -324,6 +334,8 @@ naming.<kind>.<predicate?>.<verb>
 | `n.Classes().RequireConvention(…)` | `naming.class.convention` |
 | `n.Classes().ForbidSuffix("Manager", …)` | `naming.class.suffix` |
 | `n.Interfaces().RequirePrefix("I")` | `naming.interface.prefix` |
+| `n.Classes(c => c.Abstract()).RequirePrefix("Abstract")` | `naming.class.abstract.prefix` |
+| `n.Properties(p => p.Static()).RequireConvention(…)` | `naming.property.static.convention` |
 | `n.Fields(f => f.Private()).RequirePrefix("_")` | `naming.field.private.prefix` |
 | `n.Fields(f => f.Const()).RequireConvention(…)` | `naming.field.const.convention` |
 | `n.Namespaces().RequirePrefix("Acme.")` | `naming.namespace.prefix` |
@@ -376,6 +388,9 @@ Lint.Configure(config =>
             .ExceptWithAttribute<GeneratedCodeAttribute>();
 
         n.Classes().ForbidSuffix("Manager", "Helper", "Util");
+
+        // Abstract classes — nudge toward an "Abstract"/"Base" prefix.
+        n.Classes(c => c.Abstract()).RequirePrefix("Abstract", "Base").AsInfo();
 
         // Interfaces — "I"-prefixed PascalCase.
         n.Interfaces()

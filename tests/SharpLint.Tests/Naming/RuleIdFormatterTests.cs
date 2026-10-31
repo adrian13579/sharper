@@ -51,4 +51,36 @@ public sealed class RuleIdFormatterTests
             "naming.namespace.prefix",
             RuleIdFormatter.Format(SymbolKind.Namespace, PredicateFlags.None, VerbKind.Prefix));
     }
+
+    [Fact]
+    public void Class_abstract_prefix()
+    {
+        Assert.Equal(
+            "naming.class.abstract.prefix",
+            RuleIdFormatter.Format(SymbolKind.Class, PredicateFlags.Abstract, VerbKind.Prefix));
+    }
+
+    [Fact]
+    public void Record_sealed_convention()
+    {
+        Assert.Equal(
+            "naming.record.sealed.convention",
+            RuleIdFormatter.Format(SymbolKind.Record, PredicateFlags.Sealed, VerbKind.Convention));
+    }
+
+    [Fact]
+    public void Property_static_convention()
+    {
+        Assert.Equal(
+            "naming.property.static.convention",
+            RuleIdFormatter.Format(SymbolKind.Property, PredicateFlags.Static, VerbKind.Convention));
+    }
+
+    [Fact]
+    public void Combined_predicates_render_accessibility_first()
+    {
+        Assert.Equal(
+            "naming.class.public.abstract.suffix",
+            RuleIdFormatter.Format(SymbolKind.Class, PredicateFlags.Public | PredicateFlags.Abstract, VerbKind.Suffix));
+    }
 }

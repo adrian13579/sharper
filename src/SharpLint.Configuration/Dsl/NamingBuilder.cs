@@ -45,20 +45,85 @@ public sealed class NamingBuilder
         return new NamingRuleChain(_rules, SymbolKind.Field, pb.Flags);
     }
 
-    /// <summary>Targets class declarations.</summary>
+    /// <summary>Targets all class declarations, regardless of accessibility or modifiers.</summary>
     public NamingRuleChain Classes() => new(_rules, SymbolKind.Class, PredicateFlags.None);
 
-    /// <summary>Targets interface declarations.</summary>
+    /// <summary>
+    /// Targets classes, optionally narrowed by accessibility or a modifier such as
+    /// <c>static</c>/<c>abstract</c>/<c>sealed</c> (e.g. <c>c =&gt; c.Abstract()</c>).
+    /// </summary>
+    /// <param name="predicates">Filters that restrict which classes the rule applies to.</param>
+    public NamingRuleChain Classes(Action<ClassPredicateBuilder> predicates)
+    {
+        ArgumentNullException.ThrowIfNull(predicates);
+        var pb = new ClassPredicateBuilder();
+        predicates(pb);
+        return new NamingRuleChain(_rules, SymbolKind.Class, pb.Flags);
+    }
+
+    /// <summary>Targets all interface declarations, regardless of accessibility.</summary>
     public NamingRuleChain Interfaces() => new(_rules, SymbolKind.Interface, PredicateFlags.None);
 
-    /// <summary>Targets record declarations.</summary>
+    /// <summary>
+    /// Targets interfaces, optionally narrowed by accessibility
+    /// (e.g. <c>i =&gt; i.Public()</c>).
+    /// </summary>
+    /// <param name="predicates">Filters that restrict which interfaces the rule applies to.</param>
+    public NamingRuleChain Interfaces(Action<InterfacePredicateBuilder> predicates)
+    {
+        ArgumentNullException.ThrowIfNull(predicates);
+        var pb = new InterfacePredicateBuilder();
+        predicates(pb);
+        return new NamingRuleChain(_rules, SymbolKind.Interface, pb.Flags);
+    }
+
+    /// <summary>Targets all record declarations, regardless of accessibility or modifiers.</summary>
     public NamingRuleChain Records() => new(_rules, SymbolKind.Record, PredicateFlags.None);
 
-    /// <summary>Targets enum declarations.</summary>
+    /// <summary>
+    /// Targets records, optionally narrowed by accessibility or a modifier such as
+    /// <c>abstract</c>/<c>sealed</c> (e.g. <c>r =&gt; r.Sealed()</c>).
+    /// </summary>
+    /// <param name="predicates">Filters that restrict which records the rule applies to.</param>
+    public NamingRuleChain Records(Action<RecordPredicateBuilder> predicates)
+    {
+        ArgumentNullException.ThrowIfNull(predicates);
+        var pb = new RecordPredicateBuilder();
+        predicates(pb);
+        return new NamingRuleChain(_rules, SymbolKind.Record, pb.Flags);
+    }
+
+    /// <summary>Targets all enum declarations, regardless of accessibility.</summary>
     public NamingRuleChain Enums() => new(_rules, SymbolKind.Enum, PredicateFlags.None);
 
-    /// <summary>Targets properties.</summary>
+    /// <summary>
+    /// Targets enums, optionally narrowed by accessibility
+    /// (e.g. <c>e =&gt; e.Public()</c>).
+    /// </summary>
+    /// <param name="predicates">Filters that restrict which enums the rule applies to.</param>
+    public NamingRuleChain Enums(Action<EnumPredicateBuilder> predicates)
+    {
+        ArgumentNullException.ThrowIfNull(predicates);
+        var pb = new EnumPredicateBuilder();
+        predicates(pb);
+        return new NamingRuleChain(_rules, SymbolKind.Enum, pb.Flags);
+    }
+
+    /// <summary>Targets all properties, regardless of accessibility or modifiers.</summary>
     public NamingRuleChain Properties() => new(_rules, SymbolKind.Property, PredicateFlags.None);
+
+    /// <summary>
+    /// Targets properties, optionally narrowed by accessibility or <c>static</c>
+    /// (e.g. <c>p =&gt; p.Public()</c>, <c>p =&gt; p.Static()</c>).
+    /// </summary>
+    /// <param name="predicates">Filters that restrict which properties the rule applies to.</param>
+    public NamingRuleChain Properties(Action<PropertyPredicateBuilder> predicates)
+    {
+        ArgumentNullException.ThrowIfNull(predicates);
+        var pb = new PropertyPredicateBuilder();
+        predicates(pb);
+        return new NamingRuleChain(_rules, SymbolKind.Property, pb.Flags);
+    }
 
     /// <summary>Targets method and constructor parameters.</summary>
     public NamingRuleChain Parameters() => new(_rules, SymbolKind.Parameter, PredicateFlags.None);

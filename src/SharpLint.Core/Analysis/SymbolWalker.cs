@@ -17,7 +17,7 @@ internal static class SymbolWalker
                 case MethodDeclarationSyntax m:
                     yield return new SymbolInfo(
                         SymbolKind.Method,
-                        AccessibilityFlags(m.Modifiers, DefaultAccessibilityFor(m))
+                        AccessibilityFlags(m.Modifiers, DefaultMemberAccessibility(m))
                             | (m.Modifiers.Any(SyntaxKind.AsyncKeyword) ? PredicateFlags.Async : PredicateFlags.None),
                         m.Identifier.Text,
                         m,
@@ -27,7 +27,7 @@ internal static class SymbolWalker
                 case ClassDeclarationSyntax c:
                     yield return new SymbolInfo(
                         SymbolKind.Class,
-                        PredicateFlags.None,
+                        AccessibilityFlags(c.Modifiers, DefaultTypeAccessibility(c)) | TypeModifierFlags(c.Modifiers),
                         c.Identifier.Text,
                         c,
                         c.Identifier.GetLocation());
@@ -36,7 +36,7 @@ internal static class SymbolWalker
                 case InterfaceDeclarationSyntax i:
                     yield return new SymbolInfo(
                         SymbolKind.Interface,
-                        PredicateFlags.None,
+                        AccessibilityFlags(i.Modifiers, DefaultTypeAccessibility(i)),
                         i.Identifier.Text,
                         i,
                         i.Identifier.GetLocation());
@@ -45,7 +45,7 @@ internal static class SymbolWalker
                 case RecordDeclarationSyntax r:
                     yield return new SymbolInfo(
                         SymbolKind.Record,
-                        PredicateFlags.None,
+                        AccessibilityFlags(r.Modifiers, DefaultTypeAccessibility(r)) | TypeModifierFlags(r.Modifiers),
                         r.Identifier.Text,
                         r,
                         r.Identifier.GetLocation());
@@ -54,20 +54,24 @@ internal static class SymbolWalker
                 case EnumDeclarationSyntax e:
                     yield return new SymbolInfo(
                         SymbolKind.Enum,
-                        PredicateFlags.None,
+                        AccessibilityFlags(e.Modifiers, DefaultTypeAccessibility(e)),
                         e.Identifier.Text,
                         e,
                         e.Identifier.GetLocation());
                     break;
 
                 case PropertyDeclarationSyntax p:
-                    yield return new SymbolInfo(
-                        SymbolKind.Property,
-                        PredicateFlags.None,
-                        p.Identifier.Text,
-                        p,
-                        p.Identifier.GetLocation());
-                    break;
+                    {
+                        var flags = AccessibilityFlags(p.Modifiers, DefaultMemberAccessibility(p));
+                        if (p.Modifiers.Any(SyntaxKind.StaticKeyword)) flags |= PredicateFlags.Static;
+                        yield return new SymbolInfo(
+                            SymbolKind.Property,
+                            flags,
+                            p.Identifier.Text,
+                            p,
+                            p.Identifier.GetLocation());
+                        break;
+                    }
 
                 case FieldDeclarationSyntax f:
                     {
@@ -127,8 +131,27 @@ internal static class SymbolWalker
         }
     }
 
-    private static PredicateFlags DefaultAccessibilityFor(MethodDeclarationSyntax method) =>
-        method.Parent is InterfaceDeclarationSyntax ? PredicateFlags.Public : PredicateFlags.Private;
+    // Unqualified members default to private, except interface members which are implicitly public.
+    private static PredicateFlags DefaultMemberAccessibility(SyntaxNode member) =>
+        member.Parent is InterfaceDeclarationSyntax ? PredicateFlags.Public : PredicateFlags.Private;
+
+    // Unqualified types default to internal at namespace/file scope, private when nested in another
+    // type, and public when nested in an interface (matching C#'s member accessibility rules).
+    private static PredicateFlags DefaultTypeAccessibility(SyntaxNode type) => type.Parent switch
+    {
+        InterfaceDeclarationSyntax => PredicateFlags.Public,
+        TypeDeclarationSyntax => PredicateFlags.Private,
+        _ => PredicateFlags.Internal,
+    };
+
+    private static PredicateFlags TypeModifierFlags(SyntaxTokenList modifiers)
+    {
+        var flags = PredicateFlags.None;
+        if (modifiers.Any(SyntaxKind.StaticKeyword)) flags |= PredicateFlags.Static;
+        if (modifiers.Any(SyntaxKind.AbstractKeyword)) flags |= PredicateFlags.Abstract;
+        if (modifiers.Any(SyntaxKind.SealedKeyword)) flags |= PredicateFlags.Sealed;
+        return flags;
+    }
 
     private static PredicateFlags AccessibilityFlags(SyntaxTokenList modifiers, PredicateFlags defaultAccess)
     {
