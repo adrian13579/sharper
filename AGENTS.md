@@ -59,5 +59,6 @@ dotnet run --project src/SharpLint.Cli -- check --path ./some/dir --format json
 
 - Make commits atomic, organized primarily around a single feature, fix, or coherent behavior change. Include all related implementation, tests, and documentation in the same commit, even when they span multiple files or projects.
 - Separate unrelated changes into separate commits. Each commit should be independently understandable and leave the project in a working state.
-- Write meaningful commit messages that describe the shared purpose and resulting behavior of the entire change. For example: `Add visibility predicates to naming rules`.
+- Use Conventional Commits for every commit: `<type>[optional scope][!]: <description>`. Allowed types are `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, and `revert`. Use a lowercase type and optional scope, an imperative description, and no trailing period. Mark breaking changes with `!` and explain them in a `BREAKING CHANGE:` footer.
+- Write meaningful descriptions that explain the shared purpose and resulting behavior of the entire change. For example: `feat(naming): add visibility predicates to naming rules`. Use `test` for test coverage improvements, `build` for build tooling, and `docs` for contributor guidance; choose the type that best describes the primary purpose of an atomic change.
 - Avoid file inventories and vague wording such as `Modified files X, Y, and Z for better naming`. Explain what the change accomplishes; use the body for rationale or details when needed.
