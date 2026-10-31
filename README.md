@@ -1,938 +1,205 @@
+<p align="center">
+  <img src="logo.png" alt="SharpLint logo" width="560">
+</p>
+
 # SharpLint
 
-A fast, opinionated, developer-friendly static analysis and governance tool for the .NET ecosystem — an ESLint/Biome-style DX over Roslyn for C#.
+A Roslyn-powered static analysis CLI for C# with fluent, typed configuration, readable diagnostics, and JSON output for CI and coding agents.
 
-> Status: **pre-alpha.** The CLI supports Naming policies and an extensible core category taxonomy. [docs/spec](docs/spec/README.md) defines adopted behavior. The full v1 specification below is planning material.
+**Status: pre-alpha.** Naming policies and incremental daemon checks are implemented. The [adopted specifications](docs/spec/README.md) define the configuration contract; [SPEC.md](SPEC.md) describes the broader vision and planned features.
 
----
+## Quick start
 
-## Current Status
-
-What works today:
-
-- `sharplint check` walks `*.cs` files under a path and reports diagnostics.
-- Naming rules enforce conventions, prefixes, suffixes, exact names, and regular expressions, with selector precedence and attribute exemptions.
-- Nine stable [core categories](docs/spec/taxonomy.md): Naming, Syntax, Organization, Design, Dependencies, Architecture, Reliability, Performance, and Project. Naming is the only category with built-in policies.
-- Explicit module registration supports custom categories, rule metadata, scopes, JSON configuration, and read-only analyzers in a custom host. No external plugin loader is included.
-- Pretty CLI output and `--format json` for machine consumers.
-- `sharplint init` scaffolds a starter `sharplint.config.cs` (a .NET 10 file-based app).
-- Fluent configuration (`Lint.Configure(...).Apply()`), with existing `config.Naming(...)` and generic `config.Rule(...)` for host-registered rules.
-- `sharplint.config.cs` is loaded and applied: preset selects the active rule set; severity overrides change emitted severities (`Severity.Hidden` disables a rule).
-
-What is **not** wired up yet:
-
-- Built-in policies for the eight categories beyond Naming; category metadata does not imply validation.
-- Custom module loading in the stock CLI. Unsupported configured rules fail explicitly.
-- Semantic and architectural analysis inputs — source files are parsed directly.
-- MSBuild workspace loading (the analyzer parses files directly; `.csproj`/`.sln` discovery is deferred).
-- SARIF output and daemon mode. Analysis remains read-only.
-
----
-
-## Quick Start
+Use the .NET SDK selected by [global.json](global.json): **10.0.202**, with `latestMinor` roll-forward. Run these commands from the repository root:
 
 ```bash
-# build everything
 dotnet build SharpLint.slnx
-
-# run the tests
 dotnet test SharpLint.slnx
 
-# analyze a directory
+# Create a starter configuration in the current directory, if one does not exist.
+dotnet run --project src/SharpLint.Cli -- init
+
+# Analyze the directory containing its own sharplint.config.cs.
 dotnet run --project src/SharpLint.Cli -- check --path ./some/dir
 
-# machine-readable output
-dotnet run --project src/SharpLint.Cli -- check --path ./some/dir --format json
-
-# scaffold a config in the current directory
-dotnet run --project src/SharpLint.Cli -- init
+# Emit JSON diagnostics, including cache and timing statistics.
+dotnet run --project src/SharpLint.Cli -- check --path ./some/dir --format json --stats
 ```
 
-Requires the .NET 10 SDK (pinned via [global.json](global.json)). The config format is a [.NET 10 file-based app](https://learn.microsoft.com/dotnet/core/tools/dotnet-run-file) — a regular `.cs` file with `#:package` directives — so editor autocomplete works out of the box in any C# tooling, and SharpLint executes it via `dotnet run sharplint.config.cs` and reads the emitted JSON.
+The repository already includes [sharplint.config.cs](sharplint.config.cs); `init` refuses to overwrite an existing configuration. Without a configuration in the analyzed directory, SharpLint runs with **no rules**. Use `init` or add a configuration to enable checks.
 
-During development, `dotnet build` produces local NuGet packages into [packages/](packages) (configured via [NuGet.config](NuGet.config)) so the repo's own `sharplint.config.cs` can resolve `#:package SharpLint.Configuration@1.0.0-dev`. Once SharpLint publishes to nuget.org, end users won't need the local feed.
+Builds produce development NuGet packages in `packages/`, exposed through [NuGet.config](NuGet.config). When analyzing another directory, its NuGet sources must also include this local feed so its configuration can restore `SharpLint.Configuration@1.0.0-dev`. If a rebuilt package is stale in the NuGet cache, run `bash build.sh`; this evicts cached SharpLint.Core and SharpLint.Configuration packages before rebuilding.
 
----
+## Configuration
 
-## Code coverage
+`sharplint.config.cs` is a .NET 10 file-based app. SharpLint executes it with `dotnet run --file` and reads the configuration emitted by `.Apply()`.
 
-Run the full test suite with Coverlet and generate HTML, JSON, text, and Cobertura
-reports from the repository root:
+```csharp
+#:package SharpLint.Configuration@1.0.0-dev
+
+using SharpLint.Configuration;
+using SharpLint.Core.Naming;
+
+Lint.Configure(config =>
+{
+    config.UsePreset(Preset.Recommended);
+
+    config.Naming(n =>
+    {
+        n.Classes(c => c.Public())
+            .RequireConvention(NamingConvention.PascalCase)
+            .AsError();
+
+        n.Interfaces()
+            .RequirePrefix("I")
+            .ForbidPrefix("IInternal");
+
+        n.Methods(m => m.Async())
+            .RequireSuffix("Async")
+            .AsError();
+    });
+}).Apply();
+```
+
+`Preset.Recommended` declares PascalCase classes, interfaces, properties, and public methods; `I`-prefixed interfaces; `_camelCase` private fields; `UPPER_SNAKE_CASE` constants; `Async`-suffixed async methods; and camelCase parameters and local variables. Preset rules default to warnings.
+
+Naming supports classes, interfaces, records, enums, methods, properties, fields, parameters, local variables, and namespaces. Rules can require or forbid conventions, prefixes, suffixes, exact names, and regular expressions. Accessibility and modifier predicates narrow selectors; `.ExceptWithAttribute<T>()` exempts attributed symbols from an individual rule.
+
+Constraints in a selector chain compose with AND. For each verb, the last applicable selector chain wins; different verbs resolve independently. Severity and exemption modifiers apply to the most recent constraint. Use `.AsError()`, `.AsWarning()`, `.AsInfo()`, or `.Disabled()` to control reporting.
+
+See the [Naming specification](docs/spec/naming.md) for selectors, predicates, precedence, and worked examples.
+
+## CLI
+
+The examples below use the built Debug binary, so build the solution first.
+
+```bash
+# Analyze the current directory; automatically start or reuse its daemon.
+dotnet src/SharpLint.Cli/bin/Debug/net10.0/sharplint.dll check
+
+# Run a complete analysis in this process.
+dotnet src/SharpLint.Cli/bin/Debug/net10.0/sharplint.dll check --no-daemon
+
+# Manage a daemon for a specific directory.
+dotnet src/SharpLint.Cli/bin/Debug/net10.0/sharplint.dll daemon start --path ./some/dir --idle-timeout 900
+dotnet src/SharpLint.Cli/bin/Debug/net10.0/sharplint.dll daemon status --path ./some/dir
+dotnet src/SharpLint.Cli/bin/Debug/net10.0/sharplint.dll daemon stop --path ./some/dir
+```
+
+| Command / option | Behavior |
+| --- | --- |
+| `init` | Create a recommended configuration in the current directory. |
+| `check --path <PATH>` | Analyze a directory recursively; defaults to the current directory. |
+| `check --format pretty\|json` | Select readable output or JSON; defaults to `pretty`. |
+| `check --stats` | Include snapshot, cache, and timing metadata. JSON output adds a `statistics` object. |
+| `check --no-daemon` | Run an independent, complete analysis without starting a daemon. |
+| `daemon start\|status\|stop --path <PATH>` | Manage the daemon for a directory; defaults to the current directory. |
+| `daemon start --idle-timeout <SECONDS>` | Set the idle timeout when starting a new daemon; defaults to 900 seconds. |
+
+The daemon retains a Roslyn syntax workspace and per-document diagnostics between checks. It reconciles inputs from disk, reuses unchanged documents, and invalidates cached analysis when configuration or project inputs change. Each check validates its input snapshot before returning results. Daemons stop after 15 minutes of inactivity by default. See the [daemon guide](docs/daemon.md) for cache boundaries, lifecycle details, and troubleshooting.
+
+Analysis recursively reads C# source files, skipping `bin`, `obj`, `.git`, `.sharplint`, and linked directories. Project and build files participate in cache invalidation, but analysis remains syntax-only: SharpLint does not load projects through MSBuild or resolve semantic compilations.
+
+`check` returns these exit codes:
+
+| Code | Meaning |
+| --- | --- |
+| `0` | Analysis completed without error-severity diagnostics; warnings and information may be present. |
+| `1` | Analysis completed with error-severity diagnostics. |
+| `2` | Configuration or analysis failed, or analysis was canceled. |
+| `3` | Daemon communication failed. |
+
+Disabled rules produce no diagnostics. Use `.AsError()` for policies that should fail CI.
+
+### JSON output
+
+`--format json` returns an object with analysis totals and a diagnostics array:
+
+```json
+{
+  "filesAnalyzed": 1,
+  "elapsedMs": 12.5,
+  "diagnostics": [
+    {
+      "ruleId": "naming.class.public.convention",
+      "category": "naming",
+      "severity": "error",
+      "message": "Class 'bad_name' must use PascalCase convention.",
+      "file": "/repo/Example.cs",
+      "line": 1,
+      "column": 14,
+      "suggestion": null
+    }
+  ]
+}
+```
+
+Paths, messages, and timing values above are illustrative. Diagnostics include stable rule IDs, categories, severities, source locations, and optional suggestions.
+
+## Rule categories and extensions
+
+SharpLint defines nine stable [core categories](docs/spec/taxonomy.md): Naming, Syntax, Organization, Design, Dependencies, Architecture, Reliability, Performance, and Project. **Naming is the only category with built-in policies.**
+
+Custom hosts can implement `IRuleAnalyzer`, register policies and categories through `RuleModule` and `RuleRegistry`, and configure them with `config.Rule(...)`. See the [module contracts and host integration example](docs/spec/taxonomy.md). The stock CLI does not load external modules; configured rules without registered analyzers fail explicitly.
+
+Built-in policies for the other categories, semantic analysis, MSBuild project loading, SARIF output, autofix, and external plugin loading remain future work. See [SPEC.md](SPEC.md) for planning material.
+
+## Repository structure
+
+| Path | Responsibility |
+| --- | --- |
+| [src/SharpLint.Core](src/SharpLint.Core) | Naming models and evaluation, rule metadata and registration, diagnostics, and syntax analysis. |
+| [src/SharpLint.Configuration](src/SharpLint.Configuration) | Fluent DSL, presets, JSON emission, and executable configuration loading. |
+| [src/SharpLint.Analysis](src/SharpLint.Analysis) | Syntax workspace coordination, input snapshots, cache invalidation, and incremental analysis. |
+| [src/SharpLint.Daemon](src/SharpLint.Daemon) | Per-directory daemon identity, protocol, client, and host lifecycle. |
+| [src/SharpLint.Cli](src/SharpLint.Cli) | Spectre.Console.Cli commands and pretty/JSON rendering. |
+| [tests/SharpLint.Tests](tests/SharpLint.Tests) | xUnit tests, including analyzer integration and CLI/daemon functional tests. |
+| [docs/spec](docs/spec/README.md) | Adopted DSL and taxonomy contracts. |
+| [benchmarks/daemon.py](benchmarks/daemon.py) | End-to-end cold, warm, changed-input, concurrent-client, and restart benchmarks. |
+
+## Development and validation
+
+```bash
+# Build Debug before CLI functional tests: they invoke the Debug binary.
+dotnet build SharpLint.slnx
+dotnet test SharpLint.slnx
+
+# Run a focused test group.
+dotnet test tests/SharpLint.Tests/SharpLint.Tests.csproj --filter FullyQualifiedName~RuleIdFormatterTests
+```
+
+Keep analysis and rule models in Core, configuration authoring and loading in Configuration, and command rendering in Cli. Add observable behavior tests with each change. New rule categories need analyzer integration coverage for compliant and violating source. See [AGENTS.md](AGENTS.md) for contributor guidance.
+
+### Code coverage
 
 ```bash
 bash coverage-test.sh
 ```
 
-The script restores pinned local tools, builds and runs tests, and prints a coverage
-summary. Open `CoverageReport/index.html` to inspect uncovered lines and branches.
-Machine-readable results are in `CoverageReport/Summary.json` and
-`CoverageReport/Cobertura.xml`. Raw results are kept under `TestResults/coverage/`;
-each run uses a fresh directory so previous results cannot inflate the report.
-Both output directories are ignored by Git. Additional `dotnet test` arguments can
-follow the script, for example `bash coverage-test.sh --filter FullyQualifiedName~AnalyzerTests`
-for a partial measurement.
+The script restores pinned tools, runs the suite with Coverlet, and generates HTML, JSON, text, and Cobertura reports. Inspect `CoverageReport/index.html` and `CoverageReport/Summary.json` for uncovered lines and branches. Raw results are stored in a fresh directory under `TestResults/coverage/` for each run; generated reports are ignored by Git.
 
-`coverage.runsettings` measures Core and Configuration, excluding test assemblies
-and generated files under `obj/`. CLI functional tests run as part of the suite,
-but their separate processes are not instrumented by this collector; CLI coverage
-is not included. There is no line or branch coverage gate; the separate mutation
-score requirement below remains 90% per measured project.
+[coverage.runsettings](coverage.runsettings) measures Core and Configuration. CLI functional tests run, but their subprocesses are not instrumented. There is no line or branch coverage gate. Additional test arguments can follow the script, for example `bash coverage-test.sh --filter FullyQualifiedName~AnalyzerTests` for a partial measurement.
 
-## Mutation testing
-
-Stryker.NET is pinned in `dotnet-tools.json` and restored locally with `dotnet tool restore`.
-Run mutation tests from the repository root:
+### Mutation testing
 
 ```bash
 bash mutation-test.sh                # Core and Configuration, separate reports
-bash mutation-test.sh Core           # analysis and naming rules
-bash mutation-test.sh Configuration  # configuration DSL and presets
+bash mutation-test.sh Core           # Core analysis and naming rules
+bash mutation-test.sh Configuration  # Configuration DSL and presets
 ```
 
-The script restores the tool and builds the solution before running. HTML and JSON
-reports are written under `StrykerOutput/<project>/reports/` and ignored by Git.
-Open `mutation-report.html` to inspect surviving mutants and missing coverage.
-Additional Stryker arguments can follow the target, for example
-`bash mutation-test.sh Core --mutate '**/RuleIdFormatter.cs'`.
+The script restores the pinned Stryker.NET tool and builds the solution. Its configuration is in [tests/SharpLint.Tests/stryker-config.json](tests/SharpLint.Tests/stryker-config.json). Inspect surviving mutants in `StrykerOutput/<project>/reports/mutation-report.html`; JSON reports are available alongside the HTML. These outputs are ignored by Git.
 
-The configuration lives in `tests/SharpLint.Tests/stryker-config.json`. Each measured
-project must reach a mutation score of at least 90%; Stryker exits unsuccessfully
-below that threshold. Surviving mutants indicate assertions to investigate; a
-mutation score is distinct from line coverage. Strengthen tests to meet the target
-rather than lowering the threshold or excluding code to improve the score.
+Each measured project must reach a **mutation score of at least 90%**. A lower score fails this requirement even if the process exits successfully. Strengthen tests rather than lowering the threshold or excluding code to improve the score. Additional Stryker arguments can follow the target, for example `bash mutation-test.sh Core --mutate '**/RuleIdFormatter.cs'`.
 
-Scope: these runs measure Core and Configuration using in-process tests. CLI
-functional tests launch a separate CLI binary and execute configs against packaged
-assemblies, so they cannot reliably exercise Stryker's instrumented assemblies and
-are excluded from mutation runs. CLI itself is not measured by this setup. Run
-`dotnet test SharpLint.slnx` separately to verify the full suite, including CLI tests.
+Mutation runs measure Core and Configuration through in-process tests. Subprocess-based CLI tests are excluded because they execute separate binaries and packaged assemblies. Run `dotnet test SharpLint.slnx` separately to verify the full suite.
 
-## Repository Structure
+### Daemon benchmarks
 
-```
-sharplint/
-├── SharpLint.slnx
-├── Directory.Build.props        shared MSBuild settings (net10.0, nullable, warnings-as-errors)
-├── global.json                  SDK pin
-├── src/
-│   ├── SharpLint.Core/          rule + diagnostic abstractions, file-walking Analyzer
-│   │   ├── Diagnostics/         Diagnostic, Severity, RuleCategory, SourceLocation
-│   │   ├── Rules/               IRule, ISyntaxRule, ISemanticRule
-│   │   └── Analysis/            AnalysisContext, AnalysisResult, Analyzer
-│   ├── SharpLint.Rules/         built-in rules (one shipped: AsyncSuffixRule)
-│   ├── SharpLint.Configuration/ fluent DSL (Lint.Configure → ConfigBuilder) + file-based-app config loader
-│   └── SharpLint.Cli/           Spectre.Console.Cli entrypoint; commands: check, init, fix
-└── tests/
-    └── SharpLint.Tests/         xUnit
-```
-
-| Project | Responsibility |
-| --- | --- |
-| `SharpLint.Core` | Public rule contracts (`IRule`, `ISyntaxRule`, `ISemanticRule`), diagnostic types, the `Analyzer` that walks source files and dispatches to enabled rules. No knowledge of specific rules or config. |
-| `SharpLint.Rules` | Built-in opinionated rules. Add new rules here and register them in `BuiltInRules.All`. |
-| `SharpLint.Configuration` | The fluent DSL (`Lint.Configure(...)`), preset names, and the config loader (runs `sharplint.config.cs` as a .NET 10 file-based app and reads the emitted JSON). Published as the `SharpLint.Configuration` NuGet package that user configs reference via `#:package`. |
-| `SharpLint.Cli` | `Spectre.Console.Cli`-based entrypoint. Packaged as a .NET global tool (`PackAsTool=true`, command name `sharplint`). |
-| `SharpLint.Tests` | xUnit tests. |
-
-### Adding a new rule
-
-1. Implement `ISyntaxRule` (or `ISemanticRule` once semantic analysis lands) under `src/SharpLint.Rules/<Category>/`.
-2. Register the rule in `src/SharpLint.Rules/BuiltInRules.cs`.
-3. Add a test under `tests/SharpLint.Tests/Rules/`.
-
-See [src/SharpLint.Rules/Async/AsyncSuffixRule.cs](src/SharpLint.Rules/Async/AsyncSuffixRule.cs) for a reference implementation.
-
----
-
-## Roadmap (short-term)
-
-In rough priority order, the next pieces to land before this is useful beyond a demo:
-
-1. Architectural layer rules (`Architecture.Layer("Domain").CannotReference("Infrastructure")`) — a key differentiator from the spec below. The architecture DSL records severity overrides today but no rule consumes them yet.
-2. SARIF output for CI integration.
-3. MSBuild workspace loading so semantic rules can run.
-4. A handful of additional high-value rules: `async.cancellation-token-required`, naming conventions, common .NET pitfalls.
-5. Make presets functionally distinct (different rule sets / severity defaults) once there are enough rules to differentiate them.
-
-The longer-term vision — daemon mode, autofix infrastructure, plugin ecosystem, policy packs — is documented in detail in the specification below.
-
----
-
-# Project Specification (v1)
-
-## Vision
-
-SharpLint is a fast, opinionated, developer-friendly static analysis and governance tool for the .NET ecosystem.
-
-The project aims to bring an ESLint/Biome-like developer experience to C# and .NET while leveraging the power of Roslyn internally.
-
-SharpLint is not just a linter.
-
-It is intended to become:
-
-* A code quality enforcement platform
-* A repository governance engine
-* An architectural policy system
-* A machine-readable feedback layer for AI coding agents
-* A developer-friendly abstraction over Roslyn analyzers
-
-The tool should provide:
-
-* Opinionated defaults
-* Strong developer experience (DX)
-* Extremely fast execution
-* Fluent and typed configuration
-* Organizational rule enforcement
-* AI-agent-friendly diagnostics
-* Easy customization without complexity explosion
-
----
-
-# Core Philosophy
-
-## Primary Principles
-
-### 1. Opinionated by Default
-
-The tool should provide value immediately after installation.
-
-Users should not need to configure hundreds of rules.
-
-Example:
+After building Debug, run the benchmark with Python 3:
 
 ```bash
-sharplint check
+python3 benchmarks/daemon.py --sizes 100 1000 --iterations 10
 ```
 
-should already enforce:
-
-* naming conventions
-* async best practices
-* architectural rules
-* common .NET pitfalls
-* repository consistency
-* clean code patterns
-
-Configuration should be optional initially.
-
----
-
-### 2. Convention Over Configuration
-
-SharpLint should favor:
-
-* sane defaults
-* curated presets
-* minimal configuration
-
-instead of exposing every Roslyn analyzer setting directly.
-
----
-
-### 3. Developer Experience First
-
-The project must optimize for:
-
-* readability
-* discoverability
-* autocomplete
-* documentation
-* fast feedback
-* easy onboarding
-
-The configuration experience should feel modern and intuitive.
-
-Inspired by:
-
-* ESLint
-* Biome
-* Ruff
-* FluentAssertions
-* ASP.NET Minimal APIs
-
----
-
-### 4. AI-Agent Friendly
-
-SharpLint should be designed with coding agents as first-class consumers.
-
-The tool should provide:
-
-* deterministic diagnostics
-* structured machine-readable output
-* stable schemas
-* actionable remediation
-* fast execution loops
-
-SharpLint acts as:
-
-> an extension of the compiler for organizational and architectural standards.
-
----
-
-### 5. Fast by Design
-
-Performance is a core feature.
-
-The tool should feel:
-
-* near-instant
-* incremental
-* cache-aware
-* lightweight
-
-The project should optimize for:
-
-* repeated invocation
-* CI usage
-* local feedback loops
-* AI iteration loops
-
----
-
-# High-Level Product Positioning
-
-SharpLint should position itself as:
-
-> ESLint/Biome for modern C# and .NET teams.
-
-But the long-term positioning is broader:
-
-> Policy-as-code and architectural governance for .NET repositories.
-
----
-
-# Technical Direction
-
-## Core Technology
-
-### Analysis Engine
-
-SharpLint will use:
-
-* Roslyn
-
-internally for:
-
-* syntax analysis
-* semantic analysis
-* incremental compilation
-* workspace loading
-* diagnostics
-* code fixes
-
-SharpLint will NOT reinvent:
-
-* parsing
-* compilation
-* AST infrastructure
-
-Roslyn is an implementation detail, not the exposed developer experience.
-
----
-
-# Project Scope
-
-## Initial Scope
-
-### Supported Language
-
-* C# only
-
-### Supported Project Type
-
-* SDK-style .NET projects
-
-### Primary Interface
-
-* CLI only initially
-
-### Initial Workflow
-
-```bash
-sharplint check
-```
-
----
-
-# Installation Model
-
-## Global Tool
-
-SharpLint should be installable as a standalone CLI.
-
-Example:
-
-```bash
-dotnet tool install -g sharplint
-```
-
-The tool should NOT require:
-
-* NuGet package installation
-* csproj modifications
-* analyzer package references
-
-The repository should only require:
-
-```text
-sharplint.config.cs
-```
-
-This avoids:
-
-* project pollution
-* analyzer version drift
-* complex setup
-* repository inconsistency
-
----
-
-# Configuration System
-
-## Configuration File
-
-```text
-sharplint.config.cs
-```
-
-The configuration system is one of the core differentiators of the project.
-
----
-
-## Configuration Goals
-
-The DSL must be:
-
-* typed
-* discoverable
-* autocomplete-friendly
-* well documented
-* developer-friendly
-* expressive
-* stable
-
-The DSL should feel like a modern C# API.
-
----
-
-## Configuration Design Principles
-
-### Strongly Typed APIs
-
-Prefer:
-
-```csharp
-rules.Async.RequireSuffix()
-    .AsWarning();
-```
-
-instead of:
-
-```csharp
-rules.SetSeverity("async-rule", "warning");
-```
-
----
-
-### Use Enums Where Appropriate
-
-Example:
-
-```csharp
-rules.Naming.Methods(NamingConvention.PascalCase);
-```
-
-Benefits:
-
-* autocomplete
-* discoverability
-* agent generation
-* readability
-
----
-
-### Human-Centered API Design
-
-Rules should express intent.
-
-Good:
-
-```csharp
-rules.Architecture.Layer("Domain")
-    .CannotReference("Infrastructure");
-```
-
-Bad:
-
-```csharp
-rules.Enable("SL1004");
-```
-
----
-
-### IntelliSense Documentation
-
-Methods should provide rich documentation.
-
-Example:
-
-```text
-Requires async public methods to expose a CancellationToken parameter.
-
-Why:
-Prevents non-cancelable async operations.
-
-Examples:
-✔ Task SaveAsync(User user, CancellationToken ct)
-✘ Task SaveAsync(User user)
-```
-
----
-
-# Example DSL
-
-```csharp
-using SharpLint;
-
-Lint.Configure(config =>
-{
-    config.UsePreset(Presets.Recommended);
-
-    config.Architecture(arch =>
-    {
-        arch.Layer("Domain")
-            .CannotReference("Infrastructure");
-    });
-
-    config.Async(async =>
-    {
-        async.RequireCancellationTokens();
-        async.RequireAsyncSuffix();
-    });
-});
-```
-
----
-
-# Rules Philosophy
-
-## Rule Categories
-
-Rules should map to developer mental models.
-
-Examples:
-
-* Architecture
-* Async
-* ASP.NET
-* EF Core
-* Dependency Injection
-* Clean Code
-* Testing
-* Security
-* Modernization
-* AI Safety
-
-Avoid compiler-oriented categories as the primary UX.
-
----
-
-## Built-In Opinionated Defaults
-
-SharpLint should ship with curated defaults.
-
-Example presets:
-
-```csharp
-preset.Use("recommended");
-preset.Use("clean-architecture");
-preset.Use("aspnet");
-preset.Use("strict");
-```
-
----
-
-# Architecture Enforcement
-
-Architectural rules are a key differentiator.
-
-Examples:
-
-```csharp
-rules.Architecture.Layer("Domain")
-    .CannotReference("Infrastructure");
-```
-
-```csharp
-rules.ForbidNamespace("System.Console")
-    .Outside("Program.cs");
-```
-
-```csharp
-rules.DependencyInjection.DisallowServiceLocator();
-```
-
-The tool should help encode:
-
-* architecture decisions
-* engineering standards
-* repository governance
-* organizational knowledge
-
----
-
-# AI-Agent Workflow
-
-SharpLint should optimize for:
-
-```text
-generate → analyze → fix → rerun
-```
-
-The tool should support:
-
-* deterministic diagnostics
-* structured outputs
-* machine-readable schemas
-* autofix capabilities
-* fast iteration loops
-
----
-
-# CLI Design
-
-## Core Commands
-
-### Analyze Repository
-
-```bash
-sharplint check
-```
-
----
-
-### Initialize Config
-
-```bash
-sharplint init
-```
-
----
-
-### JSON Output
-
-```bash
-sharplint check --format json
-```
-
----
-
-### Autofix
-
-```bash
-sharplint fix
-```
-
-Optional:
-
-```bash
-sharplint fix --rule async-suffix-required
-```
-
----
-
-# Diagnostics Design
-
-## Human-Friendly Output
-
-Example:
-
-```text
-✘ Domain layer references Infrastructure
-
-File:
-UserService.cs:42
-
-Detected:
-using Infrastructure.Persistence;
-
-Suggested Fix:
-Move the abstraction to Domain.Interfaces
-```
-
----
-
-## Machine-Friendly Output
-
-Example:
-
-```json
-{
-  "ruleId": "architecture.domain.infrastructure",
-  "category": "architecture",
-  "severity": "error",
-  "message": "Domain layer cannot reference Infrastructure",
-  "file": "UserService.cs",
-  "line": 42,
-  "suggestion": "Introduce abstraction in Domain layer"
-}
-```
-
----
-
-# Performance Requirements
-
-## Performance Is a Core Feature
-
-SharpLint must optimize for:
-
-* low startup time
-* incremental analysis
-* workspace reuse
-* fast repeated execution
-* low memory usage
-
----
-
-## Performance Goals
-
-### Small Repository
-
-Target:
-
-```text
-< 1 second
-```
-
-### Medium Repository
-
-Target:
-
-```text
-few seconds
-```
-
----
-
-# Incremental Analysis Strategy
-
-The system should eventually support:
-
-* cached Roslyn workspaces
-* incremental analysis
-* changed-file tracking
-* dependency graph reuse
-
----
-
-# Future Daemon Architecture
-
-Future support:
-
-```bash
-sharplint daemon
-```
-
-Responsibilities:
-
-* maintain workspace state
-* cache semantic models
-* file watching
-* incremental diagnostics
-* fast agent feedback loops
-
----
-
-# Rule Performance Model
-
-Rules should be categorized by cost.
-
-## Syntax Rules
-
-Fastest.
-
-Examples:
-
-* naming
-* formatting
-* suffix checks
-
----
-
-## Semantic Rules
-
-Require semantic analysis.
-
-Examples:
-
-* DI misuse
-* async correctness
-* EF Core misuse
-
----
-
-## Architectural Rules
-
-Require graph analysis.
-
-Examples:
-
-* forbidden dependencies
-* layer boundaries
-
----
-
-# Output Formats
-
-SharpLint should support:
-
-* human-readable CLI output
-* JSON
-* SARIF
-* CI-friendly formats
-
-This enables:
-
-* GitHub Actions
-* Azure DevOps
-* AI integration
-* repository automation
-
----
-
-# Product Boundaries
-
-## What SharpLint IS
-
-* opinionated linter
-* architecture validator
-* governance engine
-* policy-as-code system
-* AI feedback layer
-
----
-
-## What SharpLint Is NOT
-
-Initially:
-
-* custom compiler
-* custom parser
-* IDE-first product
-* general-purpose scripting platform
-* replacement for Roslyn
-
----
-
-# Long-Term Vision
-
-SharpLint may eventually evolve into:
-
-* plugin ecosystem
-* organizational presets
-* repository governance platform
-* modernization engine
-* autofix/codemod framework
-* AI coding policy system
-
-Potential future capabilities:
-
-* live config validation
-* automated migrations
-* modernization rules
-* repository policy packs
-* architecture visualization
-
----
-
-# Key Differentiators
-
-## 1. No Project Installation
-
-No NuGet dependency required.
-
----
-
-## 2. Fluent Typed DSL
-
-Strong autocomplete and discoverability.
-
----
-
-## 3. Opinionated Defaults
-
-Works out of the box.
-
----
-
-## 4. Architecture Rules
-
-First-class support.
-
----
-
-## 5. AI-Agent Friendly
-
-Machine-readable diagnostics and fast iteration.
-
----
-
-## 6. High Performance
-
-Designed for continuous invocation.
-
----
-
-## 7. Roslyn-Powered
-
-Leverages compiler-grade analysis without exposing Roslyn complexity.
-
----
-
-# Initial MVP Scope
-
-## Included
-
-* CLI
-* Roslyn integration
-* typed `sharplint.config.cs` configuration
-* opinionated defaults
-* 10–20 high-value rules
-* architecture rules
-* JSON output
-* fast execution
-* CI integration
-
----
-
-## Deferred
-
-* IDE integration
-* daemon mode
-* plugin marketplace
-* distributed execution
-* formatter
-* advanced code fixes
-* Rider/Visual Studio extensions
-
----
-
-
-# Strategic Summary
-
-SharpLint is intended to become:
-
-> The modern developer-friendly governance and code quality layer for C# and .NET.
-
-The project combines:
-
-* Roslyn analysis power
-* ESLint/Biome ergonomics
-* architecture enforcement
-* policy-as-code
-* AI-assisted development workflows
-* fast developer feedback loops
-
-into one cohesive platform.
-
+The benchmark creates temporary source repositories, stops their daemons on completion, and writes results to `benchmarks/results.json` by default. Results include median and p95 elapsed time, document reuse, cache hit rates, and daemon peak memory where available.
