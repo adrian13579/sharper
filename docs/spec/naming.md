@@ -104,7 +104,8 @@ Lint.Configure(config =>
 ```
 
 `config.Naming(...)` may be called multiple times in the same config; calls
-accumulate. Rule ordering does not affect correctness.
+accumulate. Within a selector chain, constraints compose with AND. Across separate
+selectors, declaration order controls overrides as described in §5.2.
 
 ### 3.1 Presets
 
@@ -226,6 +227,20 @@ regex level (`"^(Foo|Bar)"`).
 
 Multiple `Require…` / `Forbid…` calls on the same selector AND together —
 a symbol must satisfy **every** `Require…` and **zero** `Forbid…`s to pass.
+This includes repeated calls using the same verb, in either direction:
+
+```csharp
+n.Interfaces().RequirePrefix("I").ForbidPrefix("IInternal");
+// Requires an I prefix AND rejects an IInternal prefix.
+```
+
+For each symbol and verb, the last applicable declaration selects the winning
+selector chain. Every constraint of that verb from that chain applies. A later
+separate selector replaces earlier constraints of the same verb, including preset
+constraints, even if the earlier selector is more specific. Different verbs
+resolve independently. A disabled constraint still participates in selecting the
+winning chain, but emits no diagnostic; it does not disable active siblings in
+the same chain. Severity and attribute exemptions remain per constraint.
 
 ```csharp
 n.Fields(f => f.Private())
@@ -311,6 +326,13 @@ not the naming category. v1 of the naming spec does not define it.
 Each (selector × verb) tuple maps to a stable rule ID emitted to JSON/SARIF
 output. Users **do not type these strings in C# config code**; they are the
 contract for downstream tooling (CI, AI agents, suppression comments).
+
+Serialized naming rules include a nullable integer `chainId` to preserve selector
+composition when configurations are loaded. The builder assigns a unique ID on
+the first verb call of each selector chain; subsequent calls on that chain reuse
+it. IDs are local to a configuration and do not change rule IDs. Rules with missing
+or null `chainId` are standalone declarations, preserving last-declaration-wins
+behavior for older configurations.
 
 ### 8.1 Format
 

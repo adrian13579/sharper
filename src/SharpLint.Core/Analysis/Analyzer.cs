@@ -44,15 +44,19 @@ public sealed class Analyzer
         return new AnalysisResult(diagnostics, stopwatch.Elapsed, files.Count);
     }
 
-    // Resolves rule precedence for a single symbol. Declaration order is precedence order (presets run
-    // first, user rules append after), so among the rules that apply to the symbol the *last-declared*
-    // one wins within each verb group. A later rule therefore overrides an earlier one — even a more
-    // specific preset rule. Grouping by verb lets different constraint kinds coexist (e.g. a prefix rule
-    // and a convention rule on the same field both apply); only same-verb rules compete. Hidden rules are
-    // kept in the running so a later `.Disabled()` can win its group and shadow the rules it supersedes.
+    // For each verb, the last applicable declaration selects the winning chain. Every constraint
+    // of that verb in the winning chain composes with AND. Other verbs resolve independently.
+    // Hidden rules participate in precedence, then are skipped individually during evaluation.
+    // Rules without chain metadata retain the standalone, last-declaration-wins behavior.
     private static IEnumerable<NamingRule> ResolveRules(IReadOnlyList<NamingRule> rules, SymbolInfo symbol) =>
         rules
             .Where(r => NamingRuleEvaluator.Applies(r, symbol))
             .GroupBy(r => r.Verb)
-            .Select(g => g.Last());
+            .SelectMany(g =>
+            {
+                var last = g.Last();
+                return last.ChainId is null
+                    ? new[] { last }
+                    : g.Where(r => r.ChainId == last.ChainId);
+            });
 }

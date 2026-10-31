@@ -14,6 +14,7 @@ public sealed class NamingRuleChain
     private readonly List<NamingRule> _rules;
     private readonly SymbolKind _kind;
     private readonly PredicateFlags _predicates;
+    private int? _chainId;
     private int _lastIndex = -1;
 
     internal NamingRuleChain(List<NamingRule> rules, SymbolKind kind, PredicateFlags predicates)
@@ -108,6 +109,7 @@ public sealed class NamingRuleChain
     {
         var rule = new NamingRule
         {
+            ChainId = _chainId ??= _rules.Count,
             Kind = _kind,
             Predicates = _predicates,
             Verb = verb,

@@ -395,4 +395,120 @@ public sealed class AnalyzerTests : IDisposable
 
         Assert.Contains(diags, d => d.RuleId == "naming.class.convention" && d.Message.Contains("fooBar"));
     }
+
+    [Theory]
+    [InlineData(VerbKind.Convention, "GoodName", "lower", "UPPER")]
+    [InlineData(VerbKind.Prefix, "Good", "Other", "Bad")]
+    [InlineData(VerbKind.Suffix, "GoodEnd", "Other", "BadEnd")]
+    [InlineData(VerbKind.Name, "Good", "Other", "Bad")]
+    [InlineData(VerbKind.Regex, "Good", "Other", "Bad")]
+    public async Task Chained_require_and_forbid_of_the_same_verb_both_apply(
+        VerbKind verb, string compliant, string missingRequirement, string forbidden)
+    {
+        WriteFile("Sample.cs", $"class {compliant} {{}} class {missingRequirement} {{}} class {forbidden} {{}}");
+        var diagnostics = await AnalyzeAsync(c => c.Naming(n =>
+        {
+            var chain = n.Classes();
+            switch (verb)
+            {
+                case VerbKind.Convention:
+                    chain.RequireConvention(NamingConvention.PascalCase).ForbidConvention(NamingConvention.UpperSnakeCase);
+                    break;
+                case VerbKind.Prefix:
+                    chain.RequirePrefix("G", "B").ForbidPrefix("B");
+                    break;
+                case VerbKind.Suffix:
+                    chain.RequireSuffix("End").ForbidSuffix("BadEnd");
+                    break;
+                case VerbKind.Name:
+                    chain.RequireName("Good", "Bad").ForbidName("Bad");
+                    break;
+                case VerbKind.Regex:
+                    chain.RequireRegex("(Good|Bad)").ForbidRegex("Bad");
+                    break;
+                default: throw new ArgumentOutOfRangeException(nameof(verb));
+            }
+        }));
+        Assert.Equal(2, diagnostics.Count);
+        Assert.Contains(diagnostics, d => d.Message.Contains($"'{missingRequirement}' must "));
+        Assert.Contains(diagnostics, d => d.Message.Contains($"'{forbidden}' must not "));
+        Assert.All(diagnostics, d => Assert.Equal($"naming.class.{verb.ToString().ToLowerInvariant()}", d.RuleId));
+    }
+
+    [Fact]
+    public async Task Repeated_require_constraints_keep_individual_severities_and_exemptions()
+    {
+        WriteFile("Sample.cs", """
+            class Neither {}
+            class IOnly {}
+            class IGood {}
+            [Obsolete] class Exempt {}
+            """);
+        var diagnostics = await AnalyzeAsync(c => c.Naming(n =>
+            n.Classes().RequirePrefix("I").AsError().ExceptWithAttribute<ObsoleteAttribute>()
+                .RequirePrefix("IG").AsInfo()));
+        Assert.Equal(4, diagnostics.Count);
+        Assert.Contains(diagnostics, d => d.Message == "Class 'Neither' must start with 'I'." && d.Severity == Severity.Error);
+        Assert.Contains(diagnostics, d => d.Message == "Class 'Neither' must start with 'IG'." && d.Severity == Severity.Info);
+        Assert.Contains(diagnostics, d => d.Message == "Class 'IOnly' must start with 'IG'." && d.Severity == Severity.Info);
+        Assert.Contains(diagnostics, d => d.Message == "Class 'Exempt' must start with 'IG'." && d.Severity == Severity.Info);
+    }
+
+    [Fact]
+    public async Task Repeated_forbid_constraints_all_apply_and_can_report_two_violations()
+    {
+        WriteFile("Sample.cs", "class Good {} class IOnly {} class IBad {}");
+        var diagnostics = await AnalyzeAsync(c => c.Naming(n =>
+            n.Classes().ForbidPrefix("I").ForbidPrefix("IBad")));
+        Assert.Equal(new[]
+        {
+            "Class 'IOnly' must not start with 'I'.",
+            "Class 'IBad' must not start with 'I'.",
+            "Class 'IBad' must not start with 'IBad'.",
+        }, diagnostics.Select(d => d.Message));
+    }
+
+    [Fact]
+    public async Task Later_selector_replaces_all_earlier_constraints_of_that_verb_only()
+    {
+        WriteFile("Sample.cs", "public class Good {} private class IBad {}");
+        var diagnostics = await AnalyzeAsync(c => c.Naming(n =>
+        {
+            n.Classes().RequirePrefix("I").ForbidPrefix("IBad").RequireSuffix("End");
+            n.Classes(p => p.Public()).RequirePrefix("G").ForbidPrefix("Good");
+        }));
+        Assert.Equal(new[]
+        {
+            "Class 'Good' must not start with 'Good'.",
+            "Class 'Good' must end with 'End'.",
+            "Class 'IBad' must not start with 'IBad'.",
+            "Class 'IBad' must end with 'End'.",
+        }, diagnostics.Select(d => d.Message));
+    }
+
+    [Fact]
+    public async Task Disabled_constraint_does_not_disable_active_siblings_or_revive_earlier_chains()
+    {
+        WriteFile("Sample.cs", "class Other {} class IBad {}");
+        var diagnostics = await AnalyzeAsync(c => c.Naming(n =>
+        {
+            n.Classes().RequirePrefix("X");
+            n.Classes().RequirePrefix("I").ForbidPrefix("IBad").Disabled();
+        }));
+        Assert.Equal("Class 'Other' must start with 'I'.", Assert.Single(diagnostics).Message);
+    }
+
+    [Fact]
+    public async Task Reusing_an_earlier_chain_makes_its_entire_verb_group_win_again()
+    {
+        WriteFile("Sample.cs", "class IGood {} class Other {} class IBad {}");
+        var diagnostics = await AnalyzeAsync(c => c.Naming(n =>
+        {
+            var original = n.Classes().RequirePrefix("I");
+            n.Classes().RequirePrefix("X");
+            original.ForbidPrefix("IBad");
+        }));
+        Assert.Equal(new[] { "Class 'Other' must start with 'I'.", "Class 'IBad' must not start with 'IBad'." },
+            diagnostics.Select(d => d.Message));
+    }
 }

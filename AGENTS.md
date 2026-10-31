@@ -45,7 +45,7 @@ dotnet run --project src/SharpLint.Cli -- check --path ./some/dir --format json
 - Keep analysis and rule models in Core, configuration authoring/loading in Configuration, and command rendering in Cli.
 - Naming changes can span fluent builders, predicate flags, symbol extraction, rule evaluation, rule ID formatting, and serialization. Check all affected layers and update the adopted spec when changing its contract.
 - Treat emitted rule IDs and JSON fields as public contracts. Keep rule IDs deterministic and cover changed formatting behavior with tests.
-- Preserve naming precedence: among applicable rules, the last declared rule wins within each verb group. Hidden rules can override earlier rules; different verbs can apply together.
+- Preserve naming precedence: for each verb, the last applicable declaration selects the winning selector chain; all constraints of that verb in that chain compose with AND. Separate selectors can override earlier chains. Hidden rules participate in precedence but are skipped individually during evaluation; different verbs resolve independently. Rules without chain metadata retain standalone last-declaration-wins behavior.
 - Analysis currently parses source files directly and skips `bin` and `obj`. Do not assume semantic compilation or MSBuild workspace loading exists.
 - Add regression coverage for changed behavior using the existing test patterns. CLI tests should exercise observable output and exit codes.
 

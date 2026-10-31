@@ -4,6 +4,8 @@ namespace SharpLint.Core.Naming;
 
 public sealed record NamingRule
 {
+    /// <summary>Identifies a composed selector chain. Null treats this rule as a standalone declaration.</summary>
+    public int? ChainId { get; init; }
     public SymbolKind Kind { get; init; }
     public PredicateFlags Predicates { get; init; }
     public VerbKind Verb { get; init; }

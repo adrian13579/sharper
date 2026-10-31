@@ -94,6 +94,34 @@ public sealed class CheckCommandFunctionalTests : IDisposable
         Assert.Empty(doc.RootElement.GetProperty("diagnostics").EnumerateArray());
     }
 
+    [Fact]
+    public async Task Check_preserves_same_verb_composition_through_executable_config()
+    {
+        WriteNuGetConfig();
+        File.WriteAllText(Path.Combine(_workDir, "sharplint.config.cs"), """
+            #:package SharpLint.Configuration@1.0.0-dev
+            using SharpLint.Configuration;
+            Lint.Configure(c => c.Naming(n =>
+            {
+                n.Interfaces().RequirePrefix("X");
+                n.Interfaces().RequirePrefix("I").AsError().ForbidPrefix("IInternal");
+            })).Apply();
+            """);
+        File.WriteAllText(Path.Combine(_workDir, "Sample.cs"),
+            "interface Good {} interface IInternalBad {} interface IGood {}");
+
+        var (exit, stdout, stderr) = await RunCliAsync("check", "--path", _workDir, "--format", "json");
+        Assert.True(exit == 1, $"Expected exit 1, got {exit}.\nstdout:\n{stdout}\nstderr:\n{stderr}");
+        using var document = JsonDocument.Parse(stdout);
+        var diagnostics = document.RootElement.GetProperty("diagnostics").EnumerateArray().ToList();
+        Assert.Equal(2, diagnostics.Count);
+        Assert.Equal("Interface 'Good' must start with 'I'.", diagnostics[0].GetProperty("message").GetString());
+        Assert.Equal("error", diagnostics[0].GetProperty("severity").GetString());
+        Assert.Equal("Interface 'IInternalBad' must not start with 'IInternal'.", diagnostics[1].GetProperty("message").GetString());
+        Assert.Equal("warning", diagnostics[1].GetProperty("severity").GetString());
+        Assert.All(diagnostics, d => Assert.Equal("naming.interface.prefix", d.GetProperty("ruleId").GetString()));
+    }
+
     private void WriteNuGetConfig()
     {
         var packagesPath = Path.Combine(_repoRoot, "packages");

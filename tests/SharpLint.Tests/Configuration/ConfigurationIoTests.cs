@@ -76,6 +76,7 @@ public sealed class ConfigurationIoTests : IDisposable
     {
         using var document = JsonDocument.Parse(json);
         var rule = Assert.Single(document.RootElement.GetProperty("namingRules").EnumerateArray());
+        Assert.Equal(0, rule.GetProperty("chainId").GetInt32());
         Assert.Equal("Class", rule.GetProperty("kind").GetString());
         Assert.Equal("Public, Abstract", rule.GetProperty("predicates").GetString());
         Assert.Equal("Prefix", rule.GetProperty("verb").GetString());
@@ -118,10 +119,11 @@ public sealed class ConfigurationIoTests : IDisposable
     public async Task Load_executes_in_script_directory_deserializes_rules_and_cleans_output()
     {
         var path = WriteScript("""
-            {"namingRules":[{"kind":"Class","predicates":"Public, Abstract","verb":"Prefix","direction":"Require","values":["Base","Abstract"],"severity":"Error","exemptAttributes":["System.ObsoleteAttribute"]}]}
+            {"namingRules":[{"chainId":4,"kind":"Class","predicates":"Public, Abstract","verb":"Prefix","direction":"Require","values":["Base","Abstract"],"severity":"Error","exemptAttributes":["System.ObsoleteAttribute"]}]}
             """);
         var config = await ConfigLoader.LoadAsync(path);
         var rule = Assert.Single(config.NamingRules);
+        Assert.Equal(4, rule.ChainId);
         Assert.Equal(SymbolKind.Class, rule.Kind);
         Assert.Equal(PredicateFlags.Public | PredicateFlags.Abstract, rule.Predicates);
         Assert.Equal(VerbKind.Prefix, rule.Verb);
