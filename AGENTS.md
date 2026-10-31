@@ -33,7 +33,8 @@ dotnet run --project src/SharpLint.Cli -- check --path ./some/dir --format json
 - Build in Debug before running CLI functional tests: they locate `src/SharpLint.Cli/bin/Debug/net10.0/sharplint.dll` and use packages produced by the build.
 - Builds produce local NuGet packages in `packages/`; `NuGet.config` includes that feed. Config loading runs `dotnet run` on a .NET file-based app and may require package restore.
 - If manually running a config picks up stale `1.0.0-dev` packages, `./build.sh` evicts the cached SharpLint.Core and SharpLint.Configuration packages before rebuilding. This script modifies the NuGet cache outside the repository.
-- Run relevant tests for behavior changes and the full suite when changes cross project boundaries. Report any checks that could not run and why. Documentation-only changes do not require a build.
+- Verify tests for every change, including documentation and configuration changes. Run the relevant tests and the full suite when changes cross project boundaries; if no narrower set applies, run `dotnet test SharpLint.slnx`. Report the results and any checks that could not run, with the reason.
+- Every new feature must include new tests that verify its observable behavior and relevant edge cases. Include those tests in the same atomic commit as the feature.
 
 ## Implementation conventions
 
