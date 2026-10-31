@@ -53,6 +53,30 @@ During development, `dotnet build` produces local NuGet packages into [packages/
 
 ---
 
+## Code coverage
+
+Run the full test suite with Coverlet and generate HTML, JSON, text, and Cobertura
+reports from the repository root:
+
+```bash
+bash coverage-test.sh
+```
+
+The script restores pinned local tools, builds and runs tests, and prints a coverage
+summary. Open `CoverageReport/index.html` to inspect uncovered lines and branches.
+Machine-readable results are in `CoverageReport/Summary.json` and
+`CoverageReport/Cobertura.xml`. Raw results are kept under `TestResults/coverage/`;
+each run uses a fresh directory so previous results cannot inflate the report.
+Both output directories are ignored by Git. Additional `dotnet test` arguments can
+follow the script, for example `bash coverage-test.sh --filter FullyQualifiedName~AnalyzerTests`
+for a partial measurement.
+
+`coverage.runsettings` measures Core and Configuration, excluding test assemblies
+and generated files under `obj/`. CLI functional tests run as part of the suite,
+but their separate processes are not instrumented by this collector; CLI coverage
+is not included. There is no line or branch coverage gate; the separate mutation
+score requirement below remains 90% per measured project.
+
 ## Mutation testing
 
 Stryker.NET is pinned in `dotnet-tools.json` and restored locally with `dotnet tool restore`.

@@ -486,3 +486,7 @@ $RECYCLE.BIN/
 
 # Mutation testing reports and logs
 StrykerOutput/
+
+# Code coverage reports
+/CoverageReport/
+/TestResults/
