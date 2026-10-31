@@ -54,7 +54,10 @@ internal static class NamingRuleEvaluator
             RuleId: rule.RuleId,
             Severity: rule.Severity,
             Message: BuildMessage(rule, symbol.Name),
-            Location: new SourceLocation(symbol.Location.SourceTree?.FilePath ?? string.Empty, start.Line + 1, start.Character + 1));
+            Location: new SourceLocation(symbol.Location.SourceTree?.FilePath ?? string.Empty, start.Line + 1, start.Character + 1))
+        {
+            CategoryId = rule.Definition.CategoryId,
+        };
     }
 
     private static bool EvaluateVerb(NamingRule rule, string name) => rule.Verb switch

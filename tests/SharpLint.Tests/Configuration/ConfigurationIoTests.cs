@@ -70,7 +70,8 @@ public sealed class ConfigurationIoTests : IDisposable
     public void Default_configuration_has_no_rules() => Assert.Empty(ConfigLoader.Default().NamingRules);
 
     private static SharpLintConfig ExampleConfig() => Lint.Configure(c => c.Naming(n =>
-        n.Classes(p => p.Public().Abstract()).RequirePrefix("Base", "Abstract").AsError().ExceptWithAttribute<ObsoleteAttribute>()));
+        n.Classes(p => p.Public().Abstract()).RequirePrefix("Base", "Abstract").AsError().ExceptWithAttribute<ObsoleteAttribute>())
+        .Rule("example.limit", JsonSerializer.SerializeToElement(new { maximum = 5 }), Severity.Info));
 
     private static void AssertConfigJson(string json)
     {
@@ -84,6 +85,10 @@ public sealed class ConfigurationIoTests : IDisposable
         Assert.Equal("Error", rule.GetProperty("severity").GetString());
         Assert.Equal(new[] { "Base", "Abstract" }, rule.GetProperty("values").EnumerateArray().Select(v => v.GetString()));
         Assert.Equal("System.ObsoleteAttribute", Assert.Single(rule.GetProperty("exemptAttributes").EnumerateArray()).GetString());
+        var moduleRule = Assert.Single(document.RootElement.GetProperty("rules").EnumerateArray());
+        Assert.Equal("example.limit", moduleRule.GetProperty("ruleId").GetString());
+        Assert.Equal("Info", moduleRule.GetProperty("severity").GetString());
+        Assert.Equal(5, moduleRule.GetProperty("options").GetProperty("maximum").GetInt32());
     }
 
     private string WriteScript(string json, int exitCode = 0)
@@ -131,6 +136,19 @@ public sealed class ConfigurationIoTests : IDisposable
         Assert.Equal(new[] { "Base", "Abstract" }, rule.Values);
         Assert.Equal(Severity.Error, rule.Severity);
         Assert.Equal(new[] { "System.ObsoleteAttribute" }, rule.ExemptAttributes);
+        AssertTemporaryOutputWasCleanedUp();
+    }
+
+    [Fact]
+    public async Task Load_preserves_module_options_and_severity()
+    {
+        var config = await ConfigLoader.LoadAsync(WriteScript("""
+            {"namingRules":[],"rules":[{"ruleId":"example.limit","options":{"maximum":5},"severity":"Error"}]}
+            """));
+        var rule = Assert.Single(config.Rules!);
+        Assert.Equal("example.limit", rule.RuleId);
+        Assert.Equal(Severity.Error, rule.Severity);
+        Assert.Equal(5, rule.Options.GetProperty("maximum").GetInt32());
         AssertTemporaryOutputWasCleanedUp();
     }
 

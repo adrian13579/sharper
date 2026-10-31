@@ -56,6 +56,8 @@ public sealed class CheckCommandFunctionalTests : IDisposable
         using var doc = JsonDocument.Parse(stdout);
         var diags = doc.RootElement.GetProperty("diagnostics").EnumerateArray().ToList();
 
+        Assert.All(diags, d => Assert.Equal("naming", d.GetProperty("category").GetString()));
+
         Assert.Contains(diags, d =>
             d.GetProperty("ruleId").GetString() == "naming.class.convention"
             && d.GetProperty("severity").GetString() == "error"
@@ -64,6 +66,23 @@ public sealed class CheckCommandFunctionalTests : IDisposable
         Assert.Contains(diags, d =>
             d.GetProperty("ruleId").GetString() == "naming.interface.prefix"
             && d.GetProperty("severity").GetString() == "warning");
+    }
+
+    [Fact]
+    public async Task Check_rejects_configured_module_rules_without_registered_analyzers()
+    {
+        WriteNuGetConfig();
+        File.WriteAllText(Path.Combine(_workDir, "sharplint.config.cs"), """
+            #:package SharpLint.Configuration@1.0.0-dev
+            using System.Text.Json;
+            using SharpLint.Configuration;
+            using var options = JsonDocument.Parse("{\"maximum\":5}");
+            Lint.Configure(c => c.Rule("example.limit", options.RootElement)).Apply();
+            """);
+        var (exit, stdout, stderr) = await RunCliAsync("check", "--path", _workDir, "--format", "json");
+        Assert.NotEqual(0, exit);
+        Assert.True((stdout + stderr).Contains("no registered analyzer", StringComparison.Ordinal), stdout + stderr);
+        Assert.Contains("example.limit", stdout + stderr);
     }
 
     [Fact]

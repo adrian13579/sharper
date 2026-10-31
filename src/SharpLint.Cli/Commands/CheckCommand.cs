@@ -36,6 +36,7 @@ public sealed class CheckCommand : AsyncCommand<CheckCommand.Settings>
         {
             WorkingDirectory = workingDirectory,
             NamingRules = config.NamingRules,
+            Rules = config.Rules ?? [],
         };
 
         var result = await analyzer.AnalyzeAsync(analysisContext).ConfigureAwait(false);
@@ -99,6 +100,7 @@ public sealed class CheckCommand : AsyncCommand<CheckCommand.Settings>
             diagnostics = result.Diagnostics.Select(d => new
             {
                 ruleId = d.RuleId,
+                category = d.CategoryId,
                 severity = d.Severity.ToString().ToLowerInvariant(),
                 message = d.Message,
                 file = d.Location.FilePath,

@@ -2,7 +2,7 @@
 
 A fast, opinionated, developer-friendly static analysis and governance tool for the .NET ecosystem — an ESLint/Biome-style DX over Roslyn for C#.
 
-> Status: **pre-alpha scaffold.** The CLI builds, runs, and ships one working rule. The full v1 specification (everything in this document past [Project Specification (v1)](#project-specification-v1)) is the design target, not the current behavior.
+> Status: **pre-alpha.** The CLI supports Naming policies and an extensible core category taxonomy. [docs/spec](docs/spec/README.md) defines adopted behavior. The full v1 specification below is planning material.
 
 ---
 
@@ -11,20 +11,21 @@ A fast, opinionated, developer-friendly static analysis and governance tool for 
 What works today:
 
 - `sharplint check` walks `*.cs` files under a path and reports diagnostics.
-- One rule shipped: `async.suffix-required` (warns when an `async` method's name does not end in `Async`).
+- Naming rules enforce conventions, prefixes, suffixes, exact names, and regular expressions, with selector precedence and attribute exemptions.
+- Nine stable [core categories](docs/spec/taxonomy.md): Naming, Syntax, Organization, Design, Dependencies, Architecture, Reliability, Performance, and Project. Naming is the only category with built-in policies.
+- Explicit module registration supports custom categories, rule metadata, scopes, JSON configuration, and read-only analyzers in a custom host. No external plugin loader is included.
 - Pretty CLI output and `--format json` for machine consumers.
 - `sharplint init` scaffolds a starter `sharplint.config.cs` (a .NET 10 file-based app).
-- Fluent configuration DSL skeleton (`Lint.Configure(...).Apply()`).
+- Fluent configuration (`Lint.Configure(...).Apply()`), with existing `config.Naming(...)` and generic `config.Rule(...)` for host-registered rules.
 - `sharplint.config.cs` is loaded and applied: preset selects the active rule set; severity overrides change emitted severities (`Severity.Hidden` disables a rule).
-- 6 passing unit tests.
 
 What is **not** wired up yet:
 
-- Presets are structurally selectable but functionally identical today (only one rule shipped). Preset-specific rule sets and severity defaults will diverge as more rules land.
-- `sharplint fix` is a stub (exit code 2).
-- Semantic and architectural rules — only syntax rules are implemented.
+- Built-in policies for the eight categories beyond Naming; category metadata does not imply validation.
+- Custom module loading in the stock CLI. Unsupported configured rules fail explicitly.
+- Semantic and architectural analysis inputs — source files are parsed directly.
 - MSBuild workspace loading (the analyzer parses files directly; `.csproj`/`.sln` discovery is deferred).
-- SARIF output, daemon mode, autofixes, presets beyond the default.
+- SARIF output and daemon mode. Analysis remains read-only.
 
 ---
 

@@ -5,4 +5,8 @@ public sealed record Diagnostic(
     Severity Severity,
     string Message,
     SourceLocation Location,
-    string? Suggestion = null);
+    string? Suggestion = null)
+{
+    /// <summary>The canonical category ID, when supplied by the analysis host.</summary>
+    public string? CategoryId { get; init; }
+}

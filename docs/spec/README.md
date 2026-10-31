@@ -13,13 +13,15 @@ once their shape is committed.
 | Category | Status | Document |
 | --- | --- | --- |
 | Naming | Draft v1 | [naming.md](naming.md) |
+| Syntax, Organization, Design, Dependencies, Architecture, Reliability, Performance, Project | Taxonomy adopted; no built-in policies | [taxonomy.md](taxonomy.md) |
+
+[Core taxonomy and module contracts](taxonomy.md) define category boundaries,
+stable IDs, scopes, ownership, registration, and generic rule configuration.
 
 ## Not yet adopted (see [SPEC.md](../../SPEC.md))
 
-- Style
-- Async
-- Architecture
-- Dependency Injection
+- Additional category-specific policy DSLs (including Syntax and Architecture)
+- Dependency Injection policies
 - Testing
 - Entity Framework Core pack
 - ASP.NET Core pack
@@ -30,9 +32,10 @@ once their shape is committed.
 
 ## Conventions used in these documents
 
-- **Rule IDs** in the form `<category>.<kind>.<predicate?>.<verb>` are the
-  stable wire-format identifiers emitted to JSON/SARIF output. Users do not
-  type these in C# config; the typed `Rules` catalog is the only entry point.
+- **Naming rule IDs** in the form `<category>.<kind>.<predicate?>.<verb>` are
+  stable identifiers emitted in diagnostics. Naming builders generate them;
+  module policies use their registered IDs with the generic `config.Rule(...)` API.
 - **Status markers** at the top of each document name the v1 scope and list
   deferred features explicitly.
-- **Worked examples** are valid, copy-pasteable `sharplint.config.cs` content.
+- **Worked examples** are executable `sharplint.config.cs` content unless explicitly
+  labeled as conceptual examples or host integration fragments.

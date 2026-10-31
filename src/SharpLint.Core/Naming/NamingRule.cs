@@ -1,4 +1,7 @@
+using System.Text.Json.Serialization;
 using SharpLint.Core.Diagnostics;
+using SharpLint.Core.Rules;
+using RuleCategories = SharpLint.Core.Rules.Rules;
 
 namespace SharpLint.Core.Naming;
 
@@ -17,4 +20,15 @@ public sealed record NamingRule
     public IReadOnlyList<string> ExemptAttributes { get; init; } = [];
 
     public string RuleId => RuleIdFormatter.Format(Kind, Predicates, Verb);
+
+    [JsonIgnore]
+    public string ModuleId => RuleCategories.CoreModuleId;
+
+    [JsonIgnore]
+    public RuleDefinition Definition => new(RuleId, RuleCategories.Naming.Id, Kind switch
+    {
+        SymbolKind.Namespace => RuleScope.Namespace,
+        SymbolKind.Class or SymbolKind.Interface or SymbolKind.Record or SymbolKind.Enum => RuleScope.Type,
+        _ => RuleScope.Symbol,
+    });
 }

@@ -1,5 +1,8 @@
+using System.Text.Json;
 using SharpLint.Configuration.Dsl;
+using SharpLint.Core.Diagnostics;
 using SharpLint.Core.Naming;
+using SharpLint.Core.Rules;
 
 namespace SharpLint.Configuration;
 
@@ -10,6 +13,17 @@ namespace SharpLint.Configuration;
 public sealed class ConfigBuilder
 {
     private readonly List<NamingRule> _namingRules = [];
+    private readonly List<ConfiguredRule> _rules = [];
+
+    /// <summary>Configures a rule supplied by a module registered with the analysis host.</summary>
+    public ConfigBuilder Rule(string ruleId, JsonElement options, Severity severity = Severity.Warning)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(ruleId);
+        if (_rules.Any(r => r.RuleId == ruleId))
+            throw new ArgumentException($"Duplicate configured rule identifier '{ruleId}'.", nameof(ruleId));
+        _rules.Add(new ConfiguredRule(ruleId, options.Clone(), severity));
+        return this;
+    }
 
     /// <summary>
     /// Applies a bundle of rules, such as <see cref="Preset.Recommended"/>, as a starting point.
@@ -37,5 +51,5 @@ public sealed class ConfigBuilder
         return this;
     }
 
-    internal SharpLintConfig Build() => new(_namingRules);
+    internal SharpLintConfig Build() => new(_namingRules.ToArray()) { Rules = _rules.Count == 0 ? null : _rules.ToArray() };
 }

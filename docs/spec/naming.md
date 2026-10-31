@@ -107,6 +107,13 @@ Lint.Configure(config =>
 accumulate. Within a selector chain, constraints compose with AND. Across separate
 selectors, declaration order controls overrides as described in §5.2.
 
+Naming belongs to the [core taxonomy](taxonomy.md), identified by
+`Rules.Naming.Id` (`naming`) and provided by module `sharplint`.
+`NamingRule.Definition` exposes its rule ID, category, and scope (type,
+namespace, or symbol/member). This metadata does not alter selector precedence
+or the existing configuration JSON. Naming diagnostics expose the category
+as structured metadata; CLI JSON includes `"category": "naming"`.
+
 ### 3.1 Presets
 
 A preset is **not** a separate execution path. It is an `Action<ConfigBuilder>`

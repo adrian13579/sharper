@@ -1,10 +1,12 @@
+using RuleCategories = SharpLint.Core.Rules.Rules;
+
 namespace SharpLint.Core.Naming;
 
 public static class RuleIdFormatter
 {
     public static string Format(SymbolKind kind, PredicateFlags predicates, VerbKind verb)
     {
-        var parts = new List<string>(4) { "naming", KindToken(kind) };
+        var parts = new List<string>(4) { RuleCategories.Naming.Id, KindToken(kind) };
         parts.AddRange(PredicateTokens(predicates));
         parts.Add(VerbToken(verb));
         return string.Join('.', parts);
