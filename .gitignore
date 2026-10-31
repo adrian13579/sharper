@@ -483,3 +483,6 @@ $RECYCLE.BIN/
 
 # claude
 .claude/
+
+# Mutation testing reports and logs
+StrykerOutput/

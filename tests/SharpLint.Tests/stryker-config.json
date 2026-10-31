@@ -1,0 +1,14 @@
+{
+  "stryker-config": {
+    "project": "SharpLint.Core.csproj",
+    "configuration": "Debug",
+    "test-case-filter": "FullyQualifiedName!~SharpLint.Tests.Cli.CheckCommandFunctionalTests",
+    "reporters": ["progress", "html", "json"],
+    "concurrency": 2,
+    "thresholds": {
+      "high": 90,
+      "low": 90,
+      "break": 90
+    }
+  }
+}

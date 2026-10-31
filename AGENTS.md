@@ -35,6 +35,9 @@ dotnet run --project src/SharpLint.Cli -- check --path ./some/dir --format json
 - If manually running a config picks up stale `1.0.0-dev` packages, `./build.sh` evicts the cached SharpLint.Core and SharpLint.Configuration packages before rebuilding. This script modifies the NuGet cache outside the repository.
 - Verify tests for every change, including documentation and configuration changes. Run the relevant tests and the full suite when changes cross project boundaries; if no narrower set applies, run `dotnet test SharpLint.slnx`. Report the results and any checks that could not run, with the reason.
 - Every new feature must include new tests that verify its observable behavior and relevant edge cases. Include those tests in the same atomic commit as the feature.
+- Every new rule category must include integration tests through the analyzer in `tests/SharpLint.Tests/Analysis/AnalyzerTests.cs` (or an equivalent category-specific analyzer test class). Exercise configuration, source analysis, and emitted diagnostics together, covering both compliant and violating code; isolated builder or evaluator tests alone are insufficient.
+- Use `bash mutation-test.sh` to measure Core and Configuration test quality, or pass `Core` or `Configuration` for a focused run. Inspect surviving mutants in the ignored `StrykerOutput/` reports. Mutation testing supplements the full test suite; its configuration excludes subprocess-based CLI functional tests. See the README's mutation testing section for scope and thresholds.
+- Require a minimum mutation score of 90% for each measured project (Core and Configuration). Add or strengthen tests to meet this threshold; do not lower the threshold or exclude code merely to improve the score. Report any project below 90% as failing this requirement, even if the Stryker process exits successfully.
 
 ## Implementation conventions
 

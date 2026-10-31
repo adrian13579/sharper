@@ -53,6 +53,35 @@ During development, `dotnet build` produces local NuGet packages into [packages/
 
 ---
 
+## Mutation testing
+
+Stryker.NET is pinned in `dotnet-tools.json` and restored locally with `dotnet tool restore`.
+Run mutation tests from the repository root:
+
+```bash
+bash mutation-test.sh                # Core and Configuration, separate reports
+bash mutation-test.sh Core           # analysis and naming rules
+bash mutation-test.sh Configuration  # configuration DSL and presets
+```
+
+The script restores the tool and builds the solution before running. HTML and JSON
+reports are written under `StrykerOutput/<project>/reports/` and ignored by Git.
+Open `mutation-report.html` to inspect surviving mutants and missing coverage.
+Additional Stryker arguments can follow the target, for example
+`bash mutation-test.sh Core --mutate '**/RuleIdFormatter.cs'`.
+
+The configuration lives in `tests/SharpLint.Tests/stryker-config.json`. Each measured
+project must reach a mutation score of at least 90%; Stryker exits unsuccessfully
+below that threshold. Surviving mutants indicate assertions to investigate; a
+mutation score is distinct from line coverage. Strengthen tests to meet the target
+rather than lowering the threshold or excluding code to improve the score.
+
+Scope: these runs measure Core and Configuration using in-process tests. CLI
+functional tests launch a separate CLI binary and execute configs against packaged
+assemblies, so they cannot reliably exercise Stryker's instrumented assemblies and
+are excluded from mutation runs. CLI itself is not measured by this setup. Run
+`dotnet test SharpLint.slnx` separately to verify the full suite, including CLI tests.
+
 ## Repository Structure
 
 ```
