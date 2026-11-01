@@ -70,5 +70,43 @@ public sealed class ModuleConfigurationTests
         Assert.Contains("DiagnosticAnalyzer", Assert.Throws<InvalidOperationException>(() => Config(assembly, typeof(NotAnAnalyzer).FullName!).CreateRegistry()).Message);
     }
 
+    [Fact]
+    public void Invalid_module_configuration_identifies_the_problem_and_the_selected_identifiers()
+    {
+        Assert.Contains("Roslyn DiagnosticAnalyzer", Assert.Throws<ArgumentException>(() =>
+            Lint.Configure(c => c.UseModule(new("empty", "Empty", [])))).Message);
+        var module = new RuleModule("example", "Example", [new RoslynModuleTests.ExternalAnalyzer()]);
+        Assert.Contains("example", Assert.Throws<ArgumentException>(() =>
+            Lint.Configure(c => c.UseModule(module).UseModule(module))).Message);
+        Assert.Contains("UseModule", Assert.Throws<ArgumentException>(() =>
+            Lint.Configure(c => c.Module(module, _ => { }))).Message);
+        var error = Assert.Throws<ArgumentException>(() => Lint.Configure(c => c.UseModule(module, m => m.Rule("missing.rule"))));
+        Assert.Contains("example", error.Message);
+        Assert.Contains("missing.rule", error.Message);
+        Assert.Contains("duplicate.rule", Assert.Throws<ArgumentException>(() =>
+            Lint.Configure(c => c.Rule("duplicate.rule", JsonSerializer.SerializeToElement(new { }))
+                .Rule("duplicate.rule", JsonSerializer.SerializeToElement(new { })))).Message);
+    }
+
+    [Fact]
+    public void Empty_configuration_omits_optional_rule_and_module_fields_on_the_wire()
+    {
+        var config = Lint.Configure(_ => { });
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(config, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        Assert.False(json.RootElement.TryGetProperty("rules", out _));
+        Assert.False(json.RootElement.TryGetProperty("modules", out _));
+        Assert.Empty(json.RootElement.GetProperty("namingRules").EnumerateArray());
+    }
+
+    [Fact]
+    public void Multiple_analyzers_in_one_assembly_share_the_same_loaded_provider_types()
+    {
+        var config = Lint.Configure(c => c.UseModule(new("example", "Example",
+            [new RoslynModuleTests.ExternalAnalyzer(), new RoslynModuleTests.CompilationAnalyzer()])));
+        var analyzers = config.CreateRegistry().Modules.Single(m => m.Id == "example").Analyzers;
+        Assert.Equal(2, analyzers.Count);
+        Assert.Same(analyzers[0].GetType().Assembly, analyzers[1].GetType().Assembly);
+    }
+
     public sealed class NotAnAnalyzer;
 }

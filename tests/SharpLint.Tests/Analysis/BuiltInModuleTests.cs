@@ -12,13 +12,16 @@ namespace SharpLint.Tests.Analysis;
 public sealed class BuiltInModuleTests : IDisposable
 {
     private readonly string _directory = Path.Combine(Path.GetTempPath(), $"sharplint-builtins-{Guid.NewGuid():N}");
-    private static readonly MetadataReference[] References = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
-        .Split(Path.PathSeparator).Select(p => MetadataReference.CreateFromFile(p)).ToArray();
+    private static readonly MetadataReference[] References = [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)];
 
     public BuiltInModuleTests() => Directory.CreateDirectory(_directory);
     public void Dispose() => Directory.Delete(_directory, true);
 
-    public static IEnumerable<object[]> SourcePolicies()
+    // Serializable data lets xUnit and mutation runners select individual policies rather than rerunning every row.
+    public static IEnumerable<object[]> SourcePolicies() => SourceCases().Select(row =>
+        new object[] { row[0], JsonSerializer.Serialize(row[1]), row[2], row[3] });
+
+    private static IEnumerable<object[]> SourceCases()
     {
         yield return ["syntax.no-goto", new { }, "class Sample { void M() { goto end; end: return; } }", "class Sample { void M() { return; } }"];
         yield return ["syntax.file-scoped-namespaces", new { }, "namespace Example { class Sample {} }", "namespace Example; class Sample {}"];
@@ -50,10 +53,10 @@ public sealed class BuiltInModuleTests : IDisposable
 
     [Theory]
     [MemberData(nameof(SourcePolicies))]
-    public async Task Built_in_policies_execute_through_configuration_and_analysis(string id, object options, string bad, string good)
+    public async Task Built_in_policies_execute_through_configuration_and_analysis(string id, string options, string bad, string good)
     {
         var module = CoreRules.All.Single(m => m.Rules.Any(r => r.Definition.Id == id));
-        var config = Lint.Configure(c => c.Module(module, m => m.Rule(id, options, Severity.Error)));
+        var config = Lint.Configure(c => c.Module(module, m => m.Rule(id, JsonSerializer.Deserialize<JsonElement>(options), Severity.Error)));
         config = JsonSerializer.Deserialize<SharpLintConfig>(JsonSerializer.Serialize(config))!;
         var path = Path.Combine(_directory, "Sample.cs");
         File.WriteAllText(path, bad);
@@ -123,7 +126,7 @@ public sealed class BuiltInModuleTests : IDisposable
         {
             WorkingDirectory = _directory, NamingRules = [], Rules = [new(id, document.RootElement)],
         });
-        Assert.Single(result.Diagnostics);
+        Assert.False(string.IsNullOrWhiteSpace(Assert.Single(result.Diagnostics).Message));
     }
 
     [Theory]
@@ -138,13 +141,19 @@ public sealed class BuiltInModuleTests : IDisposable
     [InlineData("dependencies.forbidden-packages", "{\"packages\":[null]}")]
     [InlineData("project.target-frameworks", "{\"allowed\":[\"\"]}")]
     [InlineData("syntax.no-goto", "null")]
+    [InlineData("architecture.namespace-boundaries", "{}")]
+    [InlineData("architecture.namespace-boundaries", "{\"from\":\"\"}")]
+    [InlineData("architecture.namespace-boundaries", "{\"from\":1}")]
+    [InlineData("architecture.namespace-boundaries", "{\"from\":\"Domain\"}")]
+    [InlineData("dependencies.forbidden-usings", "{\"namespaces\":[\"System.IO\",\"\"]}")]
     public async Task Invalid_built_in_options_fail_explicitly(string id, string options)
     {
         using var document = JsonDocument.Parse(options);
-        await Assert.ThrowsAsync<ArgumentException>(() => new Analyzer().AnalyzeAsync(new AnalysisContext
+        var error = await Assert.ThrowsAsync<ArgumentException>(() => new Analyzer().AnalyzeAsync(new AnalysisContext
         {
-            WorkingDirectory = _directory, NamingRules = [], Rules = [new(id, document.RootElement)],
+            WorkingDirectory = _directory, NamingRules = [], Rules = [new(id, document.RootElement)], CompilationHasErrors = false,
         }));
+        Assert.False(string.IsNullOrWhiteSpace(error.Message));
     }
 
     [Theory]
@@ -155,6 +164,9 @@ public sealed class BuiltInModuleTests : IDisposable
     [InlineData("performance.explicit-boxing", "class Sample { object? M() => (object?)null; }")]
     [InlineData("reliability.rethrow-caught-exception", "class Sample { void M() { try {} catch (System.Exception ex) { var other = new System.Exception(); throw other; } } }")]
     [InlineData("syntax.file-scoped-namespaces", "class Sample {}")]
+    [InlineData("reliability.rethrow-caught-exception", "class Sample { void M(System.Exception ex) { throw ex; } }")]
+    [InlineData("reliability.rethrow-caught-exception", "class Sample { void M() { try {} catch (System.Exception ex) { void R() { throw ex; } R(); } } }")]
+    [InlineData("reliability.rethrow-caught-exception", "class Sample { void M() { try {} catch (System.Exception ex) { System.Action r = () => { throw ex; }; r(); } } }")]
     public async Task Policies_allow_other_constructs_and_respect_syntax_boundaries(string id, string source)
     {
         var config = Lint.Configure(c => c.Rule(id, JsonSerializer.SerializeToElement(new { })));
@@ -222,12 +234,53 @@ public sealed class BuiltInModuleTests : IDisposable
     }
 
     [Fact]
-    public async Task Semantic_policies_report_incomplete_analysis_when_compilation_is_unavailable()
+    public async Task Organization_reports_every_additional_type_at_its_declaration()
+    {
+        var tree = CSharpSyntaxTree.ParseText("class First {}\nrecord Second;\nenum Third {}", path: "Sample.cs");
+        var result = await new Analyzer().AnalyzeTreesAsync(new AnalysisContext
+        {
+            WorkingDirectory = _directory, NamingRules = [],
+            Rules = [new("organization.one-type-per-file", JsonSerializer.SerializeToElement(new { }))],
+        }, [tree]);
+        Assert.Equal(new[] { 2, 3 }, result.Diagnostics.Select(d => d.Location.Line));
+    }
+
+    [Fact]
+    public async Task Namespace_options_compose_as_alternatives_and_ignore_unresolved_nameof_operator()
+    {
+        var config = Lint.Configure(c => c.Rule("dependencies.forbidden-usings",
+            JsonSerializer.SerializeToElement(new { namespaces = new[] { "System.IO", "System.Net" } })));
+        var path = Path.Combine(_directory, "Sample.cs");
+        Assert.Single((await Analyze(config, "using System.IO; class Sample {}", path)).Diagnostics);
+        config = Lint.Configure(c => c.Rule("architecture.namespace-boundaries",
+            JsonSerializer.SerializeToElement(new { from = "Domain", to = new[] { "Infrastructure", "Other" } })));
+        Assert.Single((await Analyze(config,
+            "namespace Infrastructure { class Service {} } namespace Domain { class Sample { Infrastructure.Service M() => new(); } }", path)).Diagnostics);
+        Assert.Empty((await Analyze(config, "namespace Domain { class Sample { string M() => nameof(Sample); } }", path)).Diagnostics);
+    }
+
+    [Fact]
+    public async Task Semantic_policies_reject_a_claimed_error_free_context_without_the_matching_compilation()
+    {
+        var tree = CSharpSyntaxTree.ParseText("class Sample {}", path: "Sample.cs");
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => new Analyzer().AnalyzeTreesAsync(new AnalysisContext
+        {
+            WorkingDirectory = _directory, NamingRules = [], CompilationHasErrors = false,
+            Rules = [new("performance.explicit-boxing", JsonSerializer.SerializeToElement(new { }))],
+        }, [tree]));
+        Assert.Contains("performance.explicit-boxing", error.Message);
+        Assert.Contains("Sample.cs", error.Message);
+    }
+
+    [Theory]
+    [InlineData("architecture.namespace-boundaries")]
+    [InlineData("performance.explicit-boxing")]
+    public async Task Semantic_policies_report_incomplete_analysis_when_compilation_is_unavailable(string id)
     {
         var result = await new Analyzer().AnalyzeAsync(new AnalysisContext
         {
             WorkingDirectory = _directory, NamingRules = [],
-            Rules = [new("architecture.namespace-boundaries", JsonSerializer.SerializeToElement(new { from = "Domain", to = new[] { "Infrastructure" } }))],
+            Rules = [new(id, JsonSerializer.SerializeToElement(new { from = "Domain", to = new[] { "Infrastructure" } }))],
         });
         Assert.False(result.IsComplete);
         Assert.Single(result.Failures);

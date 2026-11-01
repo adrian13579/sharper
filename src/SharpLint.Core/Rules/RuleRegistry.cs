@@ -11,6 +11,8 @@ public sealed class RuleRegistry
 
     public RuleRegistry(IEnumerable<RuleModule> modules)
     {
+        foreach (var module in Rules.All)
+            _categories.Add(module.Id, (module.Id, new(module.Id, module.DisplayName)));
         var moduleList = Rules.All.Concat(modules).OrderBy(m => m.Id, StringComparer.Ordinal).ToArray();
         _modules = Array.AsReadOnly(moduleList);
         var moduleIds = new HashSet<string>(StringComparer.Ordinal) { Rules.CoreModuleId };
@@ -19,8 +21,6 @@ public sealed class RuleRegistry
             if (!moduleIds.Add(module.Id))
                 throw new ArgumentException($"Duplicate module identifier '{module.Id}'.", nameof(modules));
             // Legacy category metadata remains available, but new Roslyn modules need no taxonomy registration.
-            if (Rules.All.Contains(module))
-                _categories.Add(module.Id, (module.Id, new(module.Id, module.DisplayName)));
             foreach (var category in module.Categories.OrderBy(c => c.Id, StringComparer.Ordinal))
                 if (!_categories.TryAdd(category.Id, (module.Id, category)))
                     throw new ArgumentException($"Duplicate category identifier '{category.Id}'.", nameof(modules));

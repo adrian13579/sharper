@@ -49,7 +49,7 @@ public sealed record AnalyzerModuleReference(string Id, string DisplayName, IRea
         protected override Assembly? Load(AssemblyName assemblyName)
         {
             // Share contracts with the host so analyzer instances have the same Roslyn type identity.
-            if (assemblyName.Name is "Microsoft.CodeAnalysis" or "Microsoft.CodeAnalysis.CSharp" or "SharpLint.Core")
+            if (assemblyName.Name is "Microsoft.CodeAnalysis" or "Microsoft.CodeAnalysis.CSharp" or "SharpLint.Core" or "SharpLint.Configuration")
                 return Default.LoadFromAssemblyName(assemblyName);
             var resolved = _resolver.ResolveAssemblyToPath(assemblyName);
             var sibling = Path.Combine(Path.GetDirectoryName(path)!, assemblyName.Name + ".dll");

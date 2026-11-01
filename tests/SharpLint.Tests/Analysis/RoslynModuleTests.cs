@@ -26,7 +26,7 @@ public sealed class RoslynModuleTests : IDisposable
     [Fact]
     public async Task External_module_roundtrips_and_runs_semantic_Roslyn_callbacks_in_the_workspace()
     {
-        File.WriteAllText(Path.Combine(_directory, "Sample.cs"), "class Allowed {} class Forbidden : Allowed {}");
+        File.WriteAllText(Path.Combine(_directory, "Sample.cs"), "class Allowed {}\nclass Forbidden : Allowed {}");
         var config = Lint.Configure(c => c.UseModule(Module(), m => m.Rule("ACME001", new { forbiddenBase = "Allowed" }, Severity.Error)));
         var json = JsonSerializer.Serialize(config);
         Assert.Contains("Acme security", json);
@@ -34,6 +34,10 @@ public sealed class RoslynModuleTests : IDisposable
         var loaded = JsonSerializer.Deserialize<SharpLintConfig>(json)!;
         var registry = loaded.CreateRegistry();
         Assert.Equal("acme.security", registry.GetRuleModuleId("ACME001"));
+        var loadedAnalyzer = registry.Modules.Single(m => m.Id == "acme.security").Analyzers.Single();
+        Assert.Same(typeof(ConfigBuilder), loadedAnalyzer.GetType().GetProperty("ConfigurationBuilderType")!.GetValue(loadedAnalyzer));
+        Assert.Same(typeof(SharpLint.Core.Diagnostics.Diagnostic), loadedAnalyzer.GetType().GetProperty("CoreDiagnosticType")!.GetValue(loadedAnalyzer));
+        Assert.Same(typeof(CSharpSyntaxTree), loadedAnalyzer.GetType().GetProperty("CSharpTreeType")!.GetValue(loadedAnalyzer));
         Assert.DoesNotContain(registry.Categories, c => c.Id == "Acme concern");
         using var workspace = new WorkspaceCoordinator(_directory, _ => Task.FromResult(loaded), watch: false);
         var first = await workspace.CheckAsync();
@@ -44,8 +48,9 @@ public sealed class RoslynModuleTests : IDisposable
         Assert.Equal("Forbidden inherits Allowed", diagnostic.Message);
         Assert.Equal("https://example.com/ACME001", diagnostic.HelpUrl);
         Assert.True(diagnostic.HasSourceLocation);
-        Assert.NotNull(diagnostic.SpanStart);
-        Assert.NotNull(diagnostic.SpanLength);
+        Assert.Equal(new SourceLocation(Path.Combine(_directory, "Sample.cs"), 2, 7), diagnostic.Location);
+        Assert.Equal(23, diagnostic.SpanStart);
+        Assert.Equal(9, diagnostic.SpanLength);
         Assert.DoesNotContain(first.Result.Diagnostics, d => d.RuleId == "ACME002");
         Assert.Equal(first.Result.Diagnostics, (await workspace.CheckAsync()).Result.Diagnostics);
         File.WriteAllText(Path.Combine(_directory, "Sample.cs"), "class Allowed {} class Forbidden {}");
@@ -78,6 +83,8 @@ public sealed class RoslynModuleTests : IDisposable
         var diagnostic = Assert.Single((await new Analyzer().AnalyzeAsync(context)).Diagnostics);
         Assert.False(diagnostic.HasSourceLocation);
         Assert.Null(diagnostic.SpanStart);
+        Assert.Null(diagnostic.SpanLength);
+        Assert.Equal(new SourceLocation(_directory, 1, 1), diagnostic.Location);
         config = Lint.Configure(c => c.Rule("GLOBAL001", JsonSerializer.SerializeToElement(new { fail = true })));
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() => new Analyzer().AnalyzeAsync(new SharpLint.Core.Analysis.AnalysisContext
         {
@@ -123,6 +130,9 @@ public sealed class RoslynModuleTests : IDisposable
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     public sealed class ExternalAnalyzer : DiagnosticAnalyzer
     {
+        public Type ConfigurationBuilderType => typeof(ConfigBuilder);
+        public Type CoreDiagnosticType => typeof(SharpLint.Core.Diagnostics.Diagnostic);
+        public Type CSharpTreeType => typeof(CSharpSyntaxTree);
         private static readonly DiagnosticDescriptor Rule = new("ACME001", "Base policy", "{0} inherits {1}", "Acme concern", DiagnosticSeverity.Warning,
             isEnabledByDefault: false, helpLinkUri: "https://example.com/ACME001");
         private static readonly DiagnosticDescriptor Other = new("ACME002", "Other", "Other diagnostic", "Unrelated", DiagnosticSeverity.Warning, true);
@@ -153,6 +163,8 @@ public sealed class RoslynModuleTests : IDisposable
             context.EnableConcurrentExecution();
             context.RegisterCompilationAction(c =>
             {
+                if (c.Options.AnalyzerConfigOptionsProvider.GlobalOptions.TryGetValue("unknown.option", out _))
+                    throw new InvalidOperationException("An unknown option must not be reported as present.");
                 if (c.Options.AnalyzerConfigOptionsProvider.GlobalOptions.TryGetValue("sharplint.GLOBAL001.fail", out var fail) && fail == "true")
                     throw new InvalidOperationException("Provider failure");
                 c.ReportDiagnostic(Microsoft.CodeAnalysis.Diagnostic.Create(Rule, Location.None));

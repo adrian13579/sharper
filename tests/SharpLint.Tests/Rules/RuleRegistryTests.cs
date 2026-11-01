@@ -179,6 +179,22 @@ public sealed class RuleRegistryTests
         Assert.Equal("naming-adjacent.rule", registry.GetRule("naming-adjacent.rule").Definition.Id);
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void Roslyn_modules_require_a_display_name(string? displayName) =>
+        Assert.ThrowsAny<ArgumentException>(() => new RuleModule("example", displayName!, []));
+
+    [Fact]
+    public void Roslyn_module_analyzers_cannot_be_null() =>
+        Assert.Throws<ArgumentNullException>(() => new RuleModule("example", "Example", [null!]));
+
+    [Fact]
+    public void Source_diagnostics_have_a_source_location_by_default() =>
+        Assert.True(new SharpLint.Core.Diagnostics.Diagnostic("rule", SharpLint.Core.Diagnostics.Severity.Warning,
+            "Message", new("Sample.cs", 1, 1)).HasSourceLocation);
+
     private sealed class EmptyAnalyzer : IRuleAnalyzer
     {
         public ValueTask<IReadOnlyList<RuleViolation>> AnalyzeAsync(RuleAnalysisContext context, JsonElement options, CancellationToken cancellationToken) =>
