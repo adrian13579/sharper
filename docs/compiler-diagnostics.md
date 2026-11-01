@@ -39,7 +39,9 @@ The executable `sharplint.config.cs` remains policy input and is excluded from
 target-program compilation, even if the project's default glob includes it.
 
 The existing JSON diagnostic fields remain available. Additions are `origin`
-(`compiler` or `sharplint`), `project`, `helpUrl`, `spanStart`, and `spanLength`.
+(`compiler` or `sharplint`), `module`, `project`, `helpUrl`, `spanStart`, and `spanLength`.
+`module` identifies a built-in or external rule provider independently of its category;
+compiler diagnostics have no module ID.
 Compiler categories come from their descriptors (normally `Compiler`); Naming
 retains `naming` and its existing `naming.*` IDs. `ruleId` carries compiler IDs
 as well as policy IDs. Example diagnostic objects:

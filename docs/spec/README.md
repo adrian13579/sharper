@@ -1,26 +1,27 @@
 # SharpLint Specification
 
 This directory is the **source of truth** for the SharpLint configuration DSL.
-Each file here defines one category of the DSL at a level of detail sufficient
-to implement, document, and stabilize that category for v1.
+Each file here defines an adopted part of the DSL at a level of detail sufficient
+to implement, document, and stabilize that part for v1.
 
 Anything not yet adopted lives in [`/SPEC.md`](../../SPEC.md) — the planning
 and roadmap document. Features graduate from `SPEC.md` into this folder
 once their shape is committed.
 
-## Adopted categories
+## Adopted modules
 
-| Category | Status | Document |
+| Module | Status | Document |
 | --- | --- | --- |
 | Naming | Draft v1 | [naming.md](naming.md) |
-| Syntax, Organization, Design, Dependencies, Architecture, Reliability, Performance, Project | Taxonomy adopted; no built-in policies | [taxonomy.md](taxonomy.md) |
+| Syntax, Organization, Design, Dependencies, Architecture, Reliability, Performance, Project | Initial built-in policies adopted | [taxonomy.md](taxonomy.md) |
 
-[Core taxonomy and module contracts](taxonomy.md) define category boundaries,
-stable IDs, scopes, ownership, registration, and generic rule configuration.
+[Core taxonomy and module contracts](taxonomy.md) define the built-in rule modules,
+initial policies, stable IDs, scopes, and external Roslyn analyzer configuration.
+External users create their own modules; the built-in taxonomy does not constrain them.
 
 ## Not yet adopted (see [SPEC.md](../../SPEC.md))
 
-- Additional category-specific policy DSLs (including Syntax and Architecture)
+- Additional module policies and specialized fluent builders
 - Dependency Injection policies
 - Testing
 - Entity Framework Core pack

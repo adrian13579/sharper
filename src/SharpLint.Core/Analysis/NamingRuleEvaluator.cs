@@ -57,6 +57,7 @@ internal static class NamingRuleEvaluator
             Location: new SourceLocation(symbol.Location.SourceTree?.FilePath ?? string.Empty, start.Line + 1, start.Character + 1))
         {
             CategoryId = rule.Definition.CategoryId,
+            ModuleId = rule.ModuleId,
         };
     }
 

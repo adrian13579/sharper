@@ -63,6 +63,32 @@ public sealed class ConfigurationIoTests : IDisposable
     }
 
     [Fact]
+    public void Apply_transports_external_module_references_without_serializing_analyzers()
+    {
+        var path = Path.Combine(_directory, "modules.json");
+        var previousPath = Environment.GetEnvironmentVariable(OutputVariable);
+        try
+        {
+            Environment.SetEnvironmentVariable(OutputVariable, path);
+            Lint.Configure(c => c.UseModule(new SharpLint.Core.Rules.RuleModule("example", "Example",
+                [new SharpLint.Tests.Analysis.RoslynModuleTests.ExternalAnalyzer()]),
+                m => m.Rule("ACME001", new { forbiddenBase = "Allowed" }))).Apply();
+        }
+        finally { Environment.SetEnvironmentVariable(OutputVariable, previousPath); }
+        var json = File.ReadAllText(path);
+        using var document = JsonDocument.Parse(json);
+        var module = Assert.Single(document.RootElement.GetProperty("modules").EnumerateArray());
+        Assert.Equal("example", module.GetProperty("id").GetString());
+        Assert.Equal("Example", module.GetProperty("displayName").GetString());
+        var reference = Assert.Single(module.GetProperty("analyzers").EnumerateArray());
+        Assert.Equal(typeof(SharpLint.Tests.Analysis.RoslynModuleTests.ExternalAnalyzer).Assembly.Location,
+            reference.GetProperty("assemblyPath").GetString());
+        Assert.Equal(typeof(SharpLint.Tests.Analysis.RoslynModuleTests.ExternalAnalyzer).FullName,
+            reference.GetProperty("typeName").GetString());
+        Assert.DoesNotContain("supportedDiagnostics", json);
+    }
+
+    [Fact]
     public void Apply_rejects_a_null_config() =>
         Assert.Throws<ArgumentNullException>(() => ConfigEmitter.Apply(null!));
 
@@ -151,6 +177,24 @@ public sealed class ConfigurationIoTests : IDisposable
         Assert.Equal(Severity.Error, rule.Severity);
         Assert.Equal(5, rule.Options.GetProperty("maximum").GetInt32());
         AssertTemporaryOutputWasCleanedUp();
+    }
+
+    [Fact]
+    public async Task Load_keeps_executable_configuration_managed_with_reflection_enabled()
+    {
+        var path = Path.Combine(_directory, "reflection.config.cs");
+        File.WriteAllText(path, """
+            using System;
+            using System.IO;
+            using System.Runtime.CompilerServices;
+            using System.Text.Json;
+            if (!RuntimeFeature.IsDynamicCodeSupported || !JsonSerializer.IsReflectionEnabledByDefault)
+                return 9;
+            var json = JsonSerializer.Serialize(new { namingRules = Array.Empty<string>() });
+            File.WriteAllText(Environment.GetEnvironmentVariable("SHARPLINT_CONFIG_OUTPUT")!, json);
+            return 0;
+            """);
+        Assert.Empty((await ConfigLoader.LoadAsync(path)).NamingRules);
     }
 
     [Fact]

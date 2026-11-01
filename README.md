@@ -139,11 +139,13 @@ Paths, messages, and timing values above are illustrative. Diagnostics include s
 
 ## Rule categories and extensions
 
-SharpLint defines nine stable [core categories](docs/spec/taxonomy.md): Naming, Syntax, Organization, Design, Dependencies, Architecture, Reliability, Performance, and Project. **Naming is the only category with built-in policies.**
+SharpLint ships nine [built-in rule modules](docs/spec/taxonomy.md): Naming, Syntax, Organization, Design, Dependencies, Architecture, Reliability, Performance, and Project. Naming provides its fluent selector DSL; the other modules provide 16 initial policies covering constructs, file organization, design limits, explicit dependencies, semantic architecture boundaries, exception patterns, allocations, and literal project declarations.
 
-Custom hosts can implement `IRuleAnalyzer`, register policies and categories through `RuleModule` and `RuleRegistry`, and configure them with `config.Rule(...)`. See the [module contracts and host integration example](docs/spec/taxonomy.md). The stock CLI does not load external modules; configured rules without registered analyzers fail explicitly.
+Configure selected policies with `config.Module(Rules.Design, m => m.Rule("design.maximum-parameters", new { maximum = 5 }))`. Rules run only when selected. The [policy table and examples](docs/spec/taxonomy.md#initial-built-in-policies) define the implemented checks and their limits.
 
-Built-in policies for the other categories, semantic module inputs, SARIF output, autofix, and external plugin loading remain future work. See [SPEC.md](SPEC.md) for planning material.
+External users group standard Roslyn `DiagnosticAnalyzer` implementations into their own `RuleModule` values and register them with `config.UseModule(...)`. Their modules and descriptor categories are independent of the built-in taxonomy. Executable configuration carries analyzer assembly/type references so both the CLI and daemon can load the configured modules and run them against project compilations. See the [external module example](docs/spec/taxonomy.md#external-modules-use-roslyn-analyzers).
+
+Additional policies, specialized fluent builders, SARIF output, and autofix remain future work. See [SPEC.md](SPEC.md) for planning material.
 
 ## Repository structure
 

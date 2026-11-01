@@ -153,6 +153,7 @@ public sealed class CheckCommand : AsyncCommand<CheckCommand.Settings>
                 ruleId = d.RuleId,
                 origin = d.Origin == DiagnosticOrigin.Compiler ? "compiler" : "sharplint",
                 category = d.CategoryId,
+                module = d.ModuleId,
                 severity = d.Severity.ToString().ToLowerInvariant(),
                 message = d.Message,
                 file = d.HasSourceLocation ? d.Location.FilePath : null,

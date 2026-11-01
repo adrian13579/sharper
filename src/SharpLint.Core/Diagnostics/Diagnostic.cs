@@ -10,6 +10,8 @@ public sealed record Diagnostic(
     /// <summary>The canonical category ID, when supplied by the analysis host.</summary>
     public string? CategoryId { get; init; }
 
+    public string? ModuleId { get; init; }
+
     public DiagnosticOrigin Origin { get; init; } = DiagnosticOrigin.SharpLint;
 
     /// <summary>Stable project context (project path plus target framework/name), if applicable.</summary>

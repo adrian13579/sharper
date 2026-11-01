@@ -22,13 +22,13 @@ public sealed class RuleRegistryTests
 
     [Theory]
     [MemberData(nameof(Categories))]
-    public void Core_categories_have_stable_ids_and_core_ownership(RuleCategory category, string id, string name)
+    public void Built_in_modules_have_stable_ids_and_own_their_rules(RuleModule category, string id, string name)
     {
         Assert.Equal(id, category.Id);
         Assert.Equal(name, category.DisplayName);
         Assert.Contains(category, CoreRules.All);
-        Assert.Contains(category, RuleRegistry.Default.Categories);
-        Assert.Equal("sharplint", RuleRegistry.Default.GetCategoryModuleId(id));
+        Assert.Contains(category, RuleRegistry.Default.Modules);
+        Assert.Equal(id, RuleRegistry.Default.GetCategoryModuleId(id));
     }
 
     [Fact]
@@ -37,7 +37,7 @@ public sealed class RuleRegistryTests
         Assert.Equal(9, CoreRules.All.Count);
         Assert.Equal(9, RuleRegistry.Default.Categories.Count);
         Assert.Equal(9, CoreRules.All.Select(c => c.Id).Distinct(StringComparer.Ordinal).Count());
-        Assert.Throws<NotSupportedException>(() => ((IList<RuleCategory>)CoreRules.All).Clear());
+        Assert.Throws<NotSupportedException>(() => ((IList<RuleModule>)CoreRules.All).Clear());
         Assert.Equal(new[] { "architecture", "dependencies", "design", "naming", "organization", "performance", "project", "reliability", "syntax" },
             RuleRegistry.Default.Categories.Select(c => c.Id));
     }
@@ -76,7 +76,7 @@ public sealed class RuleRegistryTests
     {
         var rule = new NamingRule { Kind = kind, Verb = VerbKind.Prefix };
         Assert.Equal(new RuleDefinition(rule.RuleId, "naming", scope), rule.Definition);
-        Assert.Equal("sharplint", rule.ModuleId);
+        Assert.Equal("naming", rule.ModuleId);
         var json = JsonSerializer.Serialize(rule);
         Assert.DoesNotContain("Definition", json);
         Assert.DoesNotContain("ModuleId", json);

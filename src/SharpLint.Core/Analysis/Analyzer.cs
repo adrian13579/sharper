@@ -60,7 +60,8 @@ public sealed class Analyzer
             }
         }
 
-        var ruleContext = new RuleAnalysisContext(context.WorkingDirectory, Array.AsReadOnly(trees.ToArray()));
+        var ruleContext = new RuleAnalysisContext(context.WorkingDirectory, Array.AsReadOnly(trees.ToArray()))
+        { Compilations = context.Compilations, CompilationProjects = context.CompilationProjects };
         foreach (var (configuration, registration) in registrations)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -81,6 +82,12 @@ public sealed class Analyzer
                     violation.Message, violation.Location, violation.Suggestion)
                 {
                     CategoryId = registration.Definition.CategoryId,
+                    ModuleId = context.Registry.GetRuleModuleId(configuration.RuleId),
+                    HasSourceLocation = violation.HasSourceLocation,
+                    Project = violation.Project,
+                    HelpUrl = violation.HelpUrl,
+                    SpanStart = violation.SpanStart,
+                    SpanLength = violation.SpanLength,
                 });
             }
         }

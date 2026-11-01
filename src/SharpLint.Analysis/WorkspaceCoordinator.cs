@@ -105,6 +105,12 @@ public sealed class WorkspaceCoordinator : IDisposable
         var reloadConfiguration = full || inputsChanged || _configuration is null;
         var configuration = reloadConfiguration
             ? await _loadConfiguration(cancellationToken).ConfigureAwait(false) : _configuration!;
+        var analyzerInputs = configuration.Modules?.SelectMany(m => m.Analyzers).Select(a => a.AssemblyPath).ToArray() ?? [];
+        if (analyzerInputs.Any(path => !_compilationInputs.Contains(path)))
+        {
+            _compilationInputs.UnionWith(analyzerInputs);
+            return null;
+        }
         var configurationHash = reloadConfiguration
             ? InputSnapshot.Hash(JsonSerializer.Serialize(configuration)) : CurrentSnapshot!.ConfigurationFingerprint;
         var invalidateNaming = full || CurrentSnapshot?.ConfigurationFingerprint != configurationHash
@@ -199,8 +205,8 @@ public sealed class WorkspaceCoordinator : IDisposable
                 {
                     var compilation = await project.GetCompilationAsync(cancellationToken).ConfigureAwait(false)
                         ?? throw new InvalidOperationException($"Cannot construct compilation for '{project.FilePath ?? project.Name}'.");
-                    // GetDiagnostics respects warning options, suppression and warnings-as-errors. External analyzers
-                    // and source generators are deliberately not executed by this host.
+                    // GetDiagnostics respects warning options, suppression and warnings-as-errors. Configured module analyzers execute separately below;
+                    // source generators are not executed by this host.
                     compilerNext[project.Id] = compilation.GetDiagnostics(cancellationToken)
                         .Where(d => !d.IsSuppressed && d.Severity != DiagnosticSeverity.Hidden)
                         .Select(d => CompilerDiagnosticAdapter.Convert(d, CompilerDiagnosticAdapter.ProjectIdentity(project))).ToArray();
@@ -209,15 +215,27 @@ public sealed class WorkspaceCoordinator : IDisposable
             }
             diagnostics.AddRange(compilerNext.Values.SelectMany(d => d));
             IReadOnlyList<AnalysisFailure> failures = [];
+            var ruleRegistry = configuration.Modules is { Count: > 0 } ? configuration.CreateRegistry(_registry) : _registry;
             if (configuration.Rules is { Count: > 0 })
             {
+                var compilations = new List<Compilation>();
+                var compilationProjects = new Dictionary<Compilation, string>();
+                foreach (var project in solution.Projects)
+                {
+                    var compilation = await project.GetCompilationAsync(cancellationToken).ConfigureAwait(false)
+                        ?? throw new InvalidOperationException($"Cannot construct compilation for '{project.Name}'.");
+                    compilations.Add(compilation);
+                    if (project.FilePath is not null)
+                        compilationProjects.Add(compilation, CompilerDiagnosticAdapter.ProjectIdentity(project));
+                }
                 var trees = new List<SyntaxTree>();
                 foreach (var document in solution.Projects.SelectMany(p => p.Documents).Where(d => IsPolicySource(d.FilePath!))
                              .OrderBy(d => d.FilePath, StringComparer.Ordinal))
                     trees.Add((await document.GetSyntaxTreeAsync(cancellationToken).ConfigureAwait(false))!);
                 var moduleResult = await analyzer.AnalyzeTreesAsync(new AnalysisContext
                 {
-                    WorkingDirectory = _root, NamingRules = [], Rules = configuration.Rules, Registry = _registry,
+                    WorkingDirectory = _root, NamingRules = [], Rules = configuration.Rules, Registry = ruleRegistry,
+                    Compilations = compilations, CompilationProjects = compilationProjects,
                     CompilationHasErrors = compilerNext.Count == 0 ? null : diagnostics.Any(d => d.Origin == SharpLint.Core.Diagnostics.DiagnosticOrigin.Compiler
                         && d.Severity == SharpLint.Core.Diagnostics.Severity.Error),
                 }, trees, cancellationToken).ConfigureAwait(false);

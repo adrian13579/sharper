@@ -14,6 +14,38 @@ public sealed class ConfigBuilder
 {
     private readonly List<NamingRule> _namingRules = [];
     private readonly List<ConfiguredRule> _rules = [];
+    private readonly List<AnalyzerModuleReference> _modules = [];
+
+    /// <summary>Registers and optionally configures an external module built from Roslyn analyzers.</summary>
+    public ConfigBuilder UseModule(RuleModule module, Action<ModuleBuilder>? configure = null)
+    {
+        ArgumentNullException.ThrowIfNull(module);
+        if (module.Analyzers.Count == 0)
+            throw new ArgumentException("External modules must provide Roslyn DiagnosticAnalyzer implementations.", nameof(module));
+        if (Rules.All.Any(m => m.Id == module.Id) || module.Id == Rules.CoreModuleId || _modules.Any(m => m.Id == module.Id))
+            throw new ArgumentException($"Duplicate or reserved module identifier '{module.Id}'.", nameof(module));
+        var references = module.Analyzers.Select(analyzer =>
+        {
+            var type = analyzer.GetType();
+            if (!type.IsVisible || type.GetConstructor(Type.EmptyTypes) is null || string.IsNullOrEmpty(type.Assembly.Location))
+                throw new ArgumentException("Analyzer types must be public, parameterless, and stored in an assembly.", nameof(module));
+            return new AnalyzerTypeReference(type.Assembly.Location, type.FullName!);
+        }).ToArray();
+        _modules.Add(new(module.Id, module.DisplayName, references));
+        configure?.Invoke(new ModuleBuilder(this, module));
+        return this;
+    }
+
+    /// <summary>Configures selected policies from a built-in module without enabling unrelated policies.</summary>
+    public ConfigBuilder Module(RuleModule module, Action<ModuleBuilder> configure)
+    {
+        ArgumentNullException.ThrowIfNull(module);
+        ArgumentNullException.ThrowIfNull(configure);
+        if (!Rules.All.Contains(module))
+            throw new ArgumentException("Register external Roslyn modules with UseModule.", nameof(module));
+        configure(new ModuleBuilder(this, module));
+        return this;
+    }
 
     /// <summary>Configures a rule supplied by a module registered with the analysis host.</summary>
     public ConfigBuilder Rule(string ruleId, JsonElement options, Severity severity = Severity.Warning)
@@ -51,5 +83,9 @@ public sealed class ConfigBuilder
         return this;
     }
 
-    internal SharpLintConfig Build() => new(_namingRules.ToArray()) { Rules = _rules.Count == 0 ? null : _rules.ToArray() };
+    internal SharpLintConfig Build() => new(_namingRules.ToArray())
+    {
+        Rules = _rules.Count == 0 ? null : _rules.ToArray(),
+        Modules = _modules.Count == 0 ? null : _modules.ToArray(),
+    };
 }

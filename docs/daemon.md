@@ -158,12 +158,13 @@ new configuration features.
 ## Rule authors
 
 `RuleDefinition.Scope` describes where a rule applies; it does not authorize cache
-reuse or promise semantic/MSBuild inputs. The current module contract exposes all
-syntax trees. Every configured custom module executes over the complete current
+reuse. Built-in policies receive the syntax snapshot and available project
+compilations; external modules use standard Roslyn analyzers against those compilations. Every configured custom module executes over the complete current
 snapshot on **every** check, including unchanged checks. Unknown dependencies are
 therefore conservatively broad. Missing registrations or analyzer exceptions fail
-the check, including missing Hidden-rule registrations. The stock CLI still cannot
-load third-party modules; custom hosts can supply `RuleRegistry` to the coordinator.
+the check, including missing Hidden-rule registrations. The CLI loads external modules explicitly registered with `config.UseModule(...)`.
+Custom hosts can also supply `RuleRegistry` to the coordinator. Referenced analyzer
+assembly paths participate in input reconciliation.
 
 Only built-in Naming has a known document/syntax dependency and gets document
 caching. Compiler results separately use project dependency invalidation. Modules
@@ -239,6 +240,6 @@ before running subprocess tests after a mutation run.
 Reproducible 100/1,000/10,000-file cold, warm, edit, configuration, project-input,
 concurrency and restart measurements are in [the benchmark report](../benchmarks/README.md).
 Performance targets remain unmet; this foundation prioritizes verified reuse and
-explicit failures. Semantic module inputs, automatic upward repository
-resolution, narrower declared module dependencies, external configuration dependency
+explicit failures. Automatic upward repository
+resolution, narrower declared module dependencies, general external configuration dependency
 tracking, and sharing pending reconciliation across clients remain follow-up work.

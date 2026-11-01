@@ -10,7 +10,16 @@ namespace SharpLint.Configuration;
 /// <param name="NamingRules">The naming rules declared in the config, in declaration order.</param>
 public sealed record SharpLintConfig(IReadOnlyList<NamingRule> NamingRules)
 {
-    /// <summary>Module rule configurations; analyzers must be supplied separately by the host.</summary>
+    /// <summary>External Roslyn modules referenced by executable configuration.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<AnalyzerModuleReference>? Modules { get; init; }
+
+    /// <summary>Resolves configured external modules alongside built-ins and optional host registrations.</summary>
+    public RuleRegistry CreateRegistry(RuleRegistry? hostRegistry = null) => new(
+        (hostRegistry?.Modules.Where(m => !SharpLint.Core.Rules.Rules.All.Contains(m)) ?? [])
+        .Concat(Modules?.Select(m => m.Load()) ?? []));
+
+    /// <summary>Rule configurations for built-in and external modules.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<ConfiguredRule>? Rules { get; init; }
 }

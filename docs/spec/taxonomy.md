@@ -1,145 +1,175 @@
-# Core rule taxonomy
+# Core rule taxonomy and modules
 
-Status: adopted category and module contracts. Naming is the only category with
-built-in policies. The other eight categories are classifications available to
-rule providers; accessing them enables no validation.
+Status: adopted built-in module taxonomy, initial policies, and external Roslyn
+module integration. The taxonomy groups SharpLint's initial rules. It is not a
+classification system that external users must register into.
 
-Categories describe engineering concerns, independently of implementation:
-
-| Catalog entry | Stable ID | Purpose and boundary |
+| Built-in module | Stable module ID | Responsibility |
 | --- | --- | --- |
-| `Rules.Naming` | `naming` | Identifier conventions, prefixes, suffixes, exact names, and patterns. See [implemented Naming rules](naming.md); struct and enum-member selectors remain deferred. |
-| `Rules.Syntax` | `syntax` | Permitted or preferred C# constructs, such as `var`, expression bodies, patterns, and language features. No rewriting. |
-| `Rules.Organization` | `organization` | Source-file and declaration structure: primary types, file names, namespace/directory correspondence, and placement. Excludes whitespace formatting. |
-| `Rules.Design` | `design` | Local type, member, and API constraints: parameter/dependency counts, complexity, inheritance, coupling, cohesion, and visibility. Application-wide boundaries belong to Architecture. |
-| `Rules.Dependencies` | `dependencies` | Explicit package, assembly, project, namespace, or symbol relationships, including versions and cycles. Logical responsibilities belong to Architecture. |
-| `Rules.Architecture` | `architecture` | Logical layers, module isolation, component boundaries, dependency direction, and inversion policies. Classification does not depend on how references are analyzed. |
-| `Rules.Reliability` | `reliability` | Statically detectable exception, disposal, async blocking, cancellation, synchronization, concurrency, and dangerous API patterns. Findings must state only guarantees supported by the analysis. |
-| `Rules.Performance` | `performance` | Static allocation, boxing, copying, LINQ, and efficiency policies. No benchmarking or target application execution. |
-| `Rules.Project` | `project` | Target frameworks, nullable settings, compiler/language options, central package management, and build conventions. Reference relationships belong to Dependencies. |
+| `Rules.Naming` | `naming` | Identifier conventions, prefixes, suffixes, exact names, patterns. See [Naming](naming.md). |
+| `Rules.Syntax` | `syntax` | Preferred/permitted C# constructs; no rewriting. |
+| `Rules.Organization` | `organization` | Source file and declaration structure; no whitespace formatting. |
+| `Rules.Design` | `design` | Local type, member, and API constraints. |
+| `Rules.Dependencies` | `dependencies` | Explicit package, namespace, and reference policies. |
+| `Rules.Architecture` | `architecture` | Logical namespace and type boundaries. |
+| `Rules.Reliability` | `reliability` | Statically detectable exception and dangerous-code patterns. |
+| `Rules.Performance` | `performance` | Statically detectable allocation and conversion policies; no benchmarking. |
+| `Rules.Project` | `project` | Project compiler/framework declarations and build conventions. |
 
-`SharpLint.Core.Rules.Rules` is the centralized, read-only catalog.
-`RuleCategory` is an immutable value with an ID and a display name. IDs are
-ordinal and case-sensitive; display names are labels and do not determine identity.
-Extension categories need no changes to an enum, catalog, or execution switch.
+`SharpLint.Core.Rules.Rules` is the read-only catalog of nine built-in
+`RuleModule` values. Each module has an ID, display name, and provided rules.
+Naming uses its existing specialized DSL and selector-chain evaluator. Its
+rules' provider is module `naming`; existing naming rule IDs and precedence
+remain unchanged. Merely referencing a module enables no rules.
 
-## Vocabulary
-
-- **Category:** what engineering concern a rule enforces. A rule has one canonical
-  category ID, even if its implementation shares infrastructure with other categories.
-- **Rule:** the precise policy, identified by `RuleDefinition.Id`.
-- **Scope:** where the policy applies, recorded by `RuleDefinition.Scope`:
-  source file, symbol/member, type, namespace, project, or repository/solution.
-  Scope is metadata, independent of category and invocation strategy.
-- **Module:** who provides the rule. `RuleModule.Id` owns its declared categories
-  and rules. Modules may use categories owned by another module.
-- **Analyzer:** how a policy is evaluated, registered as an `IRuleAnalyzer`.
-  One implementation may serve different rules and categories.
-- **Configuration:** `ConfiguredRule` selects an ID, severity, and JSON options.
-  The registered analyzer interprets and validates rule-specific options.
-
-## Configuration
-
-Existing executable Naming configuration remains supported:
+## Built-in configuration
 
 ```csharp
 #:package SharpLint.Configuration@1.0.0-dev
 
 using SharpLint.Configuration;
+using SharpLint.Core.Diagnostics;
 using SharpLint.Core.Naming;
+using SharpLint.Core.Rules;
 
-Lint.Configure(config => config.Naming(n =>
-    n.Classes().RequireConvention(NamingConvention.PascalCase))).Apply();
+Lint.Configure(config => config
+    .Naming(n => n.Classes().RequireConvention(NamingConvention.PascalCase))
+    .Module(Rules.Syntax, m => m
+        .Rule("syntax.no-goto")
+        .Rule("syntax.file-scoped-namespaces"))
+    .Module(Rules.Design, m => m
+        .Rule("design.maximum-parameters", new { maximum = 5 }, Severity.Error))
+    .Module(Rules.Project, m => m
+        .Rule("project.nullable-enabled")
+        .Rule("project.target-frameworks", new { allowed = new[] { "net10.0" } })))
+    .Apply();
 ```
 
-The conceptual category surface is `Rules.Naming`, `Rules.Syntax`,
-`Rules.Organization`, `Rules.Design`, `Rules.Dependencies`, `Rules.Architecture`,
-`Rules.Reliability`, `Rules.Performance`, and `Rules.Project`, imported from
-`SharpLint.Core.Rules`. These are metadata values. Category-specific authoring
-continues to use the existing callback convention, `config.Naming(...)`.
-There are no placeholder `config.Syntax(...)` or other unimplemented policy methods.
-Future category builders can follow Naming's convention when actual policies ship.
+`Module` validates that the chosen module owns each full rule ID. The generic
+`config.Rule(id, JsonElement, severity)` API remains available. A configured ID
+selects severity and JSON options; the corresponding policy validates its options.
+Duplicate configured rule IDs are rejected. `Hidden` rules are validated for
+registration but do not execute. No rules are enabled implicitly by registration.
 
-A custom host can configure a registered module policy with the generic DSL:
+### Initial built-in policies
+
+All options objects default to `{}`. Required options below must be supplied.
+Array options must contain at least one nonblank string; limits must be positive
+integers. Invalid options fail explicitly instead of silently disabling checks.
+
+| Rule ID | Options | Observable behavior |
+| --- | --- | --- |
+| `syntax.no-goto` | None | Reports goto statements, including goto case/default. |
+| `syntax.file-scoped-namespaces` | None | Reports block namespace declarations. Global-namespace files are allowed. |
+| `organization.one-type-per-file` | None | Reports each top-level type after the first, including records, enums, structs, interfaces and delegates. Nested types do not count. |
+| `organization.match-type-file-name` | None | Requires each top-level type's identifier to equal the file stem, ordinally. Partial declarations are checked individually. |
+| `design.maximum-parameters` | `maximum` (default 5) | Reports parameter lists over the limit, including constructors, primary constructors, local functions, lambdas and indexers. |
+| `design.maximum-type-members` | `maximum` (default 20) | Reports type declarations whose direct member declaration count exceeds the limit; nested members are not added to the outer type's count. |
+| `dependencies.forbidden-usings` | `namespaces` (required) | Reports explicit using names matching a namespace or its dotted descendants, including aliases, global and static using directives. This syntax policy does not claim to resolve all dependencies. |
+| `dependencies.forbidden-packages` | `packages` (required) | Reports matching PackageReference/PackageVersion Include/Update declarations in `.csproj` and `Directory.Packages.props`, ignoring package ID case. |
+| `architecture.namespace-boundaries` | `from` and `to` (required string and string array) | Reports resolved name references from the source namespace or descendants to forbidden target namespaces or descendants. Resolves fully qualified names and aliases using project semantic models. |
+| `architecture.forbidden-inheritance` | `types` (required) | Reports explicit base type/interface declarations matching fully qualified semantic type names. |
+| `reliability.empty-catch` | None | Reports catch blocks with no statements, including comment-only blocks. |
+| `reliability.rethrow-caught-exception` | None | Reports `throw ex;` for the enclosing catch variable; suggests `throw;`. |
+| `performance.empty-array-allocation` | None | Reports explicit `new T[0]` allocations, including jagged arrays; skips rectangular arrays and computed sizes. Suggests considering `Array.Empty<T>()` only when shared identity is acceptable. |
+| `performance.explicit-boxing` | None | Reports explicit casts classified as boxing by Roslyn, including nullable value types. Does not claim to detect implicit boxing. |
+| `project.nullable-enabled` | None | Requires an explicit Nullable declaration in every `.csproj`; reports each declaration whose trimmed text is not `enable`. |
+| `project.target-frameworks` | `allowed` (required) | Requires explicit TargetFramework/TargetFrameworks declarations; reports each framework outside the ordinal allowlist. |
+
+Architecture and explicit-boxing policies require host-provided project
+compilations and a validated error-free compilation. If unavailable, they report
+an `AnalysisFailure` and mark the result incomplete while retaining safe findings.
+Scopes are metadata, not cache invalidation declarations.
+
+Project and package policies inspect literal XML in the requested directory tree,
+skipping `bin`, `obj`, `.git`, and `.sharplint`. They do **not** evaluate MSBuild
+conditions, imports, inherited values, or property substitutions. For example,
+a Nullable value inherited from Directory.Build.props does not satisfy the explicit
+project declaration policy. Conditional declarations are checked individually.
+Malformed XML fails explicitly. No rule claims to cover all examples in a module's
+responsibility; this table defines the implemented initial set.
+
+## External modules use Roslyn analyzers
+
+External users create their own module identities and group standard Roslyn
+`DiagnosticAnalyzer` implementations into them. No core category registration,
+custom `IRuleAnalyzer` implementation, or edit to SharpLint's catalog is needed.
+A descriptor's category is provider metadata; it does not select its module.
+One analyzer can supply multiple rule descriptors. IDs must be globally unique.
+
+Given a package `Acme.SharpLint` exporting public, parameterless
+`Acme.SecurityAnalyzer : DiagnosticAnalyzer`, executable configuration can use:
 
 ```csharp
-using System.Text.Json;
+#:package SharpLint.Configuration@1.0.0-dev
+#:package Acme.SharpLint@1.0.0
+
+using Acme;
 using SharpLint.Configuration;
-using SharpLint.Core.Analysis;
 using SharpLint.Core.Diagnostics;
 using SharpLint.Core.Rules;
 
-// `policyAnalyzer` is an IRuleAnalyzer implemented by the provider.
-var definition = new RuleDefinition("acme.parameter-limit", Rules.Design.Id, RuleScope.Symbol);
-var registry = new RuleRegistry([
-    new RuleModule("acme", [], [new RuleRegistration(definition, policyAnalyzer)])
-]);
-var config = Lint.Configure(c => c.Rule(definition.Id,
-    JsonSerializer.SerializeToElement(new { maximum = 5 }), Severity.Error));
-var result = await new Analyzer().AnalyzeAsync(new AnalysisContext
-{
-    WorkingDirectory = sourceDirectory,
-    NamingRules = config.NamingRules,
-    Rules = config.Rules ?? [],
-    Registry = registry,
-});
+var security = new RuleModule("acme.security", "Acme Security", [new SecurityAnalyzer()]);
+
+Lint.Configure(config => config.UseModule(security, module => module
+    .Rule("ACME001", new { maximum = 5 }, Severity.Error)))
+    .Apply();
 ```
 
-This is a host integration example, not a shipped parameter-count policy.
-For an extension category, supply `new RuleCategory("acme.security", "Security")`
-in the module's category list and use its ID in the rule definition. The registry
-registers all categories before resolving rules, so module input order does not
-restrict category sharing.
+This is a provider integration example; Acme is not a shipped package. `UseModule`
+registers the module and optionally configures its rules. Additional rules can be
+selected with `config.Rule(...)`. Analyzer types must be public, parameterless,
+and stored in a physical assembly. Configuration serializes module identity,
+assembly paths and type names, plus configured IDs/options/severity; it never
+serializes analyzer instances. These assembly paths are local execution references,
+not a portable configuration format for another machine.
 
-## Registration and execution guarantees
+`SharpLintConfig.CreateRegistry()` loads the referenced types and combines them
+with built-ins. The stock CLI and daemon call it automatically. A custom host can
+pass its existing registry to `CreateRegistry(hostRegistry)`. Missing assemblies,
+types, constructors, duplicate module/rule IDs, and analyzer exceptions fail
+explicitly. There is no automatic assembly scanning or analyzer discovery.
+External code executes with the same trust as executable configuration.
 
-`RuleRegistry` snapshots explicit in-process module registrations. It registers
-all nine core categories under module `sharplint`, sorts module/category/rule
-registration ordinally, and rejects duplicate module, category, or rule IDs,
-unknown categories, missing analyzers, and empty identifiers. The `sharplint`
-module ID and existing `naming.*` rule IDs are reserved. Duplicate IDs are rejected
-even if definitions appear identical. No assembly scanning or plugin loading occurs.
+Roslyn analyzers run via [Compilation.WithAnalyzers](https://learn.microsoft.com/en-us/dotnet/api/microsoft.codeanalysis.diagnostics.diagnosticanalyzerextensions.withanalyzers)
+against the host's project compilations. Syntax, symbol, operation, semantic-model,
+and compilation callbacks work through the standard Roslyn driver. JSON option
+properties are exposed as strings through AnalyzerConfigOptionsProvider under
+`sharplint.<rule-id>.<property>`; for example `sharplint.ACME001.maximum`.
+The driver runs each configured descriptor separately, suppresses sibling IDs,
+and explicitly enables configured descriptors even if disabled by default.
+Source suppressions remain effective. Configured SharpLint severity controls the
+reported finding. Additional files and project `.editorconfig` values are not
+currently forwarded to external module analyzers.
 
-Naming retains its specialized selector-chain resolution and generated IDs.
-`NamingRule.Definition` and `ModuleId` expose its category, scope, and provider
-without changing Naming's configuration JSON. Repeated Naming declarations still
-follow [Naming precedence](naming.md); they are not duplicate module registrations.
+A direct Core host may supply `AnalysisContext.Compilations`. Without them, the
+adapter creates a syntax-host compilation with only the core runtime reference;
+this is suitable for syntax policies, not complete project semantic analysis.
+Providers requiring validated semantics can declare `ErrorFreeCompilation` in
+explicit host registrations. The CLI workspace supplies real project compilations.
 
-Module rules run only when explicitly configured. Duplicate configured module
-rule IDs are rejected. Missing registrations fail even for Hidden rules and empty
-source directories. Hidden rules with valid registrations do not invoke analyzers.
-An empty category produces no diagnostics and makes no claim that its example
-policies have been checked. `FilesAnalyzed` counts parsed files, not policy coverage.
+## Registration, diagnostics, and execution
 
-The shared analyzer passes a read-only list of parsed syntax trees, the working
-directory, JSON options, and cancellation token to each enabled module policy once
-per analysis. The host attaches registered identity/category and configured
-severity to returned violations. Category and scope do not create separate engines.
-Source files are processed in ordinal path order; results are stably ordered by
-file, line, and column, retaining declaration/emission order for ties. Providers
-must emit tied findings deterministically and honor cancellation and read-only
-operation. Contracts do not sandbox provider code.
+`RuleRegistry` snapshots modules and sorts registrations ordinally. Built-in
+module IDs and `sharplint` are reserved. Existing generated `naming.*` rule IDs
+are reserved to Naming. Other duplicate IDs are rejected even for identical
+implementations. Provider names and descriptor categories are case-sensitive.
+The old `RuleCategory`, `RuleRegistration`, and `IRuleAnalyzer` host registration
+path remains a compatibility API; it does not define the new extension model.
 
-Diagnostics expose `CategoryId` in Core; CLI JSON adds `category` alongside existing
-fields. Naming IDs, severity, messages, locations, suggestions, and pretty output
-retain their meanings. Elapsed time is operational metadata and is not deterministic.
+Diagnostics carry `ModuleId` (CLI JSON `module`) independently of `CategoryId`
+(CLI JSON `category`). Descriptor categories are preserved for external analyzers.
+Naming's category remains `naming`; its module is now `naming`. Compiler diagnostics
+retain their compiler origin and are separate from configured module rules.
+Roslyn source spans and help links are preserved; compilation-wide findings have
+`HasSourceLocation = false`. Results sort by file, line, column, preserving emission
+order for ties. Providers must emit deterministic findings and honor cancellation.
 
-Configuration JSON transports configured IDs/options/severity, never executable
-analyzers. The stock CLI has the default registry and cannot load custom modules;
-a custom host must supply the corresponding registry. Unsupported configured rules
-fail explicitly. Module providers still receive syntax inputs, without semantic models. The
-coordinator separately loads project compilations for compiler diagnostics;
-execution scope does not itself request semantic data. No example
-policies outside Naming are implemented, and no source modification, formatting,
-code fixes, AI inference, or execution of target applications is introduced.
-
-`RuleDefinition.InputRequirement` defaults to `Syntax`. Providers can declare
-`ErrorFreeCompilation`; a host unable to validate an error-free compilation reports
-an explicit failure for that rule, retains safe findings, and marks the analysis
-incomplete. Hidden rules do not execute. See [compiler integration](../compiler-diagnostics.md).
-
-The [incremental analysis host](../daemon.md) maintains a persistent project workspace
-and caches built-in Naming results per document. Custom module policies still run
-once over the entire captured syntax snapshot on every check, including unchanged
-checks. Scope metadata is not a dependency declaration and never authorizes narrowing
-cache invalidation. Unknown module dependencies therefore remain conservative.
+The incremental host caches Naming per document. All other configured policies
+run over the complete captured inputs on every check, including unchanged checks.
+Custom analyzers receive project compilations; module scope does not imply narrow
+cache invalidation. Referenced analyzer assemblies participate in input reconciliation.
+Source generators and analyzer references discovered from target projects are not
+automatically executed. See [compiler integration](../compiler-diagnostics.md) and
+[daemon behavior](../daemon.md). No source rewriting, autofix, benchmarking, AI
+inference, or execution of target applications is introduced.

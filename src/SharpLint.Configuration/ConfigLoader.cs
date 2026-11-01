@@ -60,6 +60,9 @@ public static class ConfigLoader
         startInfo.ArgumentList.Add("--file");
         startInfo.ArgumentList.Add(scriptPath);
         startInfo.ArgumentList.Add("--no-launch-profile");
+        // File-based apps default to AOT settings; executable configuration can use
+        // reflection for custom analyzer types and arbitrary rule option objects.
+        startInfo.ArgumentList.Add("-p:PublishAot=false");
         startInfo.Environment[ConfigEmitter.OutputPathEnvVar] = outputPath;
 
         using var process = Process.Start(startInfo)
