@@ -57,7 +57,9 @@ public static class ConfigLoader
             CreateNoWindow = true,
         };
         startInfo.ArgumentList.Add("run");
+        startInfo.ArgumentList.Add("--file");
         startInfo.ArgumentList.Add(scriptPath);
+        startInfo.ArgumentList.Add("--no-launch-profile");
         startInfo.Environment[ConfigEmitter.OutputPathEnvVar] = outputPath;
 
         using var process = Process.Start(startInfo)
@@ -66,7 +68,19 @@ public static class ConfigLoader
         var stderrTask = process.StandardError.ReadToEndAsync(cancellationToken);
         var stdoutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
 
-        await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            // Disconnected/canceled checks must not leave executable config subprocesses running.
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+                await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
+            }
+        }
         var stderr = await stderrTask.ConfigureAwait(false);
         var stdout = await stdoutTask.ConfigureAwait(false);
 

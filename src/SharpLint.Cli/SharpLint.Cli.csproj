@@ -11,6 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../SharpLint.Daemon/SharpLint.Daemon.csproj" />
     <ProjectReference Include="..\SharpLint.Core\SharpLint.Core.csproj" />
     <ProjectReference Include="..\SharpLint.Configuration\SharpLint.Configuration.csproj" />
   </ItemGroup>

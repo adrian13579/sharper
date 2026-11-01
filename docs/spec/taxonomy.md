@@ -127,7 +127,19 @@ retain their meanings. Elapsed time is operational metadata and is not determini
 Configuration JSON transports configured IDs/options/severity, never executable
 analyzers. The stock CLI has the default registry and cannot load custom modules;
 a custom host must supply the corresponding registry. Unsupported configured rules
-fail explicitly. Project/solution and semantic inputs are not supplied yet: the
-scope catalog does not imply MSBuild loading or semantic analysis. No example
+fail explicitly. Module providers still receive syntax inputs, without semantic models. The
+coordinator separately loads project compilations for compiler diagnostics;
+execution scope does not itself request semantic data. No example
 policies outside Naming are implemented, and no source modification, formatting,
 code fixes, AI inference, or execution of target applications is introduced.
+
+`RuleDefinition.InputRequirement` defaults to `Syntax`. Providers can declare
+`ErrorFreeCompilation`; a host unable to validate an error-free compilation reports
+an explicit failure for that rule, retains safe findings, and marks the analysis
+incomplete. Hidden rules do not execute. See [compiler integration](../compiler-diagnostics.md).
+
+The [incremental analysis host](../daemon.md) maintains a persistent project workspace
+and caches built-in Naming results per document. Custom module policies still run
+once over the entire captured syntax snapshot on every check, including unchanged
+checks. Scope metadata is not a dependency declaration and never authorizes narrowing
+cache invalidation. Unknown module dependencies therefore remain conservative.

@@ -6,7 +6,7 @@
 
 A Roslyn-powered static analysis CLI for C# with fluent, typed configuration, readable diagnostics, and JSON output for CI and coding agents.
 
-**Status: pre-alpha.** Naming policies and incremental daemon checks are implemented. The [adopted specifications](docs/spec/README.md) define the configuration contract; [SPEC.md](SPEC.md) describes the broader vision and planned features.
+**Status: pre-alpha.** Compiler diagnostics, Naming policies, and incremental daemon checks are implemented. The [adopted specifications](docs/spec/README.md) define the configuration contract; [SPEC.md](SPEC.md) describes the broader vision and planned features.
 
 ## Quick start
 
@@ -26,7 +26,7 @@ dotnet run --project src/SharpLint.Cli -- check --path ./some/dir
 dotnet run --project src/SharpLint.Cli -- check --path ./some/dir --format json --stats
 ```
 
-The repository already includes [sharplint.config.cs](sharplint.config.cs); `init` refuses to overwrite an existing configuration. Without a configuration in the analyzed directory, SharpLint runs with **no rules**. Use `init` or add a configuration to enable checks.
+The repository already includes [sharplint.config.cs](sharplint.config.cs); `init` refuses to overwrite an existing configuration. Without a configuration in the analyzed directory, SharpLint reports compiler diagnostics with **no policy rules**. Use `init` or add a configuration to enable policies.
 
 Builds produce development NuGet packages in `packages/`, exposed through [NuGet.config](NuGet.config). When analyzing another directory, its NuGet sources must also include this local feed so its configuration can restore `SharpLint.Configuration@1.0.0-dev`. If a rebuilt package is stale in the NuGet cache, run `bash build.sh`; this evicts cached SharpLint.Core and SharpLint.Configuration packages before rebuilding.
 
@@ -96,9 +96,9 @@ dotnet src/SharpLint.Cli/bin/Debug/net10.0/sharplint.dll daemon stop --path ./so
 | `daemon start\|status\|stop --path <PATH>` | Manage the daemon for a directory; defaults to the current directory. |
 | `daemon start --idle-timeout <SECONDS>` | Set the idle timeout when starting a new daemon; defaults to 900 seconds. |
 
-The daemon retains a Roslyn syntax workspace and per-document diagnostics between checks. It reconciles inputs from disk, reuses unchanged documents, and invalidates cached analysis when configuration or project inputs change. Each check validates its input snapshot before returning results. Daemons stop after 15 minutes of inactivity by default. See the [daemon guide](docs/daemon.md) for cache boundaries, lifecycle details, and troubleshooting.
+The daemon retains a Roslyn project workspace, per-project compiler diagnostics, and per-document Naming diagnostics between checks. It reconciles inputs from disk, reuses unchanged documents, and invalidates cached analysis when configuration or project inputs change. Each check validates its input snapshot before returning results. Daemons stop after 15 minutes of inactivity by default. See the [daemon guide](docs/daemon.md) for cache boundaries, lifecycle details, and troubleshooting.
 
-Analysis recursively reads C# source files, skipping `bin`, `obj`, `.git`, `.sharplint`, and linked directories. Project and build files participate in cache invalidation, but analysis remains syntax-only: SharpLint does not load projects through MSBuild or resolve semantic compilations.
+Checks load recursive C# projects through MSBuildWorkspace and report Roslyn compilation diagnostics alongside policy findings. Restore projects before checking. Source edits invalidate their owning projects and transitive dependents; project/options/reference changes reload the workspace. Directories without projects use a synthetic library compilation. Unowned files and executable configuration remain policy inputs. See [compiler diagnostics](docs/compiler-diagnostics.md) for origins, coordinates, cache validity, source generators, and limitations relative to `dotnet build`. SharpLint does not modify target source files; design-time project loading may write SDK intermediate files.
 
 `check` returns these exit codes:
 
@@ -106,7 +106,7 @@ Analysis recursively reads C# source files, skipping `bin`, `obj`, `.git`, `.sha
 | --- | --- |
 | `0` | Analysis completed without error-severity diagnostics; warnings and information may be present. |
 | `1` | Analysis completed with error-severity diagnostics. |
-| `2` | Configuration or analysis failed, or analysis was canceled. |
+| `2` | Configuration or analysis failed, analysis is incomplete, or analysis was canceled. |
 | `3` | Daemon communication failed. |
 
 Disabled rules produce no diagnostics. Use `.AsError()` for policies that should fail CI.
@@ -122,6 +122,7 @@ Disabled rules produce no diagnostics. Use `.AsError()` for policies that should
   "diagnostics": [
     {
       "ruleId": "naming.class.public.convention",
+      "origin": "sharplint",
       "category": "naming",
       "severity": "error",
       "message": "Class 'bad_name' must use PascalCase convention.",
@@ -134,7 +135,7 @@ Disabled rules produce no diagnostics. Use `.AsError()` for policies that should
 }
 ```
 
-Paths, messages, and timing values above are illustrative. Diagnostics include stable rule IDs, categories, severities, source locations, and optional suggestions.
+Paths, messages, and timing values above are illustrative. Diagnostics include stable rule IDs (original `CS*` IDs for the compiler), origins, categories, severities, source locations, project contexts, and optional suggestions/help URLs/spans. Location fields are null for compilation-wide findings; lines/UTF-16 columns are one-based. Top-level `status` and `failures` distinguish incomplete analysis. See the [full diagnostic contract](docs/compiler-diagnostics.md).
 
 ## Rule categories and extensions
 
@@ -142,7 +143,7 @@ SharpLint defines nine stable [core categories](docs/spec/taxonomy.md): Naming, 
 
 Custom hosts can implement `IRuleAnalyzer`, register policies and categories through `RuleModule` and `RuleRegistry`, and configure them with `config.Rule(...)`. See the [module contracts and host integration example](docs/spec/taxonomy.md). The stock CLI does not load external modules; configured rules without registered analyzers fail explicitly.
 
-Built-in policies for the other categories, semantic analysis, MSBuild project loading, SARIF output, autofix, and external plugin loading remain future work. See [SPEC.md](SPEC.md) for planning material.
+Built-in policies for the other categories, semantic module inputs, SARIF output, autofix, and external plugin loading remain future work. See [SPEC.md](SPEC.md) for planning material.
 
 ## Repository structure
 
@@ -150,7 +151,7 @@ Built-in policies for the other categories, semantic analysis, MSBuild project l
 | --- | --- |
 | [src/SharpLint.Core](src/SharpLint.Core) | Naming models and evaluation, rule metadata and registration, diagnostics, and syntax analysis. |
 | [src/SharpLint.Configuration](src/SharpLint.Configuration) | Fluent DSL, presets, JSON emission, and executable configuration loading. |
-| [src/SharpLint.Analysis](src/SharpLint.Analysis) | Syntax workspace coordination, input snapshots, cache invalidation, and incremental analysis. |
+| [src/SharpLint.Analysis](src/SharpLint.Analysis) | Project workspace coordination, compiler diagnostics, input snapshots, caches, and incremental analysis. |
 | [src/SharpLint.Daemon](src/SharpLint.Daemon) | Per-directory daemon identity, protocol, client, and host lifecycle. |
 | [src/SharpLint.Cli](src/SharpLint.Cli) | Spectre.Console.Cli commands and pretty/JSON rendering. |
 | [tests/SharpLint.Tests](tests/SharpLint.Tests) | xUnit tests, including analyzer integration and CLI/daemon functional tests. |

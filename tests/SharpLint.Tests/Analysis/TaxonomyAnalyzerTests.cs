@@ -50,6 +50,12 @@ public sealed class TaxonomyAnalyzerTests : IDisposable
         Assert.Equal("Test policy violation.", diagnostic.Message);
         Assert.Equal(new SourceLocation(path, 3, 7), diagnostic.Location);
         Assert.Equal("Choose another name.", diagnostic.Suggestion);
+        Assert.True(diagnostic.HasSourceLocation);
+        Assert.Equal(DiagnosticOrigin.SharpLint, diagnostic.Origin);
+        Assert.Null(diagnostic.Project);
+        Assert.Null(diagnostic.HelpUrl);
+        Assert.Null(diagnostic.SpanStart);
+        Assert.Null(diagnostic.SpanLength);
         Assert.Equal(1, result.FilesAnalyzed);
         Assert.True(result.HasErrors);
         Assert.Equal(result.Diagnostics, (await analyzer.AnalyzeAsync(context)).Diagnostics);
@@ -160,6 +166,42 @@ public sealed class TaxonomyAnalyzerTests : IDisposable
     {
         public ValueTask<IReadOnlyList<RuleViolation>> AnalyzeAsync(RuleAnalysisContext context, JsonElement options, CancellationToken cancellationToken) =>
             throw new InvalidOperationException("Unconfigured or disabled analyzer must not run.");
+    }
+
+    [Theory]
+    [InlineData(null, Severity.Error, false)]
+    [InlineData(true, Severity.Error, false)]
+    [InlineData(false, Severity.Error, true)]
+    [InlineData(true, Severity.Hidden, true)]
+    public async Task Compilation_prerequisites_report_incomplete_analysis_and_preserve_safe_findings(
+        bool? compilationHasErrors, Severity severity, bool complete)
+    {
+        File.WriteAllText(Path.Combine(_directory, "Sample.cs"), "class Forbidden {}");
+        var definition = new RuleDefinition("example.check", "design", RuleScope.Type)
+        { InputRequirement = RuleInputRequirement.ErrorFreeCompilation };
+        var registry = new RuleRegistry([new("example", [], [new(definition, new TestPolicyAnalyzer())])]);
+        var config = Lint.Configure(c => c.Naming(n => n.Classes().RequirePrefix("Expected"))
+            .Rule("example.check", JsonSerializer.SerializeToElement(new { forbiddenName = "Forbidden" }), severity));
+        var result = await new Analyzer().AnalyzeAsync(new AnalysisContext
+        {
+            WorkingDirectory = _directory, NamingRules = config.NamingRules, Rules = config.Rules!,
+            Registry = registry, CompilationHasErrors = compilationHasErrors,
+        });
+        Assert.Equal(complete, result.IsComplete);
+        Assert.Contains(result.Diagnostics, d => d.RuleId == "naming.class.prefix");
+        Assert.All(result.Diagnostics, d => Assert.Equal(DiagnosticOrigin.SharpLint, d.Origin));
+        if (complete)
+        {
+            Assert.Empty(result.Failures);
+            Assert.Equal(severity == Severity.Hidden ? 1 : 2, result.Diagnostics.Count);
+        }
+        else
+        {
+            var failure = Assert.Single(result.Failures);
+            Assert.Equal("example.check", failure.RuleId);
+            Assert.Contains("error-free compilation", failure.Message);
+            Assert.Single(result.Diagnostics);
+        }
     }
 
     private sealed class UnorderedAnalyzer : IRuleAnalyzer

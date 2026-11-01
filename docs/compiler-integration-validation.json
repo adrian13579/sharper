@@ -1,0 +1,56 @@
+{
+  "validationScope": "isolated compiler feature snapshot; concurrent module refactor excluded by user request",
+  "snapshotRoot": "/tmp/sharplint-compiler-validation",
+  "sourceSha256": "5cd929367e06cb508a4590fc00d9d9952c6ec34f88a6525fd9c2ce71a2a5645e",
+  "sdk": "10.0.202",
+  "roslyn": "5.3.0",
+  "debugBuild": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "fullTests": {
+    "passed": 294,
+    "failed": 0,
+    "skipped": 0,
+    "duration": "3m54s"
+  },
+  "coverage": {
+    "projects": [
+      "Core",
+      "Configuration"
+    ],
+    "linePercent": 99.2,
+    "branchPercent": 96.9
+  },
+  "mutation": {
+    "Core": {
+      "score": 91.2,
+      "required": 90,
+      "counts": {
+        "CompileError": 22,
+        "Killed": 258,
+        "Ignored": 38,
+        "Survived": 22,
+        "NoCoverage": 3,
+        "Timeout": 1
+      },
+      "testFilter": "exclude CLI functional and Daemon integration tests; all production code remains in scope"
+    },
+    "Configuration": {
+      "score": 92.07,
+      "required": 90,
+      "counts": {
+        "Ignored": 62,
+        "Killed": 150,
+        "Survived": 12,
+        "CompileError": 7,
+        "NoCoverage": 1,
+        "Timeout": 1
+      },
+      "testFilter": "exclude CLI functional and Daemon integration tests; all production code remains in scope"
+    }
+  },
+  "toolPackageVerified": true,
+  "differentialChecks": "passed",
+  "benchmarkResults": "benchmarks/compiler-results.json"
+}

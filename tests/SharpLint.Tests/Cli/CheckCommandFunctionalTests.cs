@@ -1,27 +1,36 @@
 using System.Diagnostics;
 using System.Text.Json;
+using System.Collections.Concurrent;
 
 namespace SharpLint.Tests.Cli;
 
-public sealed class CheckCommandFunctionalTests : IDisposable
+public sealed partial class CheckCommandFunctionalTests : IDisposable
 {
     private readonly string _workDir;
     private readonly string _repoRoot;
     private readonly string _cliDll;
     private readonly string _nugetCache;
+    private readonly ConcurrentDictionary<string, byte> _daemonRoots = new(StringComparer.Ordinal);
 
     public CheckCommandFunctionalTests()
     {
         _repoRoot = LocateRepoRoot();
         _cliDll = Path.Combine(_repoRoot, "src", "SharpLint.Cli", "bin", "Debug", "net10.0", "sharplint.dll");
         _workDir = Path.Combine(Path.GetTempPath(), $"sharplint-cli-{Guid.NewGuid():N}");
-        _nugetCache = Path.Combine(_workDir, ".nuget-cache");
+        _nugetCache = _workDir + "-nuget-cache";
         Directory.CreateDirectory(_workDir);
     }
 
     public void Dispose()
     {
+        foreach (var root in _daemonRoots.Keys)
+        {
+            try { RunCliAsync("daemon", "stop", "--path", root).GetAwaiter().GetResult(); }
+            catch { /* best-effort daemon cleanup */ }
+        }
         try { Directory.Delete(_workDir, recursive: true); }
+        catch { /* best-effort */ }
+        try { if (Directory.Exists(_nugetCache)) Directory.Delete(_nugetCache, recursive: true); }
         catch { /* best-effort */ }
     }
 
@@ -356,6 +365,10 @@ public sealed class CheckCommandFunctionalTests : IDisposable
 
     private async Task<(int ExitCode, string Stdout, string Stderr)> RunCliAsync(params string[] args)
     {
+        var pathIndex = Array.IndexOf(args, "--path");
+        var root = pathIndex >= 0 && pathIndex + 1 < args.Length
+            ? Path.GetFullPath(args[pathIndex + 1], _workDir) : _workDir;
+        _daemonRoots.TryAdd(root, 0);
         if (!File.Exists(_cliDll))
             throw new InvalidOperationException($"CLI binary missing at {_cliDll}. Build the solution first.");
 

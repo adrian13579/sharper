@@ -126,6 +126,7 @@ public sealed class ConfigurationIoTests : IDisposable
         var path = WriteScript("""
             {"namingRules":[{"chainId":4,"kind":"Class","predicates":"Public, Abstract","verb":"Prefix","direction":"Require","values":["Base","Abstract"],"severity":"Error","exemptAttributes":["System.ObsoleteAttribute"]}]}
             """);
+        File.WriteAllText(Path.Combine(_directory, "Adjacent.csproj"), "<Project />");
         var config = await ConfigLoader.LoadAsync(path);
         var rule = Assert.Single(config.NamingRules);
         Assert.Equal(4, rule.ChainId);
@@ -161,6 +162,44 @@ public sealed class ConfigurationIoTests : IDisposable
         Assert.Contains("stdout:\nconfig stdout marker", error.Message);
         Assert.Contains("stderr:\nconfig stderr marker", error.Message);
         AssertTemporaryOutputWasCleanedUp();
+    }
+
+    [Fact]
+    public async Task Canceled_load_terminates_the_configuration_process_tree()
+    {
+        var path = Path.Combine(_directory, "slow.config.cs");
+        File.WriteAllText(path, """
+            using System;
+            using System.IO;
+            using System.Threading;
+            File.WriteAllText("running.pid.tmp", Environment.ProcessId.ToString());
+            File.Move("running.pid.tmp", "running.pid");
+            Thread.Sleep(60000);
+            """);
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        var load = ConfigLoader.LoadAsync(path, cancellation.Token);
+        var marker = Path.Combine(_directory, "running.pid");
+        try
+        {
+            while (!File.Exists(marker))
+                await Task.Delay(20, cancellation.Token);
+            var pid = int.Parse(await File.ReadAllTextAsync(marker, cancellation.Token));
+            await cancellation.CancelAsync();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => load);
+            try
+            {
+                using var process = System.Diagnostics.Process.GetProcessById(pid);
+                await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5));
+                Assert.True(process.HasExited);
+            }
+            catch (ArgumentException) { /* The terminated child has already been reaped. */ }
+        }
+        finally
+        {
+            await cancellation.CancelAsync();
+            try { await load; }
+            catch (OperationCanceledException) { }
+        }
     }
 
     [Fact]

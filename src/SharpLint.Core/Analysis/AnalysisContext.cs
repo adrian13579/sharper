@@ -9,4 +9,6 @@ public sealed class AnalysisContext
     public required IReadOnlyList<NamingRule> NamingRules { get; init; }
     public IReadOnlyList<ConfiguredRule> Rules { get; init; } = [];
     public RuleRegistry Registry { get; init; } = RuleRegistry.Default;
+    /// <summary>Null when this host cannot validate a compilation prerequisite.</summary>
+    public bool? CompilationHasErrors { get; init; }
 }

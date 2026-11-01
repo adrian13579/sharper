@@ -1,0 +1,278 @@
+{
+  "environment": {
+    "platform": "Linux-6.18.54.1-microsoft-standard-WSL2-x86_64-with-glibc2.35",
+    "python": "3.10.12",
+    "dotnet": "10.0.202",
+    "cpus": 20,
+    "iterations": 5,
+    "warmup": 3,
+    "configuration": "Debug",
+    "sourceTemplate": "namespace Bench; public class Expected{index} { public void DoWork() { } }"
+  },
+  "results": [
+    {
+      "files": 100,
+      "scenario": "cold",
+      "samples": 5,
+      "medianMs": 1319.03,
+      "p95Ms": 4443.11,
+      "daemonPeakMiB": 109.67578125,
+      "cacheHitRate": 0.0,
+      "documentsAnalyzed": 101,
+      "documentsReused": 0
+    },
+    {
+      "files": 100,
+      "scenario": "warm",
+      "samples": 5,
+      "medianMs": 225.01,
+      "p95Ms": 245.79,
+      "daemonPeakMiB": 118.02734375,
+      "cacheHitRate": 1.0,
+      "documentsAnalyzed": 0,
+      "documentsReused": 101
+    },
+    {
+      "files": 100,
+      "scenario": "single-file",
+      "samples": 5,
+      "medianMs": 498.58,
+      "p95Ms": 539.95,
+      "daemonPeakMiB": 121.3515625,
+      "cacheHitRate": 0.9900990099009901,
+      "documentsAnalyzed": 1,
+      "documentsReused": 100
+    },
+    {
+      "files": 100,
+      "scenario": "multiple-files",
+      "samples": 5,
+      "medianMs": 511.02,
+      "p95Ms": 517.75,
+      "daemonPeakMiB": 123.21875,
+      "cacheHitRate": 0.900990099009901,
+      "documentsAnalyzed": 10,
+      "documentsReused": 91
+    },
+    {
+      "files": 100,
+      "scenario": "configuration",
+      "samples": 5,
+      "medianMs": 551.87,
+      "p95Ms": 561.15,
+      "daemonPeakMiB": 124.4453125,
+      "cacheHitRate": 0.0,
+      "documentsAnalyzed": 101,
+      "documentsReused": 0
+    },
+    {
+      "files": 100,
+      "scenario": "project-structure",
+      "samples": 5,
+      "medianMs": 1544.23,
+      "p95Ms": 1615.75,
+      "daemonPeakMiB": 124.5546875,
+      "cacheHitRate": 0.0,
+      "documentsAnalyzed": 101,
+      "documentsReused": 0
+    },
+    {
+      "files": 100,
+      "scenario": "concurrent-clients",
+      "samples": 5,
+      "medianMs": 205.52,
+      "p95Ms": 206.17,
+      "daemonPeakMiB": 124.703125,
+      "cacheHitRate": 1.0,
+      "documentsAnalyzed": 0,
+      "documentsReused": 101
+    },
+    {
+      "files": 100,
+      "scenario": "restart",
+      "samples": 5,
+      "medianMs": 1718.13,
+      "p95Ms": 1747.75,
+      "daemonPeakMiB": 109.19140625,
+      "cacheHitRate": 0.0,
+      "documentsAnalyzed": 101,
+      "documentsReused": 0
+    },
+    {
+      "files": 1000,
+      "scenario": "cold",
+      "samples": 5,
+      "medianMs": 1410.13,
+      "p95Ms": 2837.15,
+      "daemonPeakMiB": 118.58984375,
+      "cacheHitRate": 0.0,
+      "documentsAnalyzed": 1001,
+      "documentsReused": 0
+    },
+    {
+      "files": 1000,
+      "scenario": "warm",
+      "samples": 5,
+      "medianMs": 223.93,
+      "p95Ms": 236.7,
+      "daemonPeakMiB": 132.81640625,
+      "cacheHitRate": 1.0,
+      "documentsAnalyzed": 0,
+      "documentsReused": 1001
+    },
+    {
+      "files": 1000,
+      "scenario": "single-file",
+      "samples": 5,
+      "medianMs": 517.41,
+      "p95Ms": 531.78,
+      "daemonPeakMiB": 132.28125,
+      "cacheHitRate": 0.999000999000999,
+      "documentsAnalyzed": 1,
+      "documentsReused": 1000
+    },
+    {
+      "files": 1000,
+      "scenario": "multiple-files",
+      "samples": 5,
+      "medianMs": 518.5,
+      "p95Ms": 536.8,
+      "daemonPeakMiB": 136.078125,
+      "cacheHitRate": 0.99000999000999,
+      "documentsAnalyzed": 10,
+      "documentsReused": 991
+    },
+    {
+      "files": 1000,
+      "scenario": "configuration",
+      "samples": 5,
+      "medianMs": 599.69,
+      "p95Ms": 616.72,
+      "daemonPeakMiB": 142.2890625,
+      "cacheHitRate": 0.0,
+      "documentsAnalyzed": 1001,
+      "documentsReused": 0
+    },
+    {
+      "files": 1000,
+      "scenario": "project-structure",
+      "samples": 5,
+      "medianMs": 1698.73,
+      "p95Ms": 1720.65,
+      "daemonPeakMiB": 145.69921875,
+      "cacheHitRate": 0.0,
+      "documentsAnalyzed": 1001,
+      "documentsReused": 0
+    },
+    {
+      "files": 1000,
+      "scenario": "concurrent-clients",
+      "samples": 5,
+      "medianMs": 277.62,
+      "p95Ms": 313.9,
+      "daemonPeakMiB": 147.8828125,
+      "cacheHitRate": 1.0,
+      "documentsAnalyzed": 0,
+      "documentsReused": 1001
+    },
+    {
+      "files": 1000,
+      "scenario": "restart",
+      "samples": 5,
+      "medianMs": 1815.64,
+      "p95Ms": 1839.24,
+      "daemonPeakMiB": 120.35546875,
+      "cacheHitRate": 0.0,
+      "documentsAnalyzed": 1001,
+      "documentsReused": 0
+    },
+    {
+      "files": 10000,
+      "scenario": "cold",
+      "samples": 5,
+      "medianMs": 2280.98,
+      "p95Ms": 3918.04,
+      "daemonPeakMiB": 158.83984375,
+      "cacheHitRate": 0.0,
+      "documentsAnalyzed": 10001,
+      "documentsReused": 0
+    },
+    {
+      "files": 10000,
+      "scenario": "warm",
+      "samples": 5,
+      "medianMs": 410.5,
+      "p95Ms": 452.56,
+      "daemonPeakMiB": 205.80859375,
+      "cacheHitRate": 1.0,
+      "documentsAnalyzed": 0,
+      "documentsReused": 10001
+    },
+    {
+      "files": 10000,
+      "scenario": "single-file",
+      "samples": 5,
+      "medianMs": 694.05,
+      "p95Ms": 702.19,
+      "daemonPeakMiB": 210.09375,
+      "cacheHitRate": 0.9999000099990001,
+      "documentsAnalyzed": 1,
+      "documentsReused": 10000
+    },
+    {
+      "files": 10000,
+      "scenario": "multiple-files",
+      "samples": 5,
+      "medianMs": 684.08,
+      "p95Ms": 694.84,
+      "daemonPeakMiB": 210.8671875,
+      "cacheHitRate": 0.999000099990001,
+      "documentsAnalyzed": 10,
+      "documentsReused": 9991
+    },
+    {
+      "files": 10000,
+      "scenario": "configuration",
+      "samples": 5,
+      "medianMs": 984.29,
+      "p95Ms": 1018.27,
+      "daemonPeakMiB": 242.71875,
+      "cacheHitRate": 0.0,
+      "documentsAnalyzed": 10001,
+      "documentsReused": 0
+    },
+    {
+      "files": 10000,
+      "scenario": "project-structure",
+      "samples": 5,
+      "medianMs": 2102.59,
+      "p95Ms": 2163.08,
+      "daemonPeakMiB": 274.87109375,
+      "cacheHitRate": 0.0,
+      "documentsAnalyzed": 10001,
+      "documentsReused": 0
+    },
+    {
+      "files": 10000,
+      "scenario": "concurrent-clients",
+      "samples": 5,
+      "medianMs": 782.55,
+      "p95Ms": 1143.37,
+      "daemonPeakMiB": 310.8203125,
+      "cacheHitRate": 1.0,
+      "documentsAnalyzed": 0,
+      "documentsReused": 10001
+    },
+    {
+      "files": 10000,
+      "scenario": "restart",
+      "samples": 5,
+      "medianMs": 3036.28,
+      "p95Ms": 3077.49,
+      "daemonPeakMiB": 175.93359375,
+      "cacheHitRate": 0.0,
+      "documentsAnalyzed": 10001,
+      "documentsReused": 0
+    }
+  ]
+}

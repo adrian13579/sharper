@@ -8,7 +8,13 @@ namespace SharpLint.Core.Rules;
 public enum RuleScope { SourceFile, Symbol, Type, Namespace, Project, Repository }
 
 /// <summary>Stable rule metadata. Each rule has exactly one canonical category.</summary>
-public sealed record RuleDefinition(string Id, string CategoryId, RuleScope Scope);
+public sealed record RuleDefinition(string Id, string CategoryId, RuleScope Scope)
+{
+    public RuleInputRequirement InputRequirement { get; init; } = RuleInputRequirement.Syntax;
+}
+
+/// <summary>Safety prerequisite, independent of execution scope and diagnostic category.</summary>
+public enum RuleInputRequirement { Syntax, ErrorFreeCompilation }
 
 /// <summary>A configured instance. Options are interpreted and validated by its registered analyzer.</summary>
 public sealed record ConfiguredRule(string RuleId, JsonElement Options, Severity Severity = Severity.Warning);
