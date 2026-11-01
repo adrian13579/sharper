@@ -4,6 +4,9 @@
 
 # SharpLint
 [![Build](https://github.com/adrian13579/sharpLint/actions/workflows/dotnet.yml/badge.svg)](https://github.com/adrian13579/sharpLint/actions/workflows/dotnet.yml)
+[![License](https://img.shields.io/github/license/adrian13579/sharplint)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/adrian13579/sharplint)](https://github.com/adrian13579/sharplint/releases/latest)
+[![Issues](https://img.shields.io/github/issues/adrian13579/sharplint)](https://github.com/adrian13579/sharplint/issues)
 
 A Roslyn-powered static analysis CLI for C# with fluent, typed configuration, readable diagnostics, and JSON output for CI and coding agents.
 
