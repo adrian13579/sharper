@@ -52,6 +52,7 @@ dotnet run --project src/SharpLint.Cli -- check --path ./some/dir --format json
 
 ## Change hygiene
 
+- Each agent session must work in its own separate Git worktree. Create a dedicated worktree before making changes, and run edits, builds, and tests from that worktree. Never share a worktree between agent sessions.
 - Keep changes scoped to the task and preserve unrelated working-tree or staged edits.
 - Do not hand-edit generated `bin/`, `obj/`, or NuGet package artifacts.
 - Update documentation and examples alongside public DSL or CLI behavior changes.
