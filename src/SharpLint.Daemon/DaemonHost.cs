@@ -102,7 +102,8 @@ public sealed class DaemonHost
                 default: throw new InvalidDataException("Unknown daemon operation.");
             }
             await Protocol.WriteAsync(pipe, new DaemonResponse(DaemonIdentity.ProtocolVersion, request.RequestId,
-                "completed", DaemonIdentity.BuildId, Environment.ProcessId, analysis), ct).ConfigureAwait(false);
+                "completed", DaemonIdentity.BuildId, Environment.ProcessId,
+                analysis is null ? null : AnalysisResponseAdapter.FromSnapshot(analysis)), ct).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
         catch (Exception ex)

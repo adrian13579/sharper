@@ -42,7 +42,8 @@ Failures write a cause to stderr and do not emit a successful diagnostic payload
 
 ## Process and IPC lifecycle
 
-The CLI launches its installed assembly as a detached `--daemon-host` process;
+The native CLI launches the adjacent managed `daemon/SharpLint.Daemon.dll`
+through `dotnet` as a detached `--daemon-host` process;
 it performs no analysis in the client during a normal daemon-backed check. The
 host initializes a persistent Roslyn workspace; the first check loads configuration
 and analyzes its initial snapshot. Explicit `daemon start` establishes readiness
@@ -53,7 +54,7 @@ resets it. A host also exits when its analysis root disappears. A timeout suppli
 to `daemon start` applies when a new host is started.
 
 Identity hashes the canonical directory (resolving directory symlinks), local user,
-OS/distribution, process architecture/runtime, WSL distribution, PATH, DOTNET_ROOT,
+OS/distribution, process architecture/protocol version, WSL distribution, PATH, DOTNET_ROOT,
 and NUGET_PACKAGES. Windows, WSL, users, and different selected package environments
 therefore do not accidentally share caches. Startup and host ownership use separate
 interprocess exclusive file handles in a private per-environment temp directory.
@@ -64,12 +65,13 @@ A connection that fails during a check returns an explicit failure; retry it.
 
 IPC uses `NamedPipeServerStream`/`NamedPipeClientStream` with `CurrentUserOnly`,
 never TCP. One request/response travels per connection as a 4-byte little-endian
-length and UTF-8 JSON. Protocol v1 supports `Handshake`, `Check`, `Status`, and
+length and UTF-8 JSON. Protocol v2 supports `Handshake`, `Check`, `Status`, and
 `Shutdown`. Envelopes contain a request ID, protocol version, canonical root,
-and implementation fingerprint. A SHA-256 fingerprint of the loaded Daemon, Analysis, Core, and Configuration
-module identities detects rebuilds even when assembly versions stay unchanged.
-Loaded module IDs describe the executing code even when DLL files are replaced
-by a subsequent build. Incompatible checks fail explicitly. A same-protocol Shutdown accepts
+and implementation fingerprint. A SHA-256 fingerprint of the bundled Daemon, Daemon.Client, Analysis, Core, and
+Configuration module identities detects rebuilds even when assembly versions stay
+unchanged. The native client reads their managed PE metadata without loading them.
+The host captures its fingerprint at startup, retaining it when DLL files are
+replaced by a subsequent build. Incompatible checks fail explicitly. A same-protocol Shutdown accepts
 an old build fingerprint so a rebuilt CLI can stop its prior host.
 
 Requests are limited to 64 KiB, responses to 32 MiB, and JSON nesting to 32.
@@ -83,7 +85,9 @@ supply a command to execute.
 
 `SharpLint.Analysis` owns the reusable `WorkspaceCoordinator`. Both daemon and
 `--no-daemon` use the same compiler aggregation and Core `Analyzer.AnalyzeTreesAsync` rule engine; the latter
-creates an independent coordinator and forces all document analysis.
+starts a fresh managed process with an independent coordinator and forces all document analysis.
+The native CLI never loads Roslyn, configuration assemblies, or external analyzers.
+IPC uses generated JSON serializers so reflection is unnecessary in the client.
 
 The coordinator loads C# projects through a persistent MSBuildWorkspace, or uses
 an AdhocWorkspace library compilation for a directory without projects. Compiler
@@ -146,7 +150,8 @@ checkout or stop writers during validation. Never use the result as proof of
 writes performed after its reported input fingerprint.
 
 Configuration executes arbitrary C# under the current user through `dotnet run
---file`. Neither configuration nor in-process analyzers are sandboxed. For cacheable
+--file -p:PublishAot=false`, retaining reflection and dynamic code support. Neither
+configuration nor in-process analyzers are sandboxed. For cacheable
 configuration, author it deterministically from tracked repository inputs. External
 files, network services, clock/random values, arbitrary nontracked file types, and
 new environment values are not automatically dependency-tracked: use `--no-daemon`
@@ -210,7 +215,9 @@ already-captured syntax trees; `SourceFiles` is the shared source boundary.
 Configuration loading explicitly selects file-based execution and terminates
 canceled script process trees. CLI changes add routing, lifecycle commands,
 `--no-daemon`, `--stats`, and explicit failure exit codes. The solution and test
-project reference the new libraries. No Naming DSL or rule ID contract changes.
+project reference the analysis and client libraries. The daemon is a managed
+executable; CLI build/publish outputs include its complete dependency bundle in
+`daemon/`, including the nested MSBuild build-host directories. No Naming DSL or rule ID contract changes.
 
 Regression coverage lives in `Analysis/SourceFilesTests.cs`,
 `Daemon/WorkspaceCoordinatorTests.cs`, `Daemon/ProtocolTests.cs`,

@@ -1,28 +1,22 @@
-using System.ComponentModel;
 using SharpLint.Daemon;
-using Spectre.Console.Cli;
 
 namespace SharpLint.Cli.Commands;
 
-public class DaemonSettings : CommandSettings
+public class DaemonSettings
 {
-    [CommandOption("--path <PATH>")]
-    [Description("Repository directory. Defaults to the current directory.")]
     public string? Path { get; init; }
 
     public DaemonClient Client() => new(DaemonIdentity.Create(Path ?? Directory.GetCurrentDirectory()));
 }
 
-public sealed class DaemonStartCommand : AsyncCommand<DaemonStartCommand.Settings>
+public sealed class DaemonStartCommand
 {
     public sealed class Settings : DaemonSettings
     {
-        [CommandOption("--idle-timeout <SECONDS>")]
-        [Description("Seconds of inactivity before shutdown. Defaults to 900.")]
         public double IdleTimeout { get; init; } = 900;
     }
 
-    public override async Task<int> ExecuteAsync(CommandContext context, Settings settings)
+    public async Task<int> ExecuteAsync(Settings settings)
     {
         if (!double.IsFinite(settings.IdleTimeout) || settings.IdleTimeout <= 0)
         {
@@ -39,9 +33,9 @@ public sealed class DaemonStartCommand : AsyncCommand<DaemonStartCommand.Setting
     }
 }
 
-public sealed class DaemonStopCommand : AsyncCommand<DaemonSettings>
+public sealed class DaemonStopCommand
 {
-    public override async Task<int> ExecuteAsync(CommandContext context, DaemonSettings settings)
+    public async Task<int> ExecuteAsync(DaemonSettings settings)
     {
         try
         {
@@ -61,9 +55,9 @@ public sealed class DaemonStopCommand : AsyncCommand<DaemonSettings>
     }
 }
 
-public sealed class DaemonStatusCommand : AsyncCommand<DaemonSettings>
+public sealed class DaemonStatusCommand
 {
-    public override async Task<int> ExecuteAsync(CommandContext context, DaemonSettings settings)
+    public async Task<int> ExecuteAsync(DaemonSettings settings)
     {
         try
         {

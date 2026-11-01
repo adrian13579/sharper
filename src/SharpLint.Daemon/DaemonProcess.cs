@@ -5,7 +5,7 @@ namespace SharpLint.Daemon;
 
 public static class DaemonProcess
 {
-    /// <summary>Called only in the detached CLI host, never by an embedded/in-process host.</summary>
+    /// <summary>Called only in the detached daemon executable, never by an embedded/in-process host.</summary>
     public static void DetachFromTerminal()
     {
         if (!OperatingSystem.IsWindows() && SetSessionId() < 0)

@@ -1,29 +1,50 @@
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Reflection.Metadata;
+using System.Reflection.PortableExecutable;
 
 namespace SharpLint.Daemon;
 
 public sealed record DaemonIdentity(string Root, string PipeName, string StateDirectory)
 {
-    public const int ProtocolVersion = 1;
+    public const int ProtocolVersion = 2;
 
-    // Loaded module IDs describe the running code, even if a build replaces DLL files after this process starts.
-    // Assembly versions alone are insufficient because development builds often retain the same version.
-    public static string BuildId { get; } = Hash(string.Join("|", new[]
+    // Read managed module metadata without loading assemblies into the native client.
+    // Capture once so a running host retains its identity when a build replaces its files.
+    private static readonly Lazy<string> s_buildId = new(GetBuildId);
+    public static string BuildId => s_buildId.Value;
+
+    public static string HostPath => Path.Combine(HostDirectory, "SharpLint.Daemon.dll");
+
+    private static string HostDirectory => Directory.Exists(Path.Combine(AppContext.BaseDirectory, "daemon"))
+        ? Path.Combine(AppContext.BaseDirectory, "daemon") : AppContext.BaseDirectory;
+
+    private static string GetBuildId()
     {
-        typeof(DaemonIdentity).Assembly,
-        typeof(Analysis.WorkspaceCoordinator).Assembly,
-        typeof(Core.Analysis.Analyzer).Assembly,
-        typeof(Configuration.ConfigLoader).Assembly,
-    }.Select(assembly => assembly.FullName + ":" + assembly.ManifestModule.ModuleVersionId)));
+        var modules = new[] { "Daemon", "Daemon.Client", "Analysis", "Core", "Configuration" };
+        try
+        {
+            return Hash(string.Join("|", modules.Select(name =>
+            {
+                using var stream = File.OpenRead(Path.Combine(HostDirectory, $"SharpLint.{name}.dll"));
+                using var reader = new PEReader(stream);
+                var metadata = reader.GetMetadataReader();
+                return name + ":" + metadata.GetGuid(metadata.GetModuleDefinition().Mvid);
+            })));
+        }
+        catch (IOException ex)
+        {
+            throw new DaemonCommunicationException($"Cannot read the managed daemon bundle: {ex.Message}", ex);
+        }
+    }
 
     public static DaemonIdentity Create(string root)
     {
         root = CanonicalPath(root);
         var environment = string.Join("|", Environment.UserName,
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), RuntimeInformation.OSDescription,
-            RuntimeInformation.ProcessArchitecture, Environment.Version,
+            RuntimeInformation.ProcessArchitecture, ProtocolVersion,
             Environment.GetEnvironmentVariable("WSL_DISTRO_NAME"),
             Environment.GetEnvironmentVariable("DOTNET_ROOT"), Environment.GetEnvironmentVariable("NUGET_PACKAGES"),
             Environment.GetEnvironmentVariable("PATH"));

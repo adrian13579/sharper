@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.IO.Pipes;
-using System.Reflection;
 using System.Text;
 
 namespace SharpLint.Daemon;
@@ -10,6 +9,36 @@ public sealed class DaemonAnalysisException(string message) : Exception(message)
 
 public sealed class DaemonClient(DaemonIdentity identity)
 {
+    public async Task<AnalysisResponse> CheckOnceAsync(CancellationToken cancellationToken = default)
+    {
+        var start = HostStartInfo();
+        start.ArgumentList.Add("--check");
+        start.ArgumentList.Add(identity.Root);
+        using var process = StartHost(start);
+        process.StandardInput.Close();
+        var errors = process.StandardError.ReadToEndAsync(cancellationToken);
+        try
+        {
+            DaemonResponse? response = null;
+            try { response = await Protocol.ReadAsync<DaemonResponse>(process.StandardOutput.BaseStream, cancellationToken).ConfigureAwait(false); }
+            catch (EndOfStreamException) { /* Report the managed worker's error below. */ }
+            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+            var error = await errors.ConfigureAwait(false);
+            if (process.ExitCode != 0 || response?.Analysis is null)
+                throw new DaemonAnalysisException($"Analysis process failed (exit code {process.ExitCode}). {error}");
+            Validate(response);
+            return response.Analysis;
+        }
+        finally
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+                await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
+            }
+        }
+    }
+
     public async Task<DaemonResponse> SendAsync(string method, bool autoStart = false,
         TimeSpan? idleTimeout = null, CancellationToken cancellationToken = default)
     {
@@ -66,23 +95,11 @@ public sealed class DaemonClient(DaemonIdentity identity)
 
     private Process StartProcess(TimeSpan idleTimeout, StringBuilder errors)
     {
-        var start = new ProcessStartInfo
-        {
-            FileName = Environment.GetEnvironmentVariable("DOTNET_HOST_PATH") ?? "dotnet",
-            WorkingDirectory = identity.Root,
-            UseShellExecute = false,
-            RedirectStandardInput = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            CreateNoWindow = true,
-        };
-        start.ArgumentList.Add(Assembly.GetEntryAssembly()!.Location);
+        var start = HostStartInfo();
         start.ArgumentList.Add("--daemon-host");
         start.ArgumentList.Add(identity.Root);
         start.ArgumentList.Add(idleTimeout.TotalSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture));
-        Process process;
-        try { process = Process.Start(start) ?? throw new DaemonCommunicationException("Failed to start the daemon process."); }
-        catch (System.ComponentModel.Win32Exception ex) { throw new DaemonCommunicationException("Failed to start the .NET daemon host.", ex); }
+        var process = StartHost(start);
         process.ErrorDataReceived += (_, args) =>
         {
             lock (errors)
@@ -95,6 +112,30 @@ public sealed class DaemonClient(DaemonIdentity identity)
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
         return process;
+    }
+
+    private ProcessStartInfo HostStartInfo()
+    {
+        if (!File.Exists(DaemonIdentity.HostPath))
+            throw new DaemonCommunicationException($"Managed daemon host missing: {DaemonIdentity.HostPath}");
+        var start = new ProcessStartInfo
+        {
+            FileName = Environment.GetEnvironmentVariable("DOTNET_HOST_PATH") ?? "dotnet",
+            WorkingDirectory = identity.Root,
+            UseShellExecute = false,
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true,
+        };
+        start.ArgumentList.Add(DaemonIdentity.HostPath);
+        return start;
+    }
+
+    private static Process StartHost(ProcessStartInfo start)
+    {
+        try { return Process.Start(start) ?? throw new DaemonCommunicationException("Failed to start the daemon process."); }
+        catch (System.ComponentModel.Win32Exception ex) { throw new DaemonCommunicationException("Failed to start the .NET daemon host.", ex); }
     }
 
     private async Task<DaemonResponse?> TrySendAsync(string method, TimeSpan connectTimeout, CancellationToken cancellationToken)

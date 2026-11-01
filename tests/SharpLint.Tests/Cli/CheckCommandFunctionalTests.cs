@@ -15,7 +15,8 @@ public sealed partial class CheckCommandFunctionalTests : IDisposable
     public CheckCommandFunctionalTests()
     {
         _repoRoot = LocateRepoRoot();
-        _cliDll = Path.Combine(_repoRoot, "src", "SharpLint.Cli", "bin", "Debug", "net10.0", "sharplint.dll");
+        _cliDll = Environment.GetEnvironmentVariable("SHARPLINT_TEST_EXECUTABLE")
+            ?? Path.Combine(_repoRoot, "src", "SharpLint.Cli", "bin", "Debug", "net10.0", "sharplint.dll");
         _workDir = Path.Combine(Path.GetTempPath(), $"sharplint-cli-{Guid.NewGuid():N}");
         _nugetCache = _workDir + "-nuget-cache";
         Directory.CreateDirectory(_workDir);
@@ -374,14 +375,14 @@ public sealed partial class CheckCommandFunctionalTests : IDisposable
 
         var psi = new ProcessStartInfo
         {
-            FileName = "dotnet",
+            FileName = _cliDll.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) ? "dotnet" : _cliDll,
             WorkingDirectory = _workDir,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true,
         };
-        psi.ArgumentList.Add(_cliDll);
+        if (_cliDll.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)) psi.ArgumentList.Add(_cliDll);
         foreach (var a in args) psi.ArgumentList.Add(a);
         psi.Environment["NUGET_PACKAGES"] = _nugetCache;
         psi.Environment["NO_COLOR"] = "1";

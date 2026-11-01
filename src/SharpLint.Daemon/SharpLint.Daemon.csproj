@@ -1,5 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <PublishAot>false</PublishAot>
+    <PublishTrimmed>false</PublishTrimmed>
+    <SelfContained>false</SelfContained>
+    <UseAppHost>false</UseAppHost>
+  </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="../SharpLint.Daemon.Client/SharpLint.Daemon.Client.csproj" />
     <ProjectReference Include="../SharpLint.Analysis/SharpLint.Analysis.csproj" />
   </ItemGroup>
 </Project>

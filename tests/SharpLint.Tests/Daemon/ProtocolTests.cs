@@ -56,10 +56,10 @@ public sealed class ProtocolTests
             foreach (var request in new[]
             {
                 new DaemonRequest(999, "1", "Handshake", identity.Root, DaemonIdentity.BuildId),
-                new DaemonRequest(1, "2", "Handshake", identity.Root, "old-build"),
-                new DaemonRequest(1, "3", "Status", "/wrong-repository", DaemonIdentity.BuildId),
-                new DaemonRequest(1, "4", "Unknown", identity.Root, DaemonIdentity.BuildId),
-                new DaemonRequest(1, "", "Status", identity.Root, DaemonIdentity.BuildId),
+                new DaemonRequest(DaemonIdentity.ProtocolVersion, "2", "Handshake", identity.Root, "old-build"),
+                new DaemonRequest(DaemonIdentity.ProtocolVersion, "3", "Status", "/wrong-repository", DaemonIdentity.BuildId),
+                new DaemonRequest(DaemonIdentity.ProtocolVersion, "4", "Unknown", identity.Root, DaemonIdentity.BuildId),
+                new DaemonRequest(DaemonIdentity.ProtocolVersion, "", "Status", identity.Root, DaemonIdentity.BuildId),
             })
             {
                 using var pipe = new NamedPipeClientStream(".", identity.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
@@ -88,6 +88,32 @@ public sealed class ProtocolTests
             await host;
             Directory.Delete(root, true);
         }
+    }
+
+    [Fact]
+    public async Task Generated_serializers_preserve_analysis_diagnostics_failures_and_statistics()
+    {
+        var diagnostic = new DiagnosticResponse("CS1002", "compiler", null, null, "error", "Expected ;",
+            "/source/A.cs", 2, 3, "project", "https://example.com/help", 12, 1, null);
+        var failure = new FailureResponse("Custom.Rule", "Compilation required");
+        var statistics = new StatisticsResponse(1, 2, 3, 4, 5, 9, 6, 7, 8, 9, 10, 11, 12);
+        var response = new DaemonResponse(DaemonIdentity.ProtocolVersion, "request", "completed", "build", 42,
+            new AnalysisResponse(3, new ResultResponse([diagnostic], 15, 2, [failure]), statistics, "fingerprint", true));
+        using var stream = new MemoryStream();
+        await Protocol.WriteAsync(stream, response, default);
+        stream.Position = 0;
+        var decoded = await Protocol.ReadAsync<DaemonResponse>(stream, default);
+        var analysis = Assert.IsType<AnalysisResponse>(decoded.Analysis);
+        Assert.Equal(diagnostic, Assert.Single(analysis.Result.Diagnostics));
+        Assert.Equal(failure, Assert.Single(analysis.Result.Failures));
+        Assert.False(analysis.Result.IsComplete);
+        Assert.True(analysis.Result.HasErrors);
+        Assert.Equal(15, analysis.Result.ElapsedMs);
+        Assert.Equal(2, analysis.Result.FilesAnalyzed);
+        Assert.Equal(3, analysis.SnapshotVersion);
+        Assert.True(analysis.Validated);
+        Assert.Equal("fingerprint", analysis.InputFingerprint);
+        Assert.Equal(statistics, analysis.Statistics);
     }
 
     [Fact]

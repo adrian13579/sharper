@@ -1,23 +1,27 @@
 using System.Buffers.Binary;
 using System.Text.Json;
-using SharpLint.Analysis;
+using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 
 namespace SharpLint.Daemon;
 
 public sealed record DaemonRequest(int ProtocolVersion, string RequestId, string Method, string Root, string BuildId);
 
 public sealed record DaemonResponse(int ProtocolVersion, string RequestId, string Status,
-    string BuildId, int ProcessId, SnapshotResult? Analysis = null, string? Error = null);
+    string BuildId, int ProcessId, AnalysisResponse? Analysis = null, string? Error = null);
 
 /// <summary>One request/response per connection, four-byte little-endian length followed by UTF-8 JSON.</summary>
 public static class Protocol
 {
     public const int MaximumMessageBytes = 32 * 1024 * 1024;
-    private static readonly JsonSerializerOptions s_options = new(JsonSerializerDefaults.Web) { MaxDepth = 32 };
+    private static readonly ProtocolJsonContext s_context = new(new JsonSerializerOptions(JsonSerializerDefaults.Web) { MaxDepth = 32 });
+
+    private static JsonTypeInfo<T> TypeInfo<T>() =>
+        (JsonTypeInfo<T>)(s_context.GetTypeInfo(typeof(T)) ?? throw new NotSupportedException($"Unsupported IPC type: {typeof(T)}"));
 
     public static async Task WriteAsync<T>(Stream stream, T value, CancellationToken cancellationToken)
     {
-        var payload = JsonSerializer.SerializeToUtf8Bytes(value, s_options);
+        var payload = JsonSerializer.SerializeToUtf8Bytes(value, TypeInfo<T>());
         if (payload.Length is <= 0 or > MaximumMessageBytes) throw new InvalidDataException("IPC payload exceeds the message limit.");
         var header = new byte[4];
         BinaryPrimitives.WriteInt32LittleEndian(header, payload.Length);
@@ -35,6 +39,10 @@ public static class Protocol
         if (length <= 0 || length > maximumBytes) throw new InvalidDataException("Invalid IPC message length.");
         var payload = new byte[length];
         await stream.ReadExactlyAsync(payload, cancellationToken).ConfigureAwait(false);
-        return JsonSerializer.Deserialize<T>(payload, s_options) ?? throw new InvalidDataException("Null IPC payload.");
+        return JsonSerializer.Deserialize(payload, TypeInfo<T>()) ?? throw new InvalidDataException("Null IPC payload.");
     }
 }
+
+[JsonSerializable(typeof(DaemonRequest))]
+[JsonSerializable(typeof(DaemonResponse))]
+internal sealed partial class ProtocolJsonContext : JsonSerializerContext;

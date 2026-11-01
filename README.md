@@ -30,6 +30,38 @@ The repository already includes [sharplint.config.cs](sharplint.config.cs); `ini
 
 Builds produce development NuGet packages in `packages/`, exposed through [NuGet.config](NuGet.config). When analyzing another directory, its NuGet sources must also include this local feed so its configuration can restore `SharpLint.Configuration@1.0.0-dev`. If a rebuilt package is stale in the NuGet cache, run `bash build.sh`; this evicts cached SharpLint.Core and SharpLint.Configuration packages before rebuilding.
 
+## Native CLI distribution
+
+Publishing the CLI uses Native AOT. The analysis daemon stays a regular,
+framework-dependent .NET executable with Roslyn, MSBuild, and dynamic analyzer
+loading. Install the .NET 10 SDK for project analysis and executable configuration.
+A native toolchain is also required when publishing the CLI (for example, Clang
+and the development linker/zlib packages on Linux).
+
+```bash
+dotnet publish src/SharpLint.Cli -c Release -r linux-x64 -o artifacts/sharplint
+./artifacts/sharplint/sharplint check --path ./some/dir
+
+# Create the native implementation package and its tool entry package.
+dotnet pack src/SharpLint.Cli -c Release -r linux-x64 -o artifacts/packages
+dotnet pack src/SharpLint.Cli -c Release -o artifacts/packages
+
+# Publish and run all CLI functional tests against the native executable.
+bash aot-test.sh linux-x64
+```
+
+Choose the runtime identifier for your target platform and publish on a compatible
+build platform. Distribute the entire publish directory: `sharplint` (or
+`sharplint.exe`) and its adjacent `daemon/` directory. The CLI starts
+`dotnet daemon/SharpLint.Daemon.dll`; `--no-daemon` uses that managed executable
+for a single complete analysis and leaves no persistent daemon. Debug builds and
+`dotnet run` remain managed for development.
+
+The tool entry package defaults to the build machine's runtime identifier. For
+other platforms, set `ToolPackageRuntimeIdentifiers` to the supported identifiers
+when packing the entry package, and build each native implementation package on
+a compatible platform with `dotnet pack -r <RID>`.
+
 ## Configuration
 
 `sharplint.config.cs` is a .NET 10 file-based app. SharpLint executes it with `dotnet run --file` and reads the configuration emitted by `.Apply()`.
@@ -77,7 +109,7 @@ The examples below use the built Debug binary, so build the solution first.
 # Analyze the current directory; automatically start or reuse its daemon.
 dotnet src/SharpLint.Cli/bin/Debug/net10.0/sharplint.dll check
 
-# Run a complete analysis in this process.
+# Run a complete analysis in a fresh managed process.
 dotnet src/SharpLint.Cli/bin/Debug/net10.0/sharplint.dll check --no-daemon
 
 # Manage a daemon for a specific directory.
@@ -154,8 +186,9 @@ Additional policies, specialized fluent builders, SARIF output, and autofix rema
 | [src/SharpLint.Core](src/SharpLint.Core) | Naming models and evaluation, rule metadata and registration, diagnostics, and syntax analysis. |
 | [src/SharpLint.Configuration](src/SharpLint.Configuration) | Fluent DSL, presets, JSON emission, and executable configuration loading. |
 | [src/SharpLint.Analysis](src/SharpLint.Analysis) | Project workspace coordination, compiler diagnostics, input snapshots, caches, and incremental analysis. |
-| [src/SharpLint.Daemon](src/SharpLint.Daemon) | Per-directory daemon identity, protocol, client, and host lifecycle. |
-| [src/SharpLint.Cli](src/SharpLint.Cli) | Spectre.Console.Cli commands and pretty/JSON rendering. |
+| [src/SharpLint.Daemon.Client](src/SharpLint.Daemon.Client) | AOT-compatible daemon client, identity, wire contracts, and generated JSON serialization. |
+| [src/SharpLint.Daemon](src/SharpLint.Daemon) | Managed executable for daemon hosting and one-shot analysis. |
+| [src/SharpLint.Cli](src/SharpLint.Cli) | Native CLI command dispatch and pretty/JSON rendering. |
 | [tests/SharpLint.Tests](tests/SharpLint.Tests) | xUnit tests, including analyzer integration and CLI/daemon functional tests. |
 | [docs/spec](docs/spec/README.md) | Adopted DSL and taxonomy contracts. |
 | [benchmarks/daemon.py](benchmarks/daemon.py) | End-to-end cold, warm, changed-input, concurrent-client, and restart benchmarks. |

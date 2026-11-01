@@ -1,12 +1,10 @@
 using Spectre.Console;
-using Spectre.Console.Cli;
-using SharpLint.Configuration;
 
 namespace SharpLint.Cli.Commands;
 
-public sealed class InitCommand : Command<InitCommand.Settings>
+public sealed class InitCommand
 {
-    public sealed class Settings : CommandSettings { }
+    private const string ConfigFileName = "sharplint.config.cs";
 
     private const string Template = """
         #:package SharpLint.Configuration@1.0.0-dev
@@ -19,17 +17,17 @@ public sealed class InitCommand : Command<InitCommand.Settings>
         }).Apply();
         """;
 
-    public override int Execute(CommandContext context, Settings settings)
+    public int Execute()
     {
-        var path = Path.Combine(Directory.GetCurrentDirectory(), ConfigLoader.DefaultFileName);
+        var path = Path.Combine(Directory.GetCurrentDirectory(), ConfigFileName);
         if (File.Exists(path))
         {
-            AnsiConsole.MarkupLine($"[yellow]{ConfigLoader.DefaultFileName} already exists.[/]");
+            AnsiConsole.MarkupLine($"[yellow]{ConfigFileName} already exists.[/]");
             return 1;
         }
 
         File.WriteAllText(path, Template);
-        AnsiConsole.MarkupLine($"[green]Created[/] {ConfigLoader.DefaultFileName}");
+        AnsiConsole.MarkupLine($"[green]Created[/] {ConfigFileName}");
         return 0;
     }
 }

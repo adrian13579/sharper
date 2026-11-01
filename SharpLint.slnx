@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/SharpLint.Analysis/SharpLint.Analysis.csproj" />
     <Project Path="src/SharpLint.Daemon/SharpLint.Daemon.csproj" />
+    <Project Path="src/SharpLint.Daemon.Client/SharpLint.Daemon.Client.csproj" />
     <Project Path="src/SharpLint.Cli/SharpLint.Cli.csproj" />
     <Project Path="src/SharpLint.Configuration/SharpLint.Configuration.csproj" />
     <Project Path="src/SharpLint.Core/SharpLint.Core.csproj" />
