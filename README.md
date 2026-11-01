@@ -3,7 +3,8 @@
 </p>
 
 # SharpLint
-[![Build](https://github.com/adrian13579/sharpLint/actions/workflows/dotnet.yml/badge.svg)](https://github.com/adrian13579/sharpLint/actions/workflows/dotnet.yml)
+[![Tests](https://github.com/adrian13579/sharplint/actions/workflows/dotnet.yml/badge.svg?branch=main&event=push)](https://github.com/adrian13579/sharplint/actions/workflows/dotnet.yml)
+[![Line coverage](https://raw.githubusercontent.com/adrian13579/sharplint/badges/coverage.svg)](https://github.com/adrian13579/sharplint/actions/workflows/dotnet.yml)
 [![License](https://img.shields.io/github/license/adrian13579/sharplint)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/adrian13579/sharplint)](https://github.com/adrian13579/sharplint/releases/latest)
 [![Issues](https://img.shields.io/github/issues/adrian13579/sharplint)](https://github.com/adrian13579/sharplint/issues)
@@ -216,7 +217,9 @@ Keep analysis and rule models in Core, configuration authoring and loading in Co
 bash coverage-test.sh
 ```
 
-The script restores pinned tools, runs the suite with Coverlet, and generates HTML, JSON, text, and Cobertura reports. Inspect `CoverageReport/index.html` and `CoverageReport/Summary.json` for uncovered lines and branches. Raw results are stored in a fresh directory under `TestResults/coverage/` for each run; generated reports are ignored by Git.
+The script restores pinned tools, runs the suite with Coverlet, and generates HTML, JSON, text, and Cobertura reports plus SVG badges. Inspect `CoverageReport/index.html` and `CoverageReport/Summary.json` for uncovered lines and branches. Raw results are stored in a fresh directory under `TestResults/coverage/` for each run; generated reports are ignored by Git.
+
+GitHub Actions runs the same coverage script and uploads the reports as the `coverage-report` artifact. The Tests badge tracks pushes to `main`; the line coverage badge shows combined Core and Configuration coverage from the latest successful run on `main`. The workflow generates the SVG with ReportGenerator and publishes it to the `badges` branch using `GITHUB_TOKEN`; no external coverage service or additional secret is needed. The coverage badge becomes available after the first successful run with this workflow. Pull requests generate reports without updating the published badge.
 
 [coverage.runsettings](coverage.runsettings) measures Core and Configuration. CLI functional tests run, but their subprocesses are not instrumented. There is no line or branch coverage gate. Additional test arguments can follow the script, for example `bash coverage-test.sh --filter FullyQualifiedName~AnalyzerTests` for a partial measurement.
 

@@ -15,7 +15,7 @@ dotnet test SharpLint.slnx -m:1 --collect:"XPlat Code Coverage" \
 dotnet tool run reportgenerator \
     "-reports:$coverage_run_dir/**/coverage.cobertura.xml" \
     "-targetdir:$repo_root/CoverageReport" \
-    "-reporttypes:Html;TextSummary;JsonSummary;Cobertura"
+    "-reporttypes:Html;TextSummary;JsonSummary;Cobertura;Badges"
 
 cat "$repo_root/CoverageReport/Summary.txt"
 echo "HTML report: $repo_root/CoverageReport/index.html"

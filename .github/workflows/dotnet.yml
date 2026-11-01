@@ -1,13 +1,16 @@
 # This workflow will build a .NET project
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
 
-name: .NET
+name: Tests
 
 on:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -26,5 +29,51 @@ jobs:
       run: dotnet restore
     - name: Build
       run: dotnet build --no-restore
-    - name: Test
-      run: dotnet test --no-build --verbosity normal
+    - name: Test with coverage
+      run: bash coverage-test.sh --no-build --verbosity normal
+    - name: Upload coverage reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: CoverageReport/
+        if-no-files-found: error
+
+  publish-coverage-badge:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: coverage-badge
+      cancel-in-progress: false
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/download-artifact@v4
+      with:
+        name: coverage-report
+        path: CoverageReport
+    - name: Publish line coverage badge
+      shell: bash
+      run: |
+        # An older run must not replace the badge for a newer main commit.
+        if [ "$(git ls-remote origin refs/heads/main | cut -f1)" != "$GITHUB_SHA" ]; then
+          echo "Skipping badge publication for an outdated commit."
+          exit 0
+        fi
+        if git ls-remote --exit-code --heads origin badges; then
+          git fetch origin badges
+          git switch --detach FETCH_HEAD
+        else
+          git switch --orphan badges
+        fi
+        cp CoverageReport/badge_linecoverage.svg coverage.svg
+        git add coverage.svg
+        if git diff --cached --quiet; then
+          echo "Coverage badge is unchanged."
+          exit 0
+        fi
+        git -c user.name='github-actions[bot]' \
+            -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -m "docs: update coverage badge"
+        git push origin HEAD:refs/heads/badges
