@@ -3,7 +3,7 @@
 </p>
 
 # SharpLint
-[![Build](https://github.com/OWNER/SharpLint/actions/workflows/build.yml/badge.svg)](https://github.com/OWNER/SharpLint/actions/workflows/dotnet.yml)
+[![Build](https://github.com/adrian13579/sharpLint/actions/workflows/dotnet.yml/badge.svg)](https://github.com/adrian13579/sharpLint/actions/workflows/dotnet.yml)
 
 A Roslyn-powered static analysis CLI for C# with fluent, typed configuration, readable diagnostics, and JSON output for CI and coding agents.
 
