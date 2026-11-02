@@ -1,3 +1,5 @@
+> Legacy compatibility library documentation. The LSP diagnostic service does not execute this DSL or its analyzer module framework. See [README](../../README.md) for the active service.
+
 # Naming Rules — Specification
 
 > **Status:** Draft v1. Adopted feature set. This document is the source of
@@ -76,7 +78,7 @@ public enum NamingConvention
 public enum Severity { Hidden, Info, Warning, Error }
 ```
 
-| Value | CLI behavior |
+| Value | Legacy library behavior |
 | --- | --- |
 | `Hidden` | Rule disabled. Not emitted. |
 | `Info` | Emitted. Never fails CI. |
@@ -112,7 +114,7 @@ Naming belongs to the [core taxonomy](taxonomy.md), identified by
 `NamingRule.Definition` exposes its rule ID, category, and scope (type,
 namespace, or symbol/member). This metadata does not alter selector precedence
 or the existing configuration JSON. Naming diagnostics expose the category
-as structured metadata; CLI JSON includes `"category": "naming"`.
+as structured metadata in the legacy diagnostic model. The active LSP service uses its own normalized contract.
 
 ### 3.1 Presets
 

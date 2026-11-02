@@ -1,19 +1,22 @@
 # Working on SharpLint
 
-SharpLint is a C#/.NET static analysis CLI built on Roslyn, with a fluent configuration DSL. Run commands from the repository root.
+SharpLint is a read-only MCP/CLI diagnostic bridge to Microsoft's official Roslyn language server. Run commands from the repository root. Core and Configuration retain the legacy fluent DSL as compatibility libraries, outside the service pipeline.
 
 ## Sources of truth
 
-- Read `docs/spec/README.md` and the relevant category spec before changing the DSL. `docs/spec/` defines adopted configuration behavior; `SPEC.md` contains planning and roadmap material.
-- Check current code and tests when establishing implemented behavior. Parts of `README.md` describe an older scaffold, including a rules project that is no longer present. Do not treat planned features as implemented.
+- Read `docs/lsp-service.md` for the active service contract. Read `docs/spec/README.md` and the relevant category spec before changing the retained legacy DSL. `docs/spec/` defines adopted configuration behavior; `SPEC.md` contains planning and roadmap material.
+- Check current code and tests when establishing implemented behavior. The DSL specs describe compatibility libraries; they do not configure the LSP service. Do not treat planned features as implemented.
 
 ## Repository layout
 
-- `src/SharpLint.Core/`: naming rule models, rule IDs, convention matching, diagnostics, and Roslyn syntax analysis.
+- `src/SharpLint.Analysis/`: diagnostic service, LSP framing/connection/session, disk synchronization and normalized diagnostic contracts. It must not reference Roslyn or MSBuild packages.
+- `src/SharpLint.Core/`: legacy naming/rule library APIs and their Roslyn syntax analysis.
 - `src/SharpLint.Configuration/`: configuration builders, presets, JSON emission, and loading of executable `sharplint.config.cs` files. Fluent naming builders live in `Dsl/`.
-- `src/SharpLint.Cli/`: Spectre.Console.Cli commands and pretty/JSON diagnostic output.
+- `src/SharpLint.Cli/`: command dispatch, pretty/JSON output and official C# SDK MCP stdio hosting. Both entry points use the same DiagnosticService.
 - `tests/SharpLint.Tests/`: xUnit tests for naming, analysis, and CLI behavior.
-- `sharplint.config.cs`: the repository's own configuration, using locally built NuGet packages.
+- `tests/SharpLint.FakeServer/`: controlled stdio LSP server for lifecycle and synchronization tests.
+- `tests/SharpLint.Tests/Fixtures/Lsp/`: real Roslyn multi-project fixture and ordinary custom analyzer.
+- `benchmarks/SharpLint.Benchmarks/`: disposable-fixture cold/warm latency baseline.
 
 ## Build and validation
 
@@ -30,9 +33,9 @@ dotnet test tests/SharpLint.Tests/SharpLint.Tests.csproj --filter FullyQualified
 dotnet run --project src/SharpLint.Cli -- check --path ./some/dir --format json
 ```
 
-- Build in Debug before running CLI functional tests: they locate `src/SharpLint.Cli/bin/Debug/net10.0/sharplint.dll` and use packages produced by the build.
-- Builds produce local NuGet packages in `packages/`; `NuGet.config` includes that feed. Config loading runs `dotnet run` on a .NET file-based app and may require package restore.
-- If manually running a config picks up stale `1.0.0-dev` packages, `./build.sh` evicts the cached SharpLint.Core and SharpLint.Configuration packages before rebuilding. This script modifies the NuGet cache outside the repository.
+- Build in Debug before running CLI/MCP integration tests: they locate `src/SharpLint.Cli/bin/Debug/net10.0/sharplint.dll`. Set `SHARPLINT_TEST_ROSLYN` to the installed official server executable; without it, real-server tests are explicitly skipped.
+- Builds produce retained Core/Configuration NuGet packages in `packages/`; `NuGet.config` includes that feed. Legacy configuration loading tests may require package restore. The active service never executes `sharplint.config.cs`.
+- `build.sh` builds without evicting global NuGet caches. Restore target solution dependencies and build custom analyzers before checking; the service disables automatic restore.
 - Changes limited to documentation or Markdown files do not require tests. For all other changes, including configuration changes, run the relevant tests and the full suite when changes cross project boundaries; if no narrower set applies, run `dotnet test SharpLint.slnx`. Report the results and any checks that could not run, with the reason.
 - Every new feature must include new tests that verify its observable behavior and relevant edge cases. Include those tests in the same atomic commit as the feature.
 - Every new rule category must include integration tests through the analyzer in `tests/SharpLint.Tests/Analysis/AnalyzerTests.cs` (or an equivalent category-specific analyzer test class). Exercise configuration, source analysis, and emitted diagnostics together, covering both compliant and violating code; isolated builder or evaluator tests alone are insufficient.
@@ -43,13 +46,13 @@ dotnet run --project src/SharpLint.Cli -- check --path ./some/dir --format json
 ## Implementation conventions
 
 - Follow nearby C# style: file-scoped namespaces, four-space indentation, explicit access modifiers, and nullable annotations. Preserve cancellation support and existing asynchronous patterns.
-- Keep analysis and rule models in Core, configuration authoring/loading in Configuration, and command rendering in Cli.
+- Keep LSP analysis and normalization in Analysis, MCP/CLI hosting in Cli, and retained library rules/configuration in Core/Configuration. The active service must not execute the legacy analyzer engine.
 - Expose built-in rules through a typed fluent DSL in every category, following Naming's API design: category callback, target selector, `Require…`/`Forbid…` requirement, then optional `.AsError()`, `.AsWarning()`, `.AsInfo()`, or `.Disabled()` modifiers. For example: `config.Design(d => d.Parameters().RequireMaximumCount(5).AsError())`. Modifiers apply only to the most recent requirement on their selector chain.
 - Use the fluent DSL in built-in rule documentation and examples. Keep string-based `Module(...).Rule(...)` and generic `Rule(...)` APIs for compatibility and external analyzers; new built-in policies must also have typed fluent authoring. Document each fluent requirement's stable rule ID and serialized options in the adopted specs.
 - Naming changes can span fluent builders, predicate flags, symbol extraction, rule evaluation, rule ID formatting, and serialization. Check all affected layers and update the adopted spec when changing its contract.
 - Treat emitted rule IDs and JSON fields as public contracts. Keep rule IDs deterministic and cover changed formatting behavior with tests.
 - Preserve naming precedence: for each verb, the last applicable declaration selects the winning selector chain; all constraints of that verb in that chain compose with AND. Separate selectors can override earlier chains. Hidden rules participate in precedence but are skipped individually during evaluation; different verbs resolve independently. Rules without chain metadata retain standalone last-declaration-wins behavior.
-- Analysis currently parses source files directly and skips `bin` and `obj`. Do not assume semantic compilation or MSBuild workspace loading exists.
+- Roslyn owns workspace loading, compilation, analyzer execution and project evaluation. SharpLint reconciles root-contained disk inputs and reports document pull scope; never equate an empty diagnostic list with successful solution verification.
 - Add regression coverage for changed behavior using the existing test patterns. CLI tests should exercise observable output and exit codes.
 
 ## Change hygiene

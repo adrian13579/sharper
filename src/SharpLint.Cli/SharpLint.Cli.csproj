@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <RootNamespace>SharpLint.Cli</RootNamespace>
@@ -7,55 +6,11 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>sharplint</ToolCommandName>
     <PackageId>sharplint</PackageId>
-    <Version>0.1.0-alpha</Version>
-    <PublishAot>true</PublishAot>
-    <ToolPackageRuntimeIdentifiers Condition="'$(ToolPackageRuntimeIdentifiers)' == ''">$(NETCoreSdkRuntimeIdentifier)</ToolPackageRuntimeIdentifiers>
-    <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
-    <!-- The daemon is deployed as a separate process, never loaded into this executable. -->
-    <ValidateExecutableReferencesMatchSelfContained>false</ValidateExecutableReferencesMatchSelfContained>
+    <Version>0.2.0-alpha</Version>
   </PropertyGroup>
-
   <ItemGroup>
-    <ProjectReference Include="../SharpLint.Daemon.Client/SharpLint.Daemon.Client.csproj" />
-    <ProjectReference Include="../SharpLint.Daemon/SharpLint.Daemon.csproj"
-                      ReferenceOutputAssembly="false"
-                      Private="false"
-                      AdditionalProperties="PublishAot=false;PublishTrimmed=false;SelfContained=false;RuntimeIdentifier=;UseAppHost=false" />
+    <ProjectReference Include="../SharpLint.Analysis/SharpLint.Analysis.csproj" />
+    <PackageReference Include="ModelContextProtocol" Version="2.3.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
   </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Spectre.Console" Version="0.49.1" />
-  </ItemGroup>
-
-  <Target Name="CopyManagedDaemon" AfterTargets="Build">
-    <MSBuild Projects="../SharpLint.Daemon/SharpLint.Daemon.csproj" Targets="GetTargetPath"
-             Properties="Configuration=$(Configuration);PublishAot=false;PublishTrimmed=false;SelfContained=false;UseAppHost=false"
-             RemoveProperties="RuntimeIdentifier;PublishDir;PackAsTool">
-      <Output TaskParameter="TargetOutputs" ItemName="_DaemonAssembly" />
-    </MSBuild>
-    <PropertyGroup>
-      <_DaemonOutputDirectory>@(_DaemonAssembly->'%(RootDir)%(Directory)')</_DaemonOutputDirectory>
-    </PropertyGroup>
-    <ItemGroup>
-      <_DaemonBuildFiles Include="$(_DaemonOutputDirectory)**/*" />
-    </ItemGroup>
-    <Copy SourceFiles="@(_DaemonBuildFiles)"
-          DestinationFiles="@(_DaemonBuildFiles->'$(TargetDir)daemon/%(RecursiveDir)%(Filename)%(Extension)')"
-          SkipUnchangedFiles="true" />
-  </Target>
-
-  <Target Name="PublishManagedDaemon" AfterTargets="ComputeFilesToPublish">
-    <MSBuild Projects="../SharpLint.Daemon/SharpLint.Daemon.csproj" Targets="Publish"
-             Properties="Configuration=$(Configuration);PublishAot=false;PublishTrimmed=false;SelfContained=false;UseAppHost=false;PublishDir=$(MSBuildProjectDirectory)/$(IntermediateOutputPath)managed-daemon/"
-             RemoveProperties="RuntimeIdentifier;PackAsTool">
-    </MSBuild>
-    <ItemGroup>
-      <_ManagedDaemonPublishFiles Include="$(IntermediateOutputPath)managed-daemon/**/*" />
-      <ResolvedFileToPublish Include="@(_ManagedDaemonPublishFiles)">
-        <RelativePath>daemon/%(_ManagedDaemonPublishFiles.RecursiveDir)%(_ManagedDaemonPublishFiles.Filename)%(_ManagedDaemonPublishFiles.Extension)</RelativePath>
-        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-      </ResolvedFileToPublish>
-    </ItemGroup>
-  </Target>
-
 </Project>

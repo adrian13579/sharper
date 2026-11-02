@@ -3,7 +3,6 @@ using System.Text.Json;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
-using SharpLint.Analysis;
 using SharpLint.Configuration;
 using SharpLint.Core.Analysis;
 using SharpLint.Core.Diagnostics;
@@ -39,9 +38,14 @@ public sealed class RoslynModuleTests : IDisposable
         Assert.Same(typeof(SharpLint.Core.Diagnostics.Diagnostic), loadedAnalyzer.GetType().GetProperty("CoreDiagnosticType")!.GetValue(loadedAnalyzer));
         Assert.Same(typeof(CSharpSyntaxTree), loadedAnalyzer.GetType().GetProperty("CSharpTreeType")!.GetValue(loadedAnalyzer));
         Assert.DoesNotContain(registry.Categories, c => c.Id == "Acme concern");
-        using var workspace = new WorkspaceCoordinator(_directory, _ => Task.FromResult(loaded), watch: false);
-        var first = await workspace.CheckAsync();
-        var diagnostic = Assert.Single(first.Result.Diagnostics, d => d.RuleId == "ACME001");
+        var tree = CSharpSyntaxTree.ParseText(File.ReadAllText(Path.Combine(_directory, "Sample.cs")), path: Path.Combine(_directory, "Sample.cs"));
+        var compilation = CSharpCompilation.Create("Test", [tree], [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)]);
+        var result = await new Analyzer().AnalyzeTreesAsync(new SharpLint.Core.Analysis.AnalysisContext
+        {
+            WorkingDirectory = _directory, NamingRules = [], Rules = loaded.Rules!, Registry = registry,
+            Compilations = [compilation],
+        }, [tree]);
+        var diagnostic = Assert.Single(result.Diagnostics, d => d.RuleId == "ACME001");
         Assert.Equal("Acme concern", diagnostic.CategoryId);
         Assert.Equal("acme.security", diagnostic.ModuleId);
         Assert.Equal(Severity.Error, diagnostic.Severity);
@@ -49,12 +53,7 @@ public sealed class RoslynModuleTests : IDisposable
         Assert.Equal("https://example.com/ACME001", diagnostic.HelpUrl);
         Assert.True(diagnostic.HasSourceLocation);
         Assert.Equal(new SourceLocation(Path.Combine(_directory, "Sample.cs"), 2, 7), diagnostic.Location);
-        Assert.Equal(23, diagnostic.SpanStart);
-        Assert.Equal(9, diagnostic.SpanLength);
-        Assert.DoesNotContain(first.Result.Diagnostics, d => d.RuleId == "ACME002");
-        Assert.Equal(first.Result.Diagnostics, (await workspace.CheckAsync()).Result.Diagnostics);
-        File.WriteAllText(Path.Combine(_directory, "Sample.cs"), "class Allowed {} class Forbidden {}");
-        Assert.DoesNotContain((await workspace.CheckAsync()).Result.Diagnostics, d => d.RuleId == "ACME001");
+        Assert.DoesNotContain(result.Diagnostics, d => d.RuleId == "ACME002");
     }
 
     [Fact]

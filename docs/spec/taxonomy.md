@@ -1,3 +1,5 @@
+> Legacy compatibility library documentation. The LSP diagnostic service does not execute this DSL or its analyzer module framework. See [README](../../README.md) for the active service.
+
 # Core rule taxonomy and modules
 
 Status: adopted built-in module taxonomy, initial policies, and external Roslyn
@@ -131,7 +133,7 @@ serializes analyzer instances. These assembly paths are local execution referenc
 not a portable configuration format for another machine.
 
 `SharpLintConfig.CreateRegistry()` loads the referenced types and combines them
-with built-ins. The stock CLI and daemon call it automatically. A custom host can
+with built-ins. The active LSP service does not call it. A library host can
 pass its existing registry to `CreateRegistry(hostRegistry)`. Missing assemblies,
 types, constructors, duplicate module/rule IDs, and analyzer exceptions fail
 explicitly. There is no automatic assembly scanning or analyzer discovery.
@@ -152,7 +154,7 @@ A direct Core host may supply `AnalysisContext.Compilations`. Without them, the
 adapter creates a syntax-host compilation with only the core runtime reference;
 this is suitable for syntax policies, not complete project semantic analysis.
 Providers requiring validated semantics can declare `ErrorFreeCompilation` in
-explicit host registrations. The CLI workspace supplies real project compilations.
+explicit host registrations. Embedding hosts must supply real project compilations.
 
 ## Registration, diagnostics, and execution
 
@@ -163,19 +165,15 @@ implementations. Provider names and descriptor categories are case-sensitive.
 The old `RuleCategory`, `RuleRegistration`, and `IRuleAnalyzer` host registration
 path remains a compatibility API; it does not define the new extension model.
 
-Diagnostics carry `ModuleId` (CLI JSON `module`) independently of `CategoryId`
-(CLI JSON `category`). Descriptor categories are preserved for external analyzers.
+Legacy library diagnostics carry `ModuleId` independently of `CategoryId`. Descriptor categories are preserved for external analyzers.
 Naming's category remains `naming`; its module is now `naming`. Compiler diagnostics
 retain their compiler origin and are separate from configured module rules.
 Roslyn source spans and help links are preserved; compilation-wide findings have
 `HasSourceLocation = false`. Results sort by file, line, column, preserving emission
 order for ties. Providers must emit deterministic findings and honor cancellation.
 
-The incremental host caches Naming per document. All other configured policies
-run over the complete captured inputs on every check, including unchanged checks.
-Custom analyzers receive project compilations; module scope does not imply narrow
-cache invalidation. Referenced analyzer assemblies participate in input reconciliation.
-Source generators and analyzer references discovered from target projects are not
-automatically executed. See [compiler integration](../compiler-diagnostics.md) and
-[daemon behavior](../daemon.md). No source rewriting, autofix, benchmarking, AI
-inference, or execution of target applications is introduced.
+The former incremental workspace host and daemon have been removed. These
+compatibility library contracts do not configure the LSP service. The active
+service delegates ordinary analyzer references and source generators to Roslyn;
+see the [service contract](../lsp-service.md). No source rewriting or autofix is
+provided by SharpLint.

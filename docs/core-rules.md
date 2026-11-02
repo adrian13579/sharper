@@ -1,3 +1,5 @@
+> Legacy compatibility library documentation. The LSP diagnostic service does not execute this DSL or its analyzer module framework. See [README](../README.md) for the active service.
+
 # Core rule reference
 
 SharpLint ships nine built-in modules: Naming and eight modules containing 16
@@ -530,12 +532,9 @@ declaration policies in a repository that centralizes settings.
 to a supplied compilation. Direct Core callers must provide these inputs;
 `Analyzer.AnalyzeAsync` parses files but does not load an MSBuild workspace.
 
-The CLI and daemon use the workspace host, which supplies compilations. If
-compilation validity is unknown or compiler errors are present, semantic rules
-are skipped with `AnalysisFailure` entries, safe findings are retained, and the
-result is incomplete. The CLI returns exit code `2` for incomplete analysis.
-Fix compiler errors before relying on semantic policy results. See
-[compiler diagnostics](compiler-diagnostics.md) for project loading boundaries.
+The LSP diagnostic service does not run these legacy policies or supply this
+AnalysisContext. Hosts embedding the retained Core library must supply their own
+compilations and handle AnalysisFailure entries when validity is unknown.
 
 ## Diagnostics and verification
 
@@ -543,13 +542,9 @@ Each fixed policy emits its full ID, configured severity, and matching module
 and category IDs. Naming emits its generated IDs with module/category `naming`.
 Findings carry a message and a file location with one-based line and column.
 Recommendations described above appear in the diagnostic message; these built-in
-policies do not provide source edits or autofixes. Use
-`sharplint check --format json` for machine-readable results; see the
-[diagnostic contract](compiler-diagnostics.md).
-
-The incremental host caches Naming per document. Other configured policies run
-over the complete captured inputs on every check, even when source is unchanged.
-See [daemon behavior](daemon.md) for cache and lifecycle details.
+policies do not provide source edits or autofixes. This is the legacy library
+model; the active CLI/MCP service uses the zero-based LSP model described in the
+[service contract](lsp-service.md). The old incremental host and daemon were removed.
 
 Implementation and regression coverage:
 

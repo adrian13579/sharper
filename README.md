@@ -1,252 +1,151 @@
-<p align="center">
-  <img src="logo.png" alt="SharpLint logo" width="560">
-</p>
-
 # SharpLint
-[![Tests](https://github.com/adrian13579/sharplint/actions/workflows/dotnet.yml/badge.svg?branch=main&event=push)](https://github.com/adrian13579/sharplint/actions/workflows/dotnet.yml)
-[![Line coverage](https://raw.githubusercontent.com/adrian13579/sharplint/badges/coverage.svg)](https://github.com/adrian13579/sharplint/actions/workflows/dotnet.yml)
-[![License](https://img.shields.io/github/license/adrian13579/sharplint)](LICENSE)
-[![Release](https://img.shields.io/github/v/release/adrian13579/sharplint)](https://github.com/adrian13579/sharplint/releases/latest)
-[![Issues](https://img.shields.io/github/issues/adrian13579/sharplint)](https://github.com/adrian13579/sharplint/issues)
 
-A Roslyn-powered static analysis CLI for C# with fluent, typed configuration, readable diagnostics, and JSON output for CI and coding agents.
+SharpLint is a local, read-only bridge from Microsoft's Roslyn language server to AI coding agents. It exposes compiler and ordinary Roslyn analyzer diagnostics through MCP stdio and a CLI, with one shared diagnostic service.
 
-**Status: pre-alpha.** Compiler diagnostics, Naming policies, and incremental daemon checks are implemented. The [adopted specifications](docs/spec/README.md) define the configuration contract; [SPEC.md](SPEC.md) describes the broader vision and planned features.
-
-## Quick start
-
-Use the .NET SDK selected by [global.json](global.json): **10.0.202**, with `latestMinor` roll-forward. Run these commands from the repository root:
-
-```bash
-dotnet build SharpLint.slnx
-dotnet test SharpLint.slnx
-
-# Create a starter configuration in the current directory, if one does not exist.
-dotnet run --project src/SharpLint.Cli -- init
-
-# Analyze the directory containing its own sharplint.config.cs.
-dotnet run --project src/SharpLint.Cli -- check --path ./some/dir
-
-# Emit JSON diagnostics, including cache and timing statistics.
-dotnet run --project src/SharpLint.Cli -- check --path ./some/dir --format json --stats
+```mermaid
+flowchart TB
+    Agent[AI coding agent] <-->|MCP stdio| MCP[SharpLint MCP server]
+    CLI[SharpLint CLI] --> Service[Diagnostic service and disk synchronization]
+    MCP --> Service
+    Service <-->|LSP stdio| Roslyn[Official Roslyn language server]
+    Roslyn --> Workspace[Roslyn workspace and project system]
+    Workspace --> Analysis[Compiler and Roslyn analyzers]
 ```
 
-The repository already includes [sharplint.config.cs](sharplint.config.cs); `init` refuses to overwrite an existing configuration. Without a configuration in the analyzed directory, SharpLint reports compiler diagnostics with **no policy rules**. Use `init` or add a configuration to enable policies.
+SharpLint does not construct compilations, load an MSBuild workspace, execute analyzers itself, or install packages into user projects. Roslyn owns those operations. The old DSL libraries remain available as legacy APIs; the diagnostic service does not load `sharplint.config.cs` or use SharpLint analyzer modules.
 
-Builds produce development NuGet packages in `packages/`, exposed through [NuGet.config](NuGet.config). When analyzing another directory, its NuGet sources must also include this local feed so its configuration can restore `SharpLint.Configuration@1.0.0-dev`. If a rebuilt package is stale in the NuGet cache, run `bash build.sh`; this evicts cached SharpLint.Core and SharpLint.Configuration packages before rebuilding.
+## Requirements and installation
 
-## Native CLI distribution
+- Build SharpLint with the SDK in `global.json`: .NET **10.0.202**, with `latestMinor` roll-forward.
+- Run with .NET **10**. The tested Roslyn server also requires .NET 10.
+- Install the [official Roslyn language server](https://github.com/dotnet/roslyn/blob/main/src/LanguageServer/roslyn-language-server/README.md). The tested version is pinned below; other versions must support the protocol described in [the service contract](docs/lsp-service.md).
+- Restore the target solution's dependencies yourself. SharpLint disables Roslyn's automatic package restore.
 
-Publishing the CLI uses Native AOT. The analysis daemon stays a regular,
-framework-dependent .NET executable with Roslyn, MSBuild, and dynamic analyzer
-loading. Install the .NET 10 SDK for project analysis and executable configuration.
-A native toolchain is also required when publishing the CLI (for example, Clang
-and the development linker/zlib packages on Linux).
-
-```bash
-dotnet publish src/SharpLint.Cli -c Release -r linux-x64 -o artifacts/sharplint
-./artifacts/sharplint/sharplint check --path ./some/dir
-
-# Create the native implementation package and its tool entry package.
-dotnet pack src/SharpLint.Cli -c Release -r linux-x64 -o artifacts/packages
+```sh
+dotnet tool install --global roslyn-language-server --version 5.13.0-1.26514.10
+mkdir -p packages
+dotnet build SharpLint.slnx -m:1
 dotnet pack src/SharpLint.Cli -c Release -o artifacts/packages
-
-# Publish and run all CLI functional tests against the native executable.
-bash aot-test.sh linux-x64
+dotnet tool install --global sharplint --version 0.2.0-alpha --add-source ./artifacts/packages
 ```
 
-Choose the runtime identifier for your target platform and publish on a compatible
-build platform. Distribute the entire publish directory: `sharplint` (or
-`sharplint.exe`) and its adjacent `daemon/` directory. The CLI starts
-`dotnet daemon/SharpLint.Daemon.dll`; `--no-daemon` uses that managed executable
-for a single complete analysis and leaves no persistent daemon. Debug builds and
-`dotnet run` remain managed for development.
+Use trusted projects: loading projects through Roslyn evaluates MSBuild and may run project build logic. SharpLint does not modify source files or apply language-server edits.
 
-The tool entry package defaults to the build machine's runtime identifier. For
-other platforms, set `ToolPackageRuntimeIdentifiers` to the supported identifiers
-when packing the entry package, and build each native implementation package on
-a compatible platform with `dotnet pack -r <RID>`.
+## MCP
 
-## Configuration
-
-`sharplint.config.cs` is a .NET 10 file-based app. SharpLint executes it with `dotnet run --file` and reads the configuration emitted by `.Apply()`.
-
-```csharp
-#:package SharpLint.Configuration@1.0.0-dev
-
-using SharpLint.Configuration;
-using SharpLint.Core.Naming;
-
-Lint.Configure(config =>
-{
-    config.UsePreset(Preset.Recommended);
-
-    config.Naming(n =>
-    {
-        n.Classes(c => c.Public())
-            .RequireConvention(NamingConvention.PascalCase)
-            .AsError();
-
-        n.Interfaces()
-            .RequirePrefix("I")
-            .ForbidPrefix("IInternal");
-
-        n.Methods(m => m.Async())
-            .RequireSuffix("Async")
-            .AsError();
-    });
-}).Apply();
-```
-
-`Preset.Recommended` declares PascalCase classes, interfaces, properties, and public methods; `I`-prefixed interfaces; `_camelCase` private fields; `UPPER_SNAKE_CASE` constants; `Async`-suffixed async methods; and camelCase parameters and local variables. Preset rules default to warnings.
-
-Naming supports classes, interfaces, records, enums, methods, properties, fields, parameters, local variables, and namespaces. Rules can require or forbid conventions, prefixes, suffixes, exact names, and regular expressions. Accessibility and modifier predicates narrow selectors; `.ExceptWithAttribute<T>()` exempts attributed symbols from an individual rule.
-
-Constraints in a selector chain compose with AND. For each verb, the last applicable selector chain wins; different verbs resolve independently. Severity and exemption modifiers apply to the most recent constraint. Use `.AsError()`, `.AsWarning()`, `.AsInfo()`, or `.Disabled()` to control reporting.
-
-See the [Naming specification](docs/spec/naming.md) for selectors, predicates, precedence, and worked examples.
-
-## CLI
-
-The examples below use the built Debug binary, so build the solution first.
-
-```bash
-# Analyze the current directory; automatically start or reuse its daemon.
-dotnet src/SharpLint.Cli/bin/Debug/net10.0/sharplint.dll check
-
-# Run a complete analysis in a fresh managed process.
-dotnet src/SharpLint.Cli/bin/Debug/net10.0/sharplint.dll check --no-daemon
-
-# Manage a daemon for a specific directory.
-dotnet src/SharpLint.Cli/bin/Debug/net10.0/sharplint.dll daemon start --path ./some/dir --idle-timeout 900
-dotnet src/SharpLint.Cli/bin/Debug/net10.0/sharplint.dll daemon status --path ./some/dir
-dotnet src/SharpLint.Cli/bin/Debug/net10.0/sharplint.dll daemon stop --path ./some/dir
-```
-
-| Command / option | Behavior |
-| --- | --- |
-| `init` | Create a recommended configuration in the current directory. |
-| `check --path <PATH>` | Analyze a directory recursively; defaults to the current directory. |
-| `check --format pretty\|json` | Select readable output or JSON; defaults to `pretty`. |
-| `check --stats` | Include snapshot, cache, and timing metadata. JSON output adds a `statistics` object. |
-| `check --no-daemon` | Run an independent, complete analysis without starting a daemon. |
-| `daemon start\|status\|stop --path <PATH>` | Manage the daemon for a directory; defaults to the current directory. |
-| `daemon start --idle-timeout <SECONDS>` | Set the idle timeout when starting a new daemon; defaults to 900 seconds. |
-
-The daemon retains a Roslyn project workspace, per-project compiler diagnostics, and per-document Naming diagnostics between checks. It reconciles inputs from disk, reuses unchanged documents, and invalidates cached analysis when configuration or project inputs change. Each check validates its input snapshot before returning results. Daemons stop after 15 minutes of inactivity by default. See the [daemon guide](docs/daemon.md) for cache boundaries, lifecycle details, and troubleshooting.
-
-Checks load recursive C# projects through MSBuildWorkspace and report Roslyn compilation diagnostics alongside policy findings. Restore projects before checking. Source edits invalidate their owning projects and transitive dependents; project/options/reference changes reload the workspace. Directories without projects use a synthetic library compilation. Unowned files and executable configuration remain policy inputs. See [compiler diagnostics](docs/compiler-diagnostics.md) for origins, coordinates, cache validity, source generators, and limitations relative to `dotnet build`. SharpLint does not modify target source files; design-time project loading may write SDK intermediate files.
-
-`check` returns these exit codes:
-
-| Code | Meaning |
-| --- | --- |
-| `0` | Analysis completed without error-severity diagnostics; warnings and information may be present. |
-| `1` | Analysis completed with error-severity diagnostics. |
-| `2` | Configuration or analysis failed, analysis is incomplete, or analysis was canceled. |
-| `3` | Daemon communication failed. |
-
-Disabled rules produce no diagnostics. Use `.AsError()` for policies that should fail CI.
-
-### JSON output
-
-`--format json` returns an object with analysis totals and a diagnostics array:
+Configure your MCP client with an absolute workspace path:
 
 ```json
 {
-  "filesAnalyzed": 1,
-  "elapsedMs": 12.5,
-  "diagnostics": [
-    {
-      "ruleId": "naming.class.public.convention",
-      "origin": "sharplint",
-      "category": "naming",
-      "severity": "error",
-      "message": "Class 'bad_name' must use PascalCase convention.",
-      "file": "/repo/Example.cs",
-      "line": 1,
-      "column": 14,
-      "suggestion": null
+  "mcpServers": {
+    "sharplint": {
+      "command": "sharplint",
+      "args": ["mcp", "--workspace", "/absolute/path/to/repository"],
+      "env": {
+        "SHARPLINT_ROSLYN_PATH": "/absolute/path/to/roslyn-language-server"
+      }
     }
-  ]
+  }
 }
 ```
 
-Paths, messages, and timing values above are illustrative. Diagnostics include stable rule IDs (original `CS*` IDs for the compiler), origins, categories, severities, source locations, project contexts, and optional suggestions/help URLs/spans. Location fields are null for compilation-wide findings; lines/UTF-16 columns are one-based. Top-level `status` and `failures` distinguish incomplete analysis. See the [full diagnostic contract](docs/compiler-diagnostics.md).
+During development, use `"command": "dotnet"` and prepend the absolute path to `src/SharpLint.Cli/bin/Debug/net10.0/sharplint.dll` to `args`. Logs go to stderr; stdout carries only MCP messages. SharpLint uses the [official C# MCP SDK](https://github.com/modelcontextprotocol/csharp-sdk).
 
-## Rule categories and extensions
+There are two tools:
 
-SharpLint ships nine [built-in rule modules](docs/spec/taxonomy.md): Naming, Syntax, Organization, Design, Dependencies, Architecture, Reliability, Performance, and Project. Naming provides its fluent selector DSL; the other modules provide 16 initial policies covering constructs, file organization, design limits, explicit dependencies, semantic architecture boundaries, exception patterns, allocations, and literal project declarations.
+- `sharplint_check(path?)`: reconcile disk and request diagnostics. An omitted path checks C# documents recursively under the workspace root, excluding generated sources in `bin` and `obj`. A path selects a file or directory inside that root.
+- `sharplint_status()`: initialize or inspect Roslyn availability, project loading, diagnostic capabilities, session/process identity, errors and limitations.
 
-Configure policies with the same selector and requirement pattern as Naming: `config.Design(d => d.Parameters().RequireMaximumCount(5).AsError())`. Each of the eight other categories has a typed callback and selectors; severity modifiers apply to the most recent requirement. Rules run only when selected. The [Core rule reference](docs/core-rules.md) covers Naming and all 16 fixed policies, with options, defaults, passing and violating examples, and syntax, semantic, and project XML boundaries. The [adopted policy table](docs/spec/taxonomy.md#initial-built-in-policies) defines their configuration contract.
+The MCP process keeps one Roslyn session warm. Source edits reuse that session; changes to project inputs or the source file set cause a bounded session reload. Checks run serially with cancellation and a deadline that includes time waiting in the queue.
 
-External users group standard Roslyn `DiagnosticAnalyzer` implementations into their own `RuleModule` values and register them with `config.UseModule(...)`. Their modules and descriptor categories are independent of the built-in taxonomy. Executable configuration carries analyzer assembly/type references so both the CLI and daemon can load the configured modules and run them against project compilations. See the [external module example](docs/spec/taxonomy.md#external-modules-use-roslyn-analyzers).
+## CLI
 
-Additional policies and selectors, SARIF output, and autofix remain future work. See [SPEC.md](SPEC.md) for planning material.
-
-## Repository structure
-
-| Path | Responsibility |
-| --- | --- |
-| [src/SharpLint.Core](src/SharpLint.Core) | Naming models and evaluation, rule metadata and registration, diagnostics, and syntax analysis. |
-| [src/SharpLint.Configuration](src/SharpLint.Configuration) | Fluent DSL, presets, JSON emission, and executable configuration loading. |
-| [src/SharpLint.Analysis](src/SharpLint.Analysis) | Project workspace coordination, compiler diagnostics, input snapshots, caches, and incremental analysis. |
-| [src/SharpLint.Daemon.Client](src/SharpLint.Daemon.Client) | AOT-compatible daemon client, identity, wire contracts, and generated JSON serialization. |
-| [src/SharpLint.Daemon](src/SharpLint.Daemon) | Managed executable for daemon hosting and one-shot analysis. |
-| [src/SharpLint.Cli](src/SharpLint.Cli) | Native CLI command dispatch and pretty/JSON rendering. |
-| [tests/SharpLint.Tests](tests/SharpLint.Tests) | xUnit tests, including analyzer integration and CLI/daemon functional tests. |
-| [docs/spec](docs/spec/README.md) | Adopted DSL and taxonomy contracts. |
-| [benchmarks/daemon.py](benchmarks/daemon.py) | End-to-end cold, warm, changed-input, concurrent-client, and restart benchmarks. |
-
-## Development and validation
-
-```bash
-# Build Debug before CLI functional tests: they invoke the Debug binary.
-dotnet build SharpLint.slnx
-dotnet test SharpLint.slnx
-
-# Run a focused test group.
-dotnet test tests/SharpLint.Tests/SharpLint.Tests.csproj --filter FullyQualifiedName~RuleIdFormatterTests
+```sh
+sharplint check
+sharplint check src/Example.cs
+sharplint check --path ./src --format json
+sharplint check src/Example.cs --workspace /path/to/repo --solution Example.slnx
+sharplint status --format json
+sharplint mcp --workspace /path/to/repo --timeout 120
 ```
 
-Keep analysis and rule models in Core, configuration authoring and loading in Configuration, and command rendering in Cli. Add observable behavior tests with each change. New rule categories need analyzer integration coverage for compliant and violating source. See [AGENTS.md](AGENTS.md) for contributor guidance.
+`--server` selects an executable or language-server DLL. Otherwise discovery uses `SHARPLINT_ROSLYN_PATH`, `PATH`, then the default .NET global tool directory. `--workspace` defaults to the current directory; for compatibility, a directory passed to `check --path` also becomes the workspace if none is explicit. With one root solution, Roslyn auto-loads it; use `--solution` when several exist. A root without a solution uses Roslyn's automatic C# project discovery (maximum 500 projects).
 
-### Code coverage
+Every separate CLI invocation has a cold language-server startup. Separate CLI processes do not share a warm workspace.
 
-```bash
+Exit codes: **0** = complete document check with no error-severity diagnostics, **1** = complete document check with diagnostic errors, **2** = incomplete, timed out, failed or invalid request, **130** = cancelled. Warnings do not cause exit code 1. `status` uses 0 for an available diagnostic session and 2 for failures.
+
+## Ordinary and custom analyzers
+
+Use normal .NET project configuration and `.editorconfig`:
+
+```xml
+<PropertyGroup>
+  <EnableNETAnalyzers>true</EnableNETAnalyzers>
+  <AnalysisLevel>latest</AnalysisLevel>
+</PropertyGroup>
+<!-- For a custom analyzer built as part of your solution: -->
+<ItemGroup>
+  <ProjectReference Include="../MyAnalyzer/MyAnalyzer.csproj"
+                    OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+</ItemGroup>
+```
+
+```ini
+[*.cs]
+dotnet_diagnostic.CA1822.severity = warning
+```
+
+NuGet analyzer package references work through the same native Roslyn project integration. Build custom analyzer projects and restore packages before checking. SharpLint does not need an analyzer inventory, registration, proprietary plugin, or DSL rule declaration. Analysis support and analyzer load errors are governed by the installed Roslyn version.
+
+## Results, completeness and freshness
+
+CLI JSON and MCP structured content use the same schema. Positions are **zero-based UTF-16** in JSON, MCP and pretty output. File paths are absolute and normalized using the host OS. Codes, optional source, related information, tags and opaque diagnostic data are preserved. Missing source identities are left absent.
+
+```json
+{
+  "status": "completed",
+  "scope": "file",
+  "requestedPath": "/repo/src/Example.cs",
+  "complete": true,
+  "freshness": "verified",
+  "diagnostics": [],
+  "errors": [],
+  "limitations": ["Scope is C# document pull diagnostics, not a complete solution build."],
+  "durationMs": 180,
+  "diagnosticCount": 0
+}
+```
+
+This is an illustrative response, not a measured latency target. Actual responses include all scope limitations.
+
+`complete: true` means that Roslyn completed the **document pull** scope and SharpLint reconciled the root's tracked inputs before and after that request. It does **not** mean all build diagnostics or all solution analyzer callbacks have run. Project-level diagnostics, non-local analyzer diagnostics, generated/closed documents, other target frameworks and inactive linked-file contexts may be absent. Workspace pull support is reported in status, but is not used to claim full solution coverage.
+
+Freshness is bounded to the workspace root. External project imports, references, SDKs and package caches must remain fixed. Symbolic links are rejected because their contents cannot be safely included in that guarantee. Restart after changes outside the root. A concurrent disk change, missing diagnostic result ID, observable loading error, refresh during analysis, timeout or cancellation produces explicit uncertainty. An empty array alone never indicates success. See [the detailed consistency contract](docs/lsp-service.md).
+
+## Troubleshooting
+
+- **Server not found:** install the pinned tool or set `--server` / `SHARPLINT_ROSLYN_PATH` to an absolute path.
+- **Runtime or initialization failure:** check `dotnet --info`, the installed server version, and `sharplint status --format json`. Older servers without automatic loading or Roslyn's initialization notification are unsupported and time out explicitly.
+- **Missing references/analyzers:** run `dotnet restore` and build analyzer projects. SharpLint exposes errors observed in Roslyn's error messages; not every build or analyzer-loading failure is available through document diagnostics.
+- **Incomplete after edits:** inspect `errors`; retry once the files are stable. Project/source-set changes reload the session. A failed or cancelled session is disposed; a subsequent request can start a new one. Recovery never loops indefinitely.
+- **Unexpectedly empty results:** check `complete`, `freshness`, solution selection, project membership, active target framework, and analyzer configuration. Files Roslyn treats as miscellaneous documents do not prove project compilation success.
+- **Restricted environment:** Roslyn's MSBuild build host and the .NET test runner need local sockets/named pipes; stdio transport does not eliminate that runtime requirement.
+
+## Tests and benchmarks
+
+```sh
+dotnet build SharpLint.slnx -m:1
+dotnet test SharpLint.slnx -m:1
+# Runs real Roslyn, native analyzer and custom analyzer, CLI and MCP integration tests:
+SHARPLINT_TEST_ROSLYN=/absolute/path/to/roslyn-language-server dotnet test SharpLint.slnx -m:1
 bash coverage-test.sh
+bash mutation-test.sh
+# 20 samples per warm scenario, five separate cold starts:
+SHARPLINT_TEST_ROSLYN=/absolute/path/to/roslyn-language-server \
+  dotnet run -c Release --project benchmarks/SharpLint.Benchmarks -- 20
 ```
 
-The script restores pinned tools, runs the suite with Coverlet, and generates HTML, JSON, text, and Cobertura reports plus SVG badges. Inspect `CoverageReport/index.html` and `CoverageReport/Summary.json` for uncovered lines and branches. Raw results are stored in a fresh directory under `TestResults/coverage/` for each run; generated reports are ignored by Git.
+Real integration tests are explicitly skipped when `SHARPLINT_TEST_ROSLYN` is unset. They use a temporary multi-project solution and assert returned diagnostics. The controlled fake server tests cover framing, correlation, synchronization, races, crashes, cancellation and protocol failures. Coverage includes the diagnostic service and retained libraries; CLI subprocess coverage is excluded. Mutation scores must reach **90% per measured Core and Configuration project**; coverage does not replace this requirement.
 
-GitHub Actions runs the same coverage script and uploads the reports as the `coverage-report` artifact. The Tests badge tracks pushes to `main`; the line coverage badge shows combined Core and Configuration coverage from the latest successful run on `main`. The workflow generates the SVG with ReportGenerator and publishes it to the `badges` branch using `GITHUB_TOKEN`; no external coverage service or additional secret is needed. The coverage badge becomes available after the first successful run with this workflow. Pull requests generate reports without updating the published badge.
-
-[coverage.runsettings](coverage.runsettings) measures Core and Configuration. CLI functional tests run, but their subprocesses are not instrumented. There is no line or branch coverage gate. Additional test arguments can follow the script, for example `bash coverage-test.sh --filter FullyQualifiedName~AnalyzerTests` for a partial measurement.
-
-### Mutation testing
-
-```bash
-bash mutation-test.sh                # Core and Configuration, separate reports
-bash mutation-test.sh Core           # Core analysis and naming rules
-bash mutation-test.sh Configuration  # Configuration DSL and presets
-```
-
-The script restores the pinned Stryker.NET tool and builds the solution. Its configuration is in [tests/SharpLint.Tests/stryker-config.json](tests/SharpLint.Tests/stryker-config.json). Inspect surviving mutants in `StrykerOutput/<project>/reports/mutation-report.html`; JSON reports are available alongside the HTML. These outputs are ignored by Git.
-
-Each measured project must reach a **mutation score of at least 90%**. A lower score fails this requirement even if the process exits successfully. Strengthen tests rather than lowering the threshold or excluding code to improve the score. Additional Stryker arguments can follow the target, for example `bash mutation-test.sh Core --mutate '**/RuleIdFormatter.cs'`.
-
-Mutation runs measure Core and Configuration through in-process tests. Subprocess-based CLI tests are excluded because they execute separate binaries and packaged assemblies. Run `dotnet test SharpLint.slnx` separately to verify the full suite.
-
-### Daemon benchmarks
-
-After building Debug, run the benchmark with Python 3:
-
-```bash
-python3 benchmarks/daemon.py --sizes 100 1000 --iterations 10
-```
-
-The benchmark creates temporary source repositories, stops their daemons on completion, and writes results to `benchmarks/results.json` by default. Results include median and p95 elapsed time, document reuse, cache hit rates, and daemon peak memory where available.
-
-## License
-
-SharpLint is licensed under the [Apache License 2.0](LICENSE).
+See [migration and protocol evidence](docs/lsp-service.md), [benchmark instructions](benchmarks/README.md) and [validation results](docs/lsp-validation.md). The old DSL [specifications](docs/spec/README.md) describe the retained compatibility libraries, not the service's configuration.

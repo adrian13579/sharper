@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Domain/Domain.csproj" />
+  <Project Path="Application/Application.csproj" />
+  <Project Path="Tests/Tests.csproj" />
+  <Project Path="CustomAnalyzer/CustomAnalyzer.csproj" />
+</Solution>

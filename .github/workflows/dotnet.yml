@@ -29,7 +29,11 @@ jobs:
       run: dotnet restore
     - name: Build
       run: dotnet build --no-restore
+    - name: Install tested Roslyn language server
+      run: dotnet tool install --tool-path "$RUNNER_TEMP/sharplint-tools" roslyn-language-server --version 5.13.0-1.26514.10
     - name: Test with coverage
+      env:
+        SHARPLINT_TEST_ROSLYN: ${{ runner.temp }}/sharplint-tools/roslyn-language-server
       run: bash coverage-test.sh --no-build --verbosity normal
     - name: Upload coverage reports
       uses: actions/upload-artifact@v4

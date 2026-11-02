@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="ModelContextProtocol.Core" Version="2.3.0" />
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.3.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
@@ -16,11 +17,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="Fixtures/Lsp/**/*.cs" />
     <Using Include="Xunit" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/SharpLint.Daemon/SharpLint.Daemon.csproj" />
+    <ProjectReference Include="../../src/SharpLint.Analysis/SharpLint.Analysis.csproj" />
+    <ProjectReference Include="../SharpLint.FakeServer/SharpLint.FakeServer.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\src\SharpLint.Core\SharpLint.Core.csproj" />
     <ProjectReference Include="..\..\src\SharpLint.Configuration\SharpLint.Configuration.csproj" />
     <ProjectReference Include="..\..\src\SharpLint.Cli\SharpLint.Cli.csproj">

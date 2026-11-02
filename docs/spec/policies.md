@@ -1,3 +1,5 @@
+> Legacy compatibility library documentation. The LSP diagnostic service does not execute this DSL or its analyzer module framework. See [README](../../README.md) for the active service.
+
 # Built-in policy fluent DSL
 
 Status: adopted for the 16 built-in policies outside Naming. These builders

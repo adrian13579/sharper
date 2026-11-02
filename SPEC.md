@@ -1,3 +1,5 @@
+> Legacy compatibility library documentation. The LSP diagnostic service does not execute this DSL or its analyzer module framework. See [README](README.md) for the active service.
+
 # SharpLint Configuration DSL — Roadmap & Design Notes
 
 > **This document is the planning and roadmap doc**, not the official
