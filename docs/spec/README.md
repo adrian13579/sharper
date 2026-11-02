@@ -13,15 +13,19 @@ once their shape is committed.
 | Module | Status | Document |
 | --- | --- | --- |
 | Naming | Draft v1 | [naming.md](naming.md) |
-| Syntax, Organization, Design, Dependencies, Architecture, Reliability, Performance, Project | Initial built-in policies adopted | [taxonomy.md](taxonomy.md) |
+| Syntax, Organization, Design, Dependencies, Architecture, Reliability, Performance, Project | Initial policies and fluent builders adopted | [policies.md](policies.md), [taxonomy.md](taxonomy.md) |
 
 [Core taxonomy and module contracts](taxonomy.md) define the built-in rule modules,
 initial policies, stable IDs, scopes, and external Roslyn analyzer configuration.
 External users create their own modules; the built-in taxonomy does not constrain them.
 
+For a user-facing guide to the implemented rules, see the
+[Core rule reference](../core-rules.md), including configuration, examples,
+defaults, and analysis limits for Naming and all 16 fixed policies.
+
 ## Not yet adopted (see [SPEC.md](../../SPEC.md))
 
-- Additional module policies and specialized fluent builders
+- Additional module policies and specialized selectors beyond the adopted builders
 - Dependency Injection policies
 - Testing
 - Entity Framework Core pack

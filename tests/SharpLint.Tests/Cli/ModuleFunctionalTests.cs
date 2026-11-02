@@ -10,18 +10,21 @@ namespace SharpLint.Tests.Cli;
 
 public sealed partial class CheckCommandFunctionalTests
 {
-    [Fact]
-    public async Task Executable_configuration_selects_builtin_module_policies()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Executable_configuration_selects_builtin_module_policies(bool fluent)
     {
         WriteNuGetConfig();
+        var declaration = fluent
+            ? "Lint.Configure(c => c.Design(d => d.Parameters().RequireMaximumCount(1).AsError())).Apply();"
+            : "Lint.Configure(c => c.Module(Rules.Design, m => m.Rule(\"design.maximum-parameters\", new { maximum = 1 }, Severity.Error))).Apply();";
         File.WriteAllText(Path.Combine(_workDir, "sharplint.config.cs"), """
             #:package SharpLint.Configuration@1.0.0-dev
             using SharpLint.Configuration;
             using SharpLint.Core.Diagnostics;
             using SharpLint.Core.Rules;
-            Lint.Configure(c => c.Module(Rules.Design, m => m
-                .Rule("design.maximum-parameters", new { maximum = 1 }, Severity.Error))).Apply();
-            """);
+            """ + Environment.NewLine + declaration);
         File.WriteAllText(Path.Combine(_workDir, "Sample.cs"), "class Sample { void M(int x, int y) {} }");
         var (exit, stdout, stderr) = await RunCliAsync("check", "--path", _workDir, "--format", "json", "--no-daemon");
         Assert.True(exit == 1, stdout + stderr);

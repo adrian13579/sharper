@@ -178,11 +178,11 @@ Paths, messages, and timing values above are illustrative. Diagnostics include s
 
 SharpLint ships nine [built-in rule modules](docs/spec/taxonomy.md): Naming, Syntax, Organization, Design, Dependencies, Architecture, Reliability, Performance, and Project. Naming provides its fluent selector DSL; the other modules provide 16 initial policies covering constructs, file organization, design limits, explicit dependencies, semantic architecture boundaries, exception patterns, allocations, and literal project declarations.
 
-Configure selected policies with `config.Module(Rules.Design, m => m.Rule("design.maximum-parameters", new { maximum = 5 }))`. Rules run only when selected. The [policy table and examples](docs/spec/taxonomy.md#initial-built-in-policies) define the implemented checks and their limits.
+Configure policies with the same selector and requirement pattern as Naming: `config.Design(d => d.Parameters().RequireMaximumCount(5).AsError())`. Each of the eight other categories has a typed callback and selectors; severity modifiers apply to the most recent requirement. Rules run only when selected. The [Core rule reference](docs/core-rules.md) covers Naming and all 16 fixed policies, with options, defaults, passing and violating examples, and syntax, semantic, and project XML boundaries. The [adopted policy table](docs/spec/taxonomy.md#initial-built-in-policies) defines their configuration contract.
 
 External users group standard Roslyn `DiagnosticAnalyzer` implementations into their own `RuleModule` values and register them with `config.UseModule(...)`. Their modules and descriptor categories are independent of the built-in taxonomy. Executable configuration carries analyzer assembly/type references so both the CLI and daemon can load the configured modules and run them against project compilations. See the [external module example](docs/spec/taxonomy.md#external-modules-use-roslyn-analyzers).
 
-Additional policies, specialized fluent builders, SARIF output, and autofix remain future work. See [SPEC.md](SPEC.md) for planning material.
+Additional policies and selectors, SARIF output, and autofix remain future work. See [SPEC.md](SPEC.md) for planning material.
 
 ## Repository structure
 

@@ -5,6 +5,7 @@ using SharpLint.Configuration;
 using SharpLint.Core.Analysis;
 using SharpLint.Core.Diagnostics;
 using SharpLint.Core.Rules;
+using SharpLint.Tests.Configuration;
 using CoreRules = SharpLint.Core.Rules.Rules;
 
 namespace SharpLint.Tests.Analysis;
@@ -18,8 +19,8 @@ public sealed class BuiltInModuleTests : IDisposable
     public void Dispose() => Directory.Delete(_directory, true);
 
     // Serializable data lets xUnit and mutation runners select individual policies rather than rerunning every row.
-    public static IEnumerable<object[]> SourcePolicies() => SourceCases().Select(row =>
-        new object[] { row[0], JsonSerializer.Serialize(row[1]), row[2], row[3] });
+    public static IEnumerable<object[]> SourcePolicies() => SourceCases().SelectMany(row => new[] { false, true }.Select(fluent =>
+        new object[] { row[0], JsonSerializer.Serialize(row[1]), row[2], row[3], fluent }));
 
     private static IEnumerable<object[]> SourceCases()
     {
@@ -53,10 +54,15 @@ public sealed class BuiltInModuleTests : IDisposable
 
     [Theory]
     [MemberData(nameof(SourcePolicies))]
-    public async Task Built_in_policies_execute_through_configuration_and_analysis(string id, string options, string bad, string good)
+    public async Task Built_in_policies_execute_through_configuration_and_analysis(string id, string options, string bad, string good, bool fluent)
     {
         var module = CoreRules.All.Single(m => m.Rules.Any(r => r.Definition.Id == id));
-        var config = Lint.Configure(c => c.Module(module, m => m.Rule(id, JsonSerializer.Deserialize<JsonElement>(options), Severity.Error)));
+        var config = Lint.Configure(c =>
+        {
+            var values = JsonSerializer.Deserialize<JsonElement>(options);
+            if (fluent) FluentPolicyConfigurationTests.Configure(c, id, values);
+            else c.Module(module, m => m.Rule(id, values, Severity.Error));
+        });
         config = JsonSerializer.Deserialize<SharpLintConfig>(JsonSerializer.Serialize(config))!;
         var path = Path.Combine(_directory, "Sample.cs");
         File.WriteAllText(path, bad);
@@ -90,14 +96,38 @@ public sealed class BuiltInModuleTests : IDisposable
         }, [tree]);
     }
 
+    [Fact]
+    public async Task Fluent_disabled_requirements_do_not_hide_other_requirements_in_the_same_chain()
+    {
+        var config = Lint.Configure(c => c
+            .Syntax(s => s.GotoStatements().Forbid().Disabled())
+            .Organization(o => o.Files()
+                .RequireOneType().AsError()
+                .RequireMatchingTypeName().Disabled()));
+        var result = await Analyze(config,
+            "class Sample { void M() { goto end; end: return; } } class Other {}",
+            Path.Combine(_directory, "Sample.cs"));
+        Assert.True(result.IsComplete);
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal("organization.one-type-per-file", diagnostic.RuleId);
+        Assert.Equal(Severity.Error, diagnostic.Severity);
+    }
+
     [Theory]
-    [InlineData("dependencies.forbidden-packages", "{\"packages\":[\"Unsafe.Package\"]}", "<ItemGroup><PackageReference Include=\"unsafe.package\" Version=\"1.0\" /></ItemGroup>", "<ItemGroup><PackageReference Include=\"Safe.Package\" Version=\"1.0\" /></ItemGroup>")]
-    [InlineData("project.nullable-enabled", "{}", "<PropertyGroup><Nullable>disable</Nullable></PropertyGroup>", "<PropertyGroup><Nullable>enable</Nullable></PropertyGroup>")]
-    [InlineData("project.target-frameworks", "{\"allowed\":[\"net10.0\"]}", "<PropertyGroup><TargetFrameworks>net10.0;net9.0</TargetFrameworks></PropertyGroup>", "<PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup>")]
-    public async Task Project_policies_check_literal_declarations_without_source_files(string id, string options, string bad, string good)
+    [InlineData("dependencies.forbidden-packages", "{\"packages\":[\"Unsafe.Package\"]}", "<ItemGroup><PackageReference Include=\"unsafe.package\" Version=\"1.0\" /></ItemGroup>", "<ItemGroup><PackageReference Include=\"Safe.Package\" Version=\"1.0\" /></ItemGroup>", false)]
+    [InlineData("dependencies.forbidden-packages", "{\"packages\":[\"Unsafe.Package\"]}", "<ItemGroup><PackageReference Include=\"unsafe.package\" Version=\"1.0\" /></ItemGroup>", "<ItemGroup><PackageReference Include=\"Safe.Package\" Version=\"1.0\" /></ItemGroup>", true)]
+    [InlineData("project.nullable-enabled", "{}", "<PropertyGroup><Nullable>disable</Nullable></PropertyGroup>", "<PropertyGroup><Nullable>enable</Nullable></PropertyGroup>", false)]
+    [InlineData("project.nullable-enabled", "{}", "<PropertyGroup><Nullable>disable</Nullable></PropertyGroup>", "<PropertyGroup><Nullable>enable</Nullable></PropertyGroup>", true)]
+    [InlineData("project.target-frameworks", "{\"allowed\":[\"net10.0\"]}", "<PropertyGroup><TargetFrameworks>net10.0;net9.0</TargetFrameworks></PropertyGroup>", "<PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup>", false)]
+    [InlineData("project.target-frameworks", "{\"allowed\":[\"net10.0\"]}", "<PropertyGroup><TargetFrameworks>net10.0;net9.0</TargetFrameworks></PropertyGroup>", "<PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup>", true)]
+    public async Task Project_policies_check_literal_declarations_without_source_files(string id, string options, string bad, string good, bool fluent)
     {
         using var document = JsonDocument.Parse(options);
-        var config = Lint.Configure(c => c.Rule(id, document.RootElement));
+        var config = Lint.Configure(c =>
+        {
+            if (fluent) FluentPolicyConfigurationTests.Configure(c, id, document.RootElement);
+            else c.Rule(id, document.RootElement);
+        });
         var path = Path.Combine(_directory, "Sample.csproj");
         File.WriteAllText(path, $"<Project>\n{bad}\n</Project>");
         var context = new AnalysisContext { WorkingDirectory = _directory, NamingRules = [], Rules = config.Rules! };

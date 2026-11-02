@@ -28,30 +28,36 @@ remain unchanged. Merely referencing a module enables no rules.
 #:package SharpLint.Configuration@1.0.0-dev
 
 using SharpLint.Configuration;
-using SharpLint.Core.Diagnostics;
 using SharpLint.Core.Naming;
-using SharpLint.Core.Rules;
 
 Lint.Configure(config => config
     .Naming(n => n.Classes().RequireConvention(NamingConvention.PascalCase))
-    .Module(Rules.Syntax, m => m
-        .Rule("syntax.no-goto")
-        .Rule("syntax.file-scoped-namespaces"))
-    .Module(Rules.Design, m => m
-        .Rule("design.maximum-parameters", new { maximum = 5 }, Severity.Error))
-    .Module(Rules.Project, m => m
-        .Rule("project.nullable-enabled")
-        .Rule("project.target-frameworks", new { allowed = new[] { "net10.0" } })))
+    .Syntax(s =>
+    {
+        s.GotoStatements().Forbid();
+        s.Namespaces().RequireFileScoped();
+    })
+    .Design(d => d.Parameters().RequireMaximumCount(5).AsError())
+    .Project(p =>
+    {
+        p.Nullable().RequireEnabled();
+        p.TargetFrameworks().RequireAllowed("net10.0");
+    }))
     .Apply();
 ```
 
-`Module` validates that the chosen module owns each full rule ID. The generic
+The [fluent policy builders](policies.md) use the same category callback, selector,
+requirement, and severity-modifier shape as Naming. They emit the fixed IDs below.
+`Module` remains available and validates that the chosen module owns each full rule ID. The generic
 `config.Rule(id, JsonElement, severity)` API remains available. A configured ID
 selects severity and JSON options; the corresponding policy validates its options.
 Duplicate configured rule IDs are rejected. `Hidden` rules are validated for
 registration but do not execute. No rules are enabled implicitly by registration.
 
 ### Initial built-in policies
+
+See the [Core rule reference](../core-rules.md) for per-policy configuration,
+passing and violating examples, counting and matching details, and input limits.
 
 All options objects default to `{}`. Required options below must be supplied.
 Array options must contain at least one nonblank string; limits must be positive

@@ -83,6 +83,43 @@ public sealed class ConfigBuilder
         return this;
     }
 
+    /// <summary>Declares preferred and forbidden C# constructs.</summary>
+    public ConfigBuilder Syntax(Action<SyntaxBuilder> configure) => ConfigureCategory(configure, new SyntaxBuilder(this));
+
+    /// <summary>Declares source file and type organization rules.</summary>
+    public ConfigBuilder Organization(Action<OrganizationBuilder> configure) => ConfigureCategory(configure, new OrganizationBuilder(this));
+
+    /// <summary>Declares parameter and type member limits.</summary>
+    public ConfigBuilder Design(Action<DesignBuilder> configure) => ConfigureCategory(configure, new DesignBuilder(this));
+
+    /// <summary>Declares explicit namespace import and package policies.</summary>
+    public ConfigBuilder Dependencies(Action<DependenciesBuilder> configure) => ConfigureCategory(configure, new DependenciesBuilder(this));
+
+    /// <summary>Declares semantic namespace and inheritance boundaries.</summary>
+    public ConfigBuilder Architecture(Action<ArchitectureBuilder> configure) => ConfigureCategory(configure, new ArchitectureBuilder(this));
+
+    /// <summary>Declares catch and rethrow policies.</summary>
+    public ConfigBuilder Reliability(Action<ReliabilityBuilder> configure) => ConfigureCategory(configure, new ReliabilityBuilder(this));
+
+    /// <summary>Declares allocation and conversion policies.</summary>
+    public ConfigBuilder Performance(Action<PerformanceBuilder> configure) => ConfigureCategory(configure, new PerformanceBuilder(this));
+
+    /// <summary>Declares literal project nullable and target framework policies.</summary>
+    public ConfigBuilder Project(Action<ProjectBuilder> configure) => ConfigureCategory(configure, new ProjectBuilder(this));
+
+    private ConfigBuilder ConfigureCategory<TBuilder>(Action<TBuilder> configure, TBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+        configure(builder);
+        return this;
+    }
+
+    internal void SetRuleSeverity(string ruleId, Severity severity)
+    {
+        var index = _rules.FindIndex(rule => rule.RuleId == ruleId);
+        _rules[index] = _rules[index] with { Severity = severity };
+    }
+
     internal SharpLintConfig Build() => new(_namingRules.ToArray())
     {
         Rules = _rules.Count == 0 ? null : _rules.ToArray(),
