@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Reflection;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -35,7 +36,12 @@ internal static class CliApplication
                     """);
                 return 0;
             }
-            if (args is ["--version"]) { Console.WriteLine("0.2.0-alpha"); return 0; }
+            if (args is ["--version"])
+            {
+                var version = typeof(CliApplication).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion;
+                Console.WriteLine(version.Split('+')[0]);
+                return 0;
+            }
             var command = args[0];
             if (command is not ("check" or "status" or "mcp")) throw new ArgumentException($"Unknown command: {command}");
             var options = new Dictionary<string, string>(StringComparer.Ordinal);

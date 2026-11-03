@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Xml.Linq;
 
 namespace SharpLint.Tests.Lsp;
 
@@ -9,6 +10,17 @@ public sealed class CliTests : IDisposable
     private static string Server => Path.Combine(ServiceTests.RepositoryRoot(), "tests/SharpLint.FakeServer/bin/Debug/net10.0/SharpLint.FakeServer.dll");
     public CliTests() { Directory.CreateDirectory(_root); File.WriteAllText(Path.Combine(_root, "Sample.cs"), "missing"); }
     public void Dispose() => Directory.Delete(_root, true);
+
+    [Fact]
+    public async Task Version_reports_the_tool_package_version_without_starting_Roslyn()
+    {
+        var project = XDocument.Load(Path.Combine(ServiceTests.RepositoryRoot(), "src/SharpLint.Cli/SharpLint.Cli.csproj"));
+        var expected = project.Descendants("Version").Single().Value;
+        var result = await RoslynFixture.RunAsync("dotnet", [Cli, "--version"], _root);
+        Assert.Equal(0, result.Code);
+        Assert.Equal(expected, result.Output.Trim());
+        Assert.Empty(result.Error);
+    }
 
     [Theory]
     [InlineData("check", "--unknown")]

@@ -1,0 +1,116 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to publish
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+
+jobs:
+  package:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.tag || github.ref }}
+    - uses: actions/setup-dotnet@v4
+      with:
+        global-json-file: global.json
+    - name: Validate release version and notes
+      shell: pwsh
+      run: |
+        $project = [xml](Get-Content src/SharpLint.Cli/SharpLint.Cli.csproj -Raw)
+        $version = $project.Project.PropertyGroup.Version
+        if ($env:RELEASE_TAG -ne "v$version") { throw 'Release tag must match the project version.' }
+        if (-not (Test-Path -LiteralPath "docs/release-notes/$($env:RELEASE_TAG).md")) { throw 'Release notes are required.' }
+    - name: Build Debug integration entry points
+      shell: pwsh
+      run: ./build.ps1
+    - name: Check PowerShell wrappers
+      shell: pwsh
+      run: ./tests/scripts/Test-PowerShellScripts.ps1
+    - name: Install tested Roslyn language server
+      if: runner.os == 'Linux'
+      run: dotnet tool install --tool-path "$RUNNER_TEMP/roslyn" roslyn-language-server --version 5.13.0-1.26514.10
+    - name: Test with real Roslyn and MCP
+      if: runner.os == 'Linux'
+      env:
+        SHARPLINT_TEST_ROSLYN: ${{ runner.temp }}/roslyn/roslyn-language-server
+      run: dotnet test SharpLint.slnx --no-build -m:1
+    - name: Pack the tool
+      run: dotnet pack src/SharpLint.Cli -c Release -o artifacts/packages -p:ContinuousIntegrationBuild=true
+    - name: Install and exercise the packaged tool
+      shell: pwsh
+      run: ./tests/scripts/Test-ToolPackage.ps1
+    - uses: actions/upload-artifact@v4
+      with:
+        name: sharplint-package-${{ runner.os }}
+        path: artifacts/packages/*.nupkg
+        if-no-files-found: error
+
+  publish:
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.tag || github.ref }}
+    - uses: actions/setup-dotnet@v4
+      with:
+        global-json-file: global.json
+    - uses: actions/download-artifact@v4
+      with:
+        name: sharplint-package-Linux
+        path: artifacts/packages
+    - name: Check NuGet account configuration
+      env:
+        NUGET_USER: ${{ vars.NUGET_USER }}
+      run: |
+        if [ -z "$NUGET_USER" ]; then
+          echo 'Set the NUGET_USER repository variable to the NuGet.org profile username.' >&2
+          exit 1
+        fi
+    - name: Authenticate to NuGet with OIDC
+      uses: NuGet/login@v1
+      id: login
+      with:
+        user: ${{ vars.NUGET_USER }}
+    - name: Publish the NuGet tool
+      env:
+        NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+      run: dotnet nuget push artifacts/packages/*.nupkg --source https://api.nuget.org/v3/index.json --api-key "$NUGET_API_KEY" --skip-duplicate
+    - name: Publish GitHub release
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+          echo "GitHub release $RELEASE_TAG already exists."
+          exit 0
+        fi
+        release_args=()
+        if [[ "$RELEASE_TAG" == *-* ]]; then
+          release_args+=(--prerelease --latest=false)
+        fi
+        gh release create "$RELEASE_TAG" artifacts/packages/*.nupkg \
+          --verify-tag --title "Sharplint ${RELEASE_TAG#v}" \
+          --notes-file "docs/release-notes/$RELEASE_TAG.md" "${release_args[@]}"

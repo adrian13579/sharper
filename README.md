@@ -1,13 +1,13 @@
 # Sharplint
 
 <p align="center">
-  <img src="logo.png" alt="Sharplint logo" width="600" />
+  <img src="https://raw.githubusercontent.com/adrian13579/sharplint/main/logo.png" alt="Sharplint logo" width="600" />
 </p>
 
 <p align="center">
   <a href="https://github.com/adrian13579/sharplint/actions/workflows/dotnet.yml"><img src="https://github.com/adrian13579/sharplint/actions/workflows/dotnet.yml/badge.svg?branch=main" alt="Build status" /></a>
   <a href="https://github.com/adrian13579/sharplint/actions/workflows/dotnet.yml"><img src="https://raw.githubusercontent.com/adrian13579/sharplint/badges/coverage.svg" alt="Test coverage" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="License: Apache 2.0" /></a>
+  <a href="https://github.com/adrian13579/sharplint/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="License: Apache 2.0" /></a>
   <a href="https://github.com/adrian13579/sharplint/issues"><img src="https://img.shields.io/github/issues/adrian13579/sharplint" alt="Open issues" /></a>
 </p>
 
@@ -22,21 +22,32 @@ An agent can check a file or directory, use diagnostic codes and source location
 
 ## Requirements and installation
 
-- Build Sharplint with the SDK in `global.json`: .NET **10.0.202**, with `latestMinor` roll-forward.
-- Run with .NET **10**. The tested Roslyn server also requires .NET 10.
-- Install the [official Roslyn language server](https://github.com/dotnet/roslyn/blob/main/src/LanguageServer/roslyn-language-server/README.md). The tested version is pinned below; other versions must support the protocol described in [the service contract](docs/lsp-service.md).
+Sharplint is available as a .NET tool. The current release is **[0.2.0-prealpha.1](https://github.com/adrian13579/sharplint/releases/tag/v0.2.0-prealpha.1)**.
+
+- Install the .NET **10 SDK** to install and run the tool.
+- Install the [official Roslyn language server](https://github.com/dotnet/roslyn/blob/main/src/LanguageServer/roslyn-language-server/README.md). The tested version is pinned below; other versions must support the protocol described in [the service contract](https://github.com/adrian13579/sharplint/blob/main/docs/lsp-service.md).
 - Restore the target solution's dependencies and build custom analyzer projects before checking.
 
-From a checkout of this repository:
+```sh
+dotnet tool install --global sharplint --version 0.2.0-prealpha.1
+dotnet tool install --global roslyn-language-server --version 5.13.0-1.26514.10
+sharplint --version
+```
+
+<details>
+<summary>Build and install from source</summary>
+
+Use the SDK selected by `global.json` (**10.0.202**, with `latestMinor` roll-forward). From a checkout:
 
 ```sh
-dotnet tool install --global roslyn-language-server --version 5.13.0-1.26514.10
 dotnet build SharpLint.slnx -m:1
 dotnet pack src/SharpLint.Cli -c Release -o artifacts/packages
-dotnet tool install --global sharplint --version 0.2.0-alpha --add-source ./artifacts/packages
+dotnet tool install --global sharplint --version 0.2.0-prealpha.1 --add-source ./artifacts/packages
 ```
 
 On Windows, you can also build with `.\build.ps1` from PowerShell. Each repository `.sh` script has a matching `.ps1` script with the same arguments.
+
+</details>
 
 Use trusted projects: loading projects through Roslyn evaluates MSBuild and may run project build logic.
 
@@ -107,4 +118,4 @@ dotnet_diagnostic.CA1822.severity = warning
 
 Roslyn loads analyzer NuGet packages through the same native project integration. Build custom analyzer projects and restore packages before checking. Sharplint forwards the resulting diagnostics using their original codes and severities.
 
-Sharplint is licensed under [Apache 2.0](LICENSE).
+Sharplint is licensed under [Apache 2.0](https://github.com/adrian13579/sharplint/blob/main/LICENSE).
