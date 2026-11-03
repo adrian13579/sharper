@@ -1,5 +1,9 @@
 # SharpLint
 
+<p align="center">
+  <img src="logo.png" alt="SharpLint logo" width="600" />
+</p>
+
 SharpLint is a local, read-only bridge from Microsoft's Roslyn language server to AI coding agents. It exposes compiler and ordinary Roslyn analyzer diagnostics through MCP stdio and a CLI, with one shared diagnostic service.
 
 ```mermaid
