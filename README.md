@@ -36,6 +36,8 @@ dotnet pack src/SharpLint.Cli -c Release -o artifacts/packages
 dotnet tool install --global sharplint --version 0.2.0-alpha --add-source ./artifacts/packages
 ```
 
+On Windows, you can also build with `.\build.ps1` from PowerShell. Each repository `.sh` script has a matching `.ps1` script with the same arguments.
+
 Use trusted projects: loading projects through Roslyn evaluates MSBuild and may run project build logic.
 
 ## MCP

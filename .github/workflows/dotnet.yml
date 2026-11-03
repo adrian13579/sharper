@@ -40,6 +40,17 @@ jobs:
         path: CoverageReport/
         if-no-files-found: error
 
+  powershell-scripts:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Check scripts in PowerShell 7
+      shell: pwsh
+      run: ./tests/scripts/Test-PowerShellScripts.ps1
+    - name: Check scripts in Windows PowerShell 5.1
+      shell: powershell
+      run: ./tests/scripts/Test-PowerShellScripts.ps1
+
   publish-coverage-badge:
     needs: build
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
