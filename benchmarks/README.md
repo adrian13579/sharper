@@ -13,6 +13,4 @@ Five cold sessions measure initialization through Roslyn's project-ready notific
 
 Cold process startup is separated from document analysis. Initial-load measurements can benefit from OS/NuGet caches; these are process-cold, not machine-cold. Project-reference results include restarting Roslyn. A small fixture is not representative of a large repository. Performance runs should occur without concurrent coverage/mutation work. No target latency is assumed.
 
-Historical daemon/compiler benchmark scripts and results were retired with that architecture; they are not evidence for the LSP service.
-
 The recorded baseline is in [lsp-results.json](lsp-results.json), with a human-readable table in [validation results](../docs/lsp-validation.md). Scenarios execute in sequence: unchanged-file samples follow the previous project reload; repeated warm calls follow batch analysis. The two distributions include different amounts of native post-load work and should not be treated as interchangeable latency claims.

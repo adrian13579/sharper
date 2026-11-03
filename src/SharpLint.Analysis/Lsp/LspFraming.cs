@@ -28,8 +28,10 @@ public static class LspFraming
             var pair = line.Split(':', 2);
             if (pair.Length != 2) throw new InvalidDataException("Malformed LSP header.");
             if (!pair[0].Equals("Content-Length", StringComparison.OrdinalIgnoreCase)) continue;
-            if (length is not null || !int.TryParse(pair[1].Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var parsed)
-                || parsed <= 0 || parsed > MaximumBodyLength) throw new InvalidDataException("Invalid LSP Content-Length.");
+            if (length is not null) throw new InvalidDataException("Invalid LSP Content-Length.");
+            if (!int.TryParse(pair[1].Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var parsed))
+                throw new InvalidDataException("Invalid LSP Content-Length.");
+            if (parsed <= 0 || parsed > MaximumBodyLength) throw new InvalidDataException("Invalid LSP Content-Length.");
             length = parsed;
         }
         if (length is null) throw new InvalidDataException("LSP Content-Length is missing.");

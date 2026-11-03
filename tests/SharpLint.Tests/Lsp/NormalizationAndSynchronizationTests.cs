@@ -26,6 +26,7 @@ public sealed class NormalizationAndSynchronizationTests : IDisposable
         });
         var parsed = DiagnosticNormalizer.Parse(items, uri);
         Assert.Equal("123", parsed[0].Code);
+        Assert.Equal("warning", parsed[0].Message);
         Assert.Equal("warning", parsed[0].Severity);
         Assert.Equal("Analyzer", parsed[0].Source);
         Assert.Equal(path, parsed[0].FilePath);
@@ -36,10 +37,23 @@ public sealed class NormalizationAndSynchronizationTests : IDisposable
         Assert.Equal("A", parsed[0].Data!.Value.GetProperty("project").GetString());
         Assert.Equal("https://example.com/rule", parsed[0].HelpUrl);
         Assert.Equal(1, Assert.Single(parsed[0].Tags!));
-        Assert.Equal(path, Assert.Single(parsed[0].RelatedInformation!).FilePath);
+        var related = Assert.Single(parsed[0].RelatedInformation!);
+        Assert.Equal(path, related.FilePath);
+        Assert.Equal("related", related.Message);
+        Assert.Equal(1, related.StartLine);
+        Assert.Equal(0, related.StartColumn);
+        Assert.Equal(1, related.EndLine);
+        Assert.Equal(2, related.EndColumn);
         var project = Assert.Single(DiagnosticNormalizer.Parse(JsonSerializer.SerializeToElement(new[] { new { code = "GLOBAL001", severity = 1, message = "Project diagnostic" } }), null));
         Assert.Null(project.FilePath);
         Assert.Null(project.StartLine);
+        Assert.Null(project.StartColumn);
+        Assert.Null(project.EndLine);
+        Assert.Null(project.EndColumn);
+        Assert.Null(project.RelatedInformation);
+        Assert.Null(project.Tags);
+        Assert.Null(project.Data);
+        Assert.Null(project.HelpUrl);
         Assert.Null(project.Source);
     }
 
@@ -65,6 +79,15 @@ public sealed class NormalizationAndSynchronizationTests : IDisposable
         Assert.Equal(ordered, DiagnosticNormalizer.Order([source, secondProject, a, b, b]));
         Assert.Empty(DiagnosticNormalizer.Parse(JsonSerializer.SerializeToElement(Array.Empty<object>()), null));
         Assert.Equal("unspecified", Assert.Single(DiagnosticNormalizer.Parse(JsonSerializer.SerializeToElement(new[] { new { message = "test" } }), null)).Severity);
+    }
+
+    [Fact]
+    public void Ordering_prioritizes_path_then_line_then_column_then_code_without_case_folding()
+    {
+        var a = new SharpLintDiagnostic { Code = "A", Message = "same", Severity = "error", FilePath = "/File.cs", StartLine = 0, StartColumn = 0 };
+        var values = new[] { a, a with { Code = "a" }, a with { StartColumn = 1 }, a with { StartLine = 1 }, a with { FilePath = "/file.cs" } };
+        Assert.Equal(values, DiagnosticNormalizer.Order(values.Reverse()));
+        Assert.Equal("", Assert.Single(DiagnosticNormalizer.Parse(JsonSerializer.SerializeToElement(new[] { new { message = "no code", severity = 1 } }), null)).Code);
     }
 
     [Theory]
@@ -121,6 +144,67 @@ public sealed class NormalizationAndSynchronizationTests : IDisposable
         var snapshot = await synchronization.ReadAsync();
         Assert.Equal("// 😀\r\nclass Example {}", snapshot.Files[file].Text);
         Assert.True(snapshot.Matches(await synchronization.ReadAsync()));
+    }
+
+    [Fact]
+    public async Task Tool_named_directories_are_ordinary_inputs_and_only_git_metadata_is_excluded()
+    {
+        var source = Path.Combine(_root, ".sharplint", "Sample.cs");
+        Directory.CreateDirectory(Path.GetDirectoryName(source)!);
+        File.WriteAllText(source, "class Sample {}");
+        Directory.CreateDirectory(Path.Combine(_root, ".git"));
+        File.WriteAllText(Path.Combine(_root, ".git", "config"), "metadata");
+        using var synchronization = new FileSynchronization(_root);
+        var before = await synchronization.ReadAsync();
+        Assert.Equal(source, Assert.Single(before.Files).Key);
+        File.WriteAllText(source, "class Changed {}");
+        synchronization.Record(source, 2);
+        Assert.Contains(source, synchronization.Drain().Events.Keys);
+        Assert.False(before.Matches(await synchronization.ReadAsync()));
+    }
+
+    [Fact]
+    public async Task Restore_assets_analyzer_binaries_and_generated_configuration_require_reload()
+    {
+        using var synchronization = new FileSynchronization(_root);
+        var source = Path.Combine(_root, "Source.CS");
+        File.WriteAllText(source, "class Original {}");
+        var inputs = new[] { "obj/project.assets.json", "obj/Generated.props", "obj/Generated.targets", "obj/Generated.editorconfig", "bin/Analyzer.dll" };
+        foreach (var input in inputs)
+        {
+            var path = Path.Combine(_root, input);
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(path, "initial");
+        }
+        File.WriteAllText(Path.Combine(_root, "bin", "Generated.cs"), "ignored");
+        var before = await synchronization.ReadAsync();
+        Assert.Equal(inputs.Length + 1, before.Files.Count);
+        Assert.Equal("class Original {}", before.Files[source].Text);
+        File.WriteAllText(source, "class Changed {}");
+        var editedSource = await synchronization.ReadAsync();
+        Assert.False(editedSource.RequiresReload(before));
+        foreach (var input in inputs)
+        {
+            File.WriteAllText(Path.Combine(_root, input), "changed");
+            Assert.True((await synchronization.ReadAsync()).RequiresReload(editedSource));
+            File.WriteAllText(Path.Combine(_root, input), "initial");
+        }
+    }
+
+    [Fact]
+    public async Task Unix_symbolic_links_cannot_escape_the_freshness_boundary()
+    {
+        if (OperatingSystem.IsWindows()) return; // Creating links may require elevated privileges on Windows.
+        var target = Path.Combine(Path.GetTempPath(), "sharplint-external-" + Guid.NewGuid().ToString("N"));
+        File.WriteAllText(target, "external source");
+        try
+        {
+            File.CreateSymbolicLink(Path.Combine(_root, "Linked.cs"), target);
+            using var synchronization = new FileSynchronization(_root);
+            var error = await Assert.ThrowsAsync<IOException>(() => synchronization.ReadAsync());
+            Assert.Contains("symbolic links", error.Message);
+        }
+        finally { File.Delete(target); }
     }
 
     [Fact]

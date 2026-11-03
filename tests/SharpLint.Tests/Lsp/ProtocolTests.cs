@@ -50,6 +50,23 @@ public sealed class ProtocolTests
     }
 
     [Fact]
+    public async Task Framing_accepts_case_insensitive_headers_and_ignores_content_type()
+    {
+        using var stream = new MemoryStream(Encoding.ASCII.GetBytes("Content-Type: application/vscode-jsonrpc; charset=utf-8\r\ncontent-length: 2\r\n\r\n{}"));
+        Assert.Equal("{}"u8.ToArray(), await LspFraming.ReadAsync(stream));
+        await Assert.ThrowsAsync<InvalidDataException>(() => LspFraming.WriteAsync(new MemoryStream(), ReadOnlyMemory<byte>.Empty));
+    }
+
+    [Fact]
+    public async Task Framing_accepts_a_header_at_the_documented_size_limit()
+    {
+        const string suffix = "\r\nContent-Length: 2\r\n\r\n";
+        var header = "X-Filler:" + new string('x', 8192 - "X-Filler:".Length - suffix.Length) + suffix;
+        using var stream = new MemoryStream(Encoding.ASCII.GetBytes(header + "{}"));
+        Assert.Equal("{}"u8.ToArray(), await LspFraming.ReadAsync(stream));
+    }
+
+    [Fact]
     public async Task Correlation_handles_out_of_order_responses_and_server_requests()
     {
         using var input = new ByteStream();
@@ -151,6 +168,34 @@ public sealed class ProtocolTests
         Assert.False(capabilities.DocumentDiagnostics);
         Assert.False(capabilities.WorkspaceDiagnostics);
         Assert.Throws<NotSupportedException>(() => capabilities.Initialize(JsonSerializer.SerializeToElement(new { positionEncoding = "utf-8" })));
+    }
+
+    [Fact]
+    public void Capability_changes_preserve_default_selectors_and_track_only_diagnostic_revisions()
+    {
+        var capabilities = new ServerCapabilities();
+        capabilities.Initialize(JsonSerializer.SerializeToElement(new { positionEncoding = "utf-16" }));
+        Assert.False(capabilities.OpenClose);
+        Assert.Equal(0, capabilities.SyncKind);
+        Assert.False(capabilities.WatchedFiles);
+        capabilities.Register(JsonSerializer.SerializeToElement(new { registrations = new[] { new { id = "watch", method = "workspace/didChangeWatchedFiles" } } }));
+        Assert.True(capabilities.WatchedFiles);
+        Assert.Equal(0, capabilities.DiagnosticRevision);
+        capabilities.Register(JsonSerializer.SerializeToElement(new { registrations = new object[]
+        {
+            new { id = "default", method = "textDocument/diagnostic" },
+            new { id = "null-selector", method = "textDocument/diagnostic", registerOptions = new { identifier = (string?)null, documentSelector = (object?)null } },
+        } }));
+        Assert.True(capabilities.DocumentDiagnostics);
+        Assert.Equal(new[] { "default" }, capabilities.Providers);
+        var revision = capabilities.DiagnosticRevision;
+        Assert.Equal(2, revision);
+        capabilities.Unregister(JsonSerializer.SerializeToElement(new { unregistrations = new[] { new { id = "absent" }, new { id = "watch" } } }));
+        Assert.False(capabilities.WatchedFiles);
+        Assert.Equal(revision, capabilities.DiagnosticRevision);
+        capabilities.Unregister(JsonSerializer.SerializeToElement(new { unregistrations = new[] { new { id = "default" }, new { id = "null-selector" } } }));
+        Assert.False(capabilities.DocumentDiagnostics);
+        Assert.Equal(revision + 2, capabilities.DiagnosticRevision);
     }
 
     private static async Task<JsonElement> Read(Stream stream, CancellationToken cancellationToken)

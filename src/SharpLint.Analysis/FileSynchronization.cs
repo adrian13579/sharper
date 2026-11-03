@@ -71,7 +71,7 @@ public sealed class FileSynchronization : IDisposable
             cancellationToken.ThrowIfCancellationRequested();
             foreach (var entry in Directory.EnumerateFileSystemEntries(directory, "*", options))
             {
-                if (Path.GetFileName(entry) is ".git" or ".sharplint") continue;
+                if (Path.GetFileName(entry) == ".git") continue;
                 var attributes = File.GetAttributes(entry);
                 if ((attributes & FileAttributes.ReparsePoint) != 0)
                     throw new IOException($"Cannot establish freshness across symbolic links: {entry}. Use a workspace without linked inputs.");
@@ -101,7 +101,7 @@ public sealed class FileSynchronization : IDisposable
     private static bool IsRelevant(string root, string path)
     {
         var parts = Path.GetRelativePath(root, path).Split(Path.DirectorySeparatorChar);
-        if (parts.Any(p => p is ".git" or ".sharplint")) return false;
+        if (parts.Any(p => p == ".git")) return false;
         if (!parts.Any(p => p is "bin" or "obj")) return true;
         // Generated sources belong to the server; restored assets, analyzer binaries and imports affect reloads.
         return Path.GetFileName(path) == "project.assets.json" || Path.GetExtension(path) is ".dll" or ".props" or ".targets" or ".editorconfig";

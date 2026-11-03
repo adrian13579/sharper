@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -10,7 +10,6 @@
   <ItemGroup>
     <PackageReference Include="ModelContextProtocol.Core" Version="2.3.0" />
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.3.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
@@ -24,8 +23,6 @@
   <ItemGroup>
     <ProjectReference Include="../../src/SharpLint.Analysis/SharpLint.Analysis.csproj" />
     <ProjectReference Include="../SharpLint.FakeServer/SharpLint.FakeServer.csproj" ReferenceOutputAssembly="false" />
-    <ProjectReference Include="..\..\src\SharpLint.Core\SharpLint.Core.csproj" />
-    <ProjectReference Include="..\..\src\SharpLint.Configuration\SharpLint.Configuration.csproj" />
     <ProjectReference Include="..\..\src\SharpLint.Cli\SharpLint.Cli.csproj">
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       <SkipGetTargetFrameworkProperties>true</SkipGetTargetFrameworkProperties>

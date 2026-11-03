@@ -12,7 +12,7 @@ flowchart TB
     Workspace --> Analysis[Compiler and Roslyn analyzers]
 ```
 
-SharpLint does not construct compilations, load an MSBuild workspace, execute analyzers itself, or install packages into user projects. Roslyn owns those operations. The old DSL libraries remain available as legacy APIs; the diagnostic service does not load `sharplint.config.cs` or use SharpLint analyzer modules.
+SharpLint does not construct compilations, load an MSBuild workspace, execute analyzers itself, or install packages into user projects. Roslyn owns those operations. Configure analyzers through ordinary project references, NuGet packages and `.editorconfig`.
 
 ## Requirements and installation
 
@@ -23,7 +23,6 @@ SharpLint does not construct compilations, load an MSBuild workspace, execute an
 
 ```sh
 dotnet tool install --global roslyn-language-server --version 5.13.0-1.26514.10
-mkdir -p packages
 dotnet build SharpLint.slnx -m:1
 dotnet pack src/SharpLint.Cli -c Release -o artifacts/packages
 dotnet tool install --global sharplint --version 0.2.0-alpha --add-source ./artifacts/packages
@@ -96,7 +95,7 @@ Use normal .NET project configuration and `.editorconfig`:
 dotnet_diagnostic.CA1822.severity = warning
 ```
 
-NuGet analyzer package references work through the same native Roslyn project integration. Build custom analyzer projects and restore packages before checking. SharpLint does not need an analyzer inventory, registration, proprietary plugin, or DSL rule declaration. Analysis support and analyzer load errors are governed by the installed Roslyn version.
+Roslyn loads analyzer NuGet packages through the same native project integration. Build custom analyzer projects and restore packages before checking. SharpLint forwards the resulting diagnostics without per-analyzer registration. Analysis support and analyzer load errors are governed by the installed Roslyn version.
 
 ## Results, completeness and freshness
 
@@ -132,7 +131,9 @@ Freshness is bounded to the workspace root. External project imports, references
 - **Unexpectedly empty results:** check `complete`, `freshness`, solution selection, project membership, active target framework, and analyzer configuration. Files Roslyn treats as miscellaneous documents do not prove project compilation success.
 - **Restricted environment:** Roslyn's MSBuild build host and the .NET test runner need local sockets/named pipes; stdio transport does not eliminate that runtime requirement.
 
-## Tests and benchmarks
+## Tests, coverage and mutation testing
+
+Keep coverage, mutation testing and benchmarks sequential: instrumentation modifies build outputs, and measurement needs an otherwise idle validation environment.
 
 ```sh
 dotnet build SharpLint.slnx -m:1
@@ -146,6 +147,6 @@ SHARPLINT_TEST_ROSLYN=/absolute/path/to/roslyn-language-server \
   dotnet run -c Release --project benchmarks/SharpLint.Benchmarks -- 20
 ```
 
-Real integration tests are explicitly skipped when `SHARPLINT_TEST_ROSLYN` is unset. They use a temporary multi-project solution and assert returned diagnostics. The controlled fake server tests cover framing, correlation, synchronization, races, crashes, cancellation and protocol failures. Coverage includes the diagnostic service and retained libraries; CLI subprocess coverage is excluded. Mutation scores must reach **90% per measured Core and Configuration project**; coverage does not replace this requirement.
+Real integration tests are explicitly skipped when `SHARPLINT_TEST_ROSLYN` is unset. They use a temporary multi-project solution and assert returned diagnostics. The controlled fake server tests cover framing, correlation, synchronization, races, crashes, cancellation and protocol failures. Coverage and mutation testing measure `SharpLint.Analysis`, the shared diagnostic service. CLI and real-server subprocess tests run separately from mutation testing. The service mutation score must reach **90%**; coverage does not replace this requirement.
 
-See [migration and protocol evidence](docs/lsp-service.md), [benchmark instructions](benchmarks/README.md) and [validation results](docs/lsp-validation.md). The old DSL [specifications](docs/spec/README.md) describe the retained compatibility libraries, not the service's configuration.
+See [the service contract and protocol evidence](docs/lsp-service.md), [benchmark instructions](benchmarks/README.md) and [validation results](docs/lsp-validation.md).

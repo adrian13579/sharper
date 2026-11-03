@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run the full suite and report in-process Analysis, Core and Configuration coverage.
+# Run the full suite and report in-process diagnostic service coverage.
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")" && pwd)"

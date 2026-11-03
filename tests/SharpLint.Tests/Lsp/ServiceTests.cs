@@ -25,13 +25,14 @@ public sealed class ServiceTests : IDisposable
         throw new InvalidOperationException("Repository root not found.");
     }
 
-    private static async Task<DiagnosticResponse> CheckStableAsync(DiagnosticService service)
+    private static async Task<DiagnosticResponse> CheckStableAsync(DiagnosticService service, string? path = null)
     {
         DiagnosticResponse response;
         for (var attempt = 0; ; attempt++)
         {
-            response = await service.CheckAsync();
+            response = await service.CheckAsync(path);
             if (response.Status != "incomplete" || attempt == 2) break;
+            Assert.Equal("uncertain", response.Freshness);
             await Task.Delay(100);
         }
         Assert.True(response.Complete, string.Join(";", response.Errors));
@@ -46,6 +47,12 @@ public sealed class ServiceTests : IDisposable
         await using var service = Create(mode);
         var first = await service.CheckAsync("Sample.cs");
         Assert.True(first.Complete, string.Join(";", first.Errors));
+        Assert.Equal("completed", first.Status);
+        Assert.Equal("file", first.Scope);
+        Assert.Equal(Path.Combine(_root, "Sample.cs"), first.RequestedPath);
+        Assert.Empty(first.Errors);
+        Assert.NotEmpty(first.Limitations);
+        Assert.True(first.DurationMs > 0);
         Assert.Equal("verified", first.Freshness);
         Assert.Equal("CS0103", Assert.Single(first.Diagnostics).Code);
         var unchanged = await service.CheckAsync("Sample.cs");
@@ -53,9 +60,18 @@ public sealed class ServiceTests : IDisposable
         Assert.True(unchanged.Complete);
         var status = await service.StatusAsync();
         Assert.True(status.Available);
+        Assert.Equal("ready", status.WorkspaceState);
+        Assert.Equal(_root, status.Workspace);
+        Assert.Null(status.Solution);
+        Assert.True(status.DiagnosticsAvailable);
+        Assert.Null(status.LastError);
+        Assert.True(status.ProcessId > 0);
+        Assert.Equal(new[] { "test" }, status.DiagnosticProviders);
+        Assert.False(status.WorkspaceDiagnosticCapability);
+        Assert.NotEmpty(status.Limitations);
         Assert.Equal(1, status.SessionStarts);
         File.WriteAllText(Path.Combine(_root, "Sample.cs"), "fixed");
-        var calls = await Task.WhenAll(Enumerable.Range(0, 3).Select(_ => service.CheckAsync("Sample.cs")));
+        var calls = await Task.WhenAll(Enumerable.Range(0, 3).Select(_ => CheckStableAsync(service, "Sample.cs")));
         Assert.All(calls, result => { Assert.True(result.Complete, string.Join(";", result.Errors)); Assert.Empty(result.Diagnostics); });
         Assert.Equal(status.ProcessId, (await service.StatusAsync()).ProcessId);
     }
@@ -232,5 +248,143 @@ public sealed class ServiceTests : IDisposable
             Assert.True(process.HasExited);
         }
         catch (ArgumentException) { /* Already reaped. */ }
+    }
+
+    [Fact]
+    public async Task Server_initiated_requests_preserve_configuration_and_read_only_boundaries()
+    {
+        await using var service = Create("handshake");
+        var status = await service.StatusAsync();
+        Assert.True(status.Available, status.LastError);
+        Assert.Equal("ready", status.WorkspaceState);
+        Assert.Null(status.LastError);
+        Assert.Equal("SharpLint controlled test server", status.ServerName);
+        var response = await service.CheckAsync("Sample.cs");
+        Assert.True(response.Complete, string.Join(";", response.Errors));
+        Assert.Equal("missing", File.ReadAllText(Path.Combine(_root, "Sample.cs")));
+        Assert.Equal(response.Diagnostics.Count, response.DiagnosticCount);
+    }
+
+    [Theory]
+    [InlineData("static-object", true)]
+    [InlineData("static-boolean", false)]
+    public async Task Static_capabilities_and_integer_sync_are_negotiated(string mode, bool workspaceDiagnostics)
+    {
+        await using var service = Create(mode);
+        var status = await service.StatusAsync();
+        Assert.True(status.DiagnosticsAvailable, status.LastError);
+        Assert.Equal(workspaceDiagnostics, status.WorkspaceDiagnosticCapability);
+        Assert.Empty(status.DiagnosticProviders);
+        await CheckStableAsync(service, "Sample.cs");
+        File.WriteAllText(Path.Combine(_root, "Sample.cs"), "fixed");
+        Assert.Empty((await CheckStableAsync(service, "Sample.cs")).Diagnostics);
+    }
+
+    [Theory]
+    [InlineData("no-sync")]
+    [InlineData("no-open-close")]
+    public async Task Unsupported_synchronization_fails_explicitly(string mode)
+    {
+        await using var service = Create(mode);
+        var result = await service.CheckAsync();
+        Assert.Equal("failed", result.Status);
+        Assert.False(result.Complete);
+        Assert.Equal("uncertain", result.Freshness);
+        Assert.Contains("synchronization", Assert.Single(result.Errors));
+    }
+
+    [Fact]
+    public async Task Absent_server_info_is_not_replaced_with_an_invented_identity()
+    {
+        await using var service = Create("no-server-info");
+        var status = await service.StatusAsync();
+        Assert.True(status.Available, status.LastError);
+        Assert.Null(status.ServerName);
+    }
+
+    [Fact]
+    public async Task Mismatched_unchanged_report_cannot_bless_cached_diagnostics()
+    {
+        await using var service = Create("mismatched-unchanged");
+        await CheckStableAsync(service, "Sample.cs");
+        var result = await service.CheckAsync("Sample.cs");
+        Assert.Equal("failed", result.Status);
+        Assert.False(result.Complete);
+        Assert.Equal("uncertain", result.Freshness);
+        Assert.Contains("unchanged", Assert.Single(result.Errors));
+    }
+
+    [Fact]
+    public async Task Watch_notifications_include_edits_creations_renames_deletions_and_project_changes()
+    {
+        var audit = Path.Combine(Path.GetTempPath(), "sharplint-watch-audit-" + Guid.NewGuid().ToString("N"));
+        File.WriteAllText(audit, "");
+        File.WriteAllText(Path.Combine(_root, "audit-path.txt"), audit);
+        try
+        {
+            await using var service = Create("watched-files");
+            await CheckStableAsync(service);
+            File.WriteAllText(Path.Combine(_root, "Sample.cs"), "fixed");
+            Assert.Empty((await CheckStableAsync(service)).Diagnostics);
+            AssertEvent("Sample.cs", 2);
+            File.WriteAllText(Path.Combine(_root, "New.cs"), "fixed");
+            await CheckStableAsync(service);
+            AssertEvent("New.cs", 1);
+            File.Move(Path.Combine(_root, "New.cs"), Path.Combine(_root, "Renamed.cs"));
+            await CheckStableAsync(service);
+            AssertEvent("New.cs", 3);
+            AssertEvent("Renamed.cs", 1);
+            File.Delete(Path.Combine(_root, "Renamed.cs"));
+            await CheckStableAsync(service);
+            AssertEvent("Renamed.cs", 3);
+            File.AppendAllText(Path.Combine(_root, "Test.csproj"), "changed");
+            await CheckStableAsync(service);
+            AssertEvent("Test.csproj", 2);
+        }
+        finally { File.Delete(audit); }
+
+        void AssertEvent(string relative, int type)
+        {
+            var uri = DiagnosticNormalizer.ToUri(Path.Combine(_root, relative));
+            Assert.Contains(File.ReadAllLines(audit), line =>
+            {
+                using var json = System.Text.Json.JsonDocument.Parse(line);
+                return json.RootElement.GetProperty("uri").GetString() == uri && json.RootElement.GetProperty("type").GetInt32() == type;
+            });
+        }
+    }
+
+    [Fact]
+    public async Task Directory_scope_is_request_local_even_when_its_name_ends_in_cs()
+    {
+        var directory = Path.Combine(_root, "nested.cs");
+        Directory.CreateDirectory(directory);
+        File.WriteAllText(Path.Combine(directory, "Inner.cs"), "missing");
+        await using var service = Create();
+        var response = await CheckStableAsync(service, "nested.cs");
+        Assert.Equal("documents", response.Scope);
+        Assert.Equal(Path.Combine(directory, "Inner.cs"), Assert.Single(response.Diagnostics).FilePath);
+        Assert.Equal(directory, response.RequestedPath);
+    }
+
+    [Fact]
+    public void Invalid_workspace_options_are_rejected_before_starting_a_server()
+    {
+        Assert.Throws<DirectoryNotFoundException>(() => new DiagnosticService(new DiagnosticServiceOptions { RootPath = Path.Combine(_root, "absent") }));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new DiagnosticService(new DiagnosticServiceOptions { RootPath = _root, Timeout = TimeSpan.Zero }));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new DiagnosticService(new DiagnosticServiceOptions { RootPath = _root, Timeout = TimeSpan.FromHours(2) }));
+        Assert.Throws<ArgumentException>(() => new DiagnosticService(new DiagnosticServiceOptions { RootPath = _root, SolutionPath = "missing.slnx" }));
+        Assert.Throws<ArgumentException>(() => new DiagnosticService(new DiagnosticServiceOptions { RootPath = _root, SolutionPath = "Test.csproj" }));
+    }
+
+    [Fact]
+    public async Task Startup_errors_include_bounded_server_stderr_context()
+    {
+        await using var service = Create("stderr-failure");
+        var status = await service.StatusAsync();
+        Assert.False(status.Available);
+        Assert.Contains("Unsupported runtime", status.LastError);
+        Assert.Contains("unsupported-runtime detail", status.LastError);
+        Assert.True(status.LastError!.Length < 9000);
     }
 }

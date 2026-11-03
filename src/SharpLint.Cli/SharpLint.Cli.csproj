@@ -7,10 +7,15 @@
     <ToolCommandName>sharplint</ToolCommandName>
     <PackageId>sharplint</PackageId>
     <Version>0.2.0-alpha</Version>
+    <Description>Read-only Roslyn LSP diagnostics for coding agents through MCP and CLI.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../SharpLint.Analysis/SharpLint.Analysis.csproj" />
     <PackageReference Include="ModelContextProtocol" Version="2.3.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
   </ItemGroup>
 </Project>

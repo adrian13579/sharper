@@ -1,18 +1,14 @@
-# Migration and service contract
+# Diagnostic connector service contract
 
-## Repository inspection and migration plan
+## Responsibilities and project boundaries
 
-The pre-migration repository had six production projects: Core (Roslyn-backed rules, diagnostics and syntax evaluation), Configuration (executable configuration and fluent DSL), Analysis (MSBuildWorkspace, compilation/reference snapshots and diagnostic caches), Daemon (local process/RPC lifecycle), Daemon.Client (protocol/client), and Cli (dispatch/rendering and AOT packaging). Tests covered those paths. It used .NET 10.0.202, Roslyn 5.3.0, Microsoft.Build 17.14.28, Microsoft.Build.Locator 1.5.5, and Spectre.Console 0.49.1.
+SharpLint connects coding agents to diagnostics from a persistent official Roslyn language-server session. MCP and CLI use the same diagnostic service and normalized response model.
 
-The adopted migration plan was:
+- `SharpLint.Analysis` owns LSP framing, request correlation, process/session lifecycle, disk synchronization, diagnostic normalization, freshness, scope, errors and cancellation. It uses only .NET libraries.
+- `SharpLint.Cli` owns command dispatch, pretty/JSON output and MCP stdio hosting through ModelContextProtocol 2.3.0 and Microsoft.Extensions.Hosting 10.0.0. Its only production project dependency is Analysis.
+- `SharpLint.Tests` verifies the connector through controlled transports, a fake server and a real multi-project Roslyn fixture. The fixture's custom analyzer is an ordinary external analyzer, not an application component.
 
-1. Verify the official server's actual protocol and runtime; select the official MCP SDK.
-2. Replace Analysis's workspace/compiler/cache implementation with a small LSP transport, persistent session, disk reconciliation and normalized responses.
-3. Route CLI and MCP through that same service; remove the obsolete daemon transport and native-AOT/managed-daemon deployment coupling.
-4. Retain Core/Configuration public library APIs and isolated library tests; remove the obsolete daemon/CLI tests and replace them with protocol, service and real integration tests.
-5. Document scoped completeness, synchronization boundaries, setup, tests and repeatable baseline measurement.
-
-The active dependency graph is `Cli -> Analysis` plus ModelContextProtocol 2.3.0 and Microsoft.Extensions.Hosting 10.0.0 in Cli. Analysis uses only .NET libraries. Core and Configuration are independent compatibility libraries and are not loaded by the service. No built-in DSL behavior or IDs changed.
+Roslyn owns project evaluation, workspace loading, compilation, source generators and analyzer execution. SharpLint neither defines rules nor executes user-authored configuration programs. Users configure analyzers with native .NET mechanisms. The repository contains no separate rule engine, configuration DSL, analyzer module registry or compatibility libraries. Standard LSP diagnostic codes and normalized JSON fields are public contracts.
 
 ## Tested server and protocol evidence
 
@@ -50,7 +46,7 @@ Automatic loading is documented upstream. Explicit selection and the readiness n
 
 The synchronization boundary is the configured root. Each check fully reads/hashes relevant files before and after analysis; watcher events are coalesced per path and debounced as hints. A watcher overflow triggers reconciliation and session reload. Missing notifications do not bypass the before/after scan.
 
-All ordinary files inside the root are tracked. `.git` and `.sharplint` are excluded. In `bin`/`obj`, restored assets, DLLs, props, targets and editorconfig inputs are tracked; generated C# sources are Roslyn's responsibility. Symbolic links cause a clear failure rather than silently escaping the boundary. Directory enumeration and hashing are deliberately simple; large roots may cost more than the LSP pull itself.
+All ordinary files inside the root are tracked. Only `.git` metadata is excluded by directory name; tool-named directories such as `.sharplint` are ordinary workspace inputs. In `bin`/`obj`, restored assets, DLLs, props, targets and editorconfig inputs are tracked; generated C# sources are Roslyn's responsibility. Symbolic links cause a clear failure rather than silently escaping the boundary. Directory enumeration and hashing are deliberately simple; large roots may cost more than the LSP pull itself.
 
 SharpLint opens every tracked C# source in Roslyn so changes in another source can affect the requested document's semantic diagnostics. Versions increase only for changed text. Incremental mode sends one replacement edit spanning the previous complete document, using zero-based UTF-16 positions including CRLF handling. Full mode sends a complete replacement without a range. Documents close during reload/disposal. Native watcher notifications are forwarded when registered, with disk diffs resolving create/delete/rename sequences. Changes to the file set, project/configuration inputs, analyzer DLLs or restore assets conservatively reload the session and await project initialization again. Ordinary C# text edits preserve the same process.
 
