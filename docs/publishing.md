@@ -29,7 +29,7 @@ To publish an existing release to GitHub Packages, run the **Release** workflow 
 
 1. Update `<Version>` in `src/SharpLint.Cli/SharpLint.Cli.csproj` and add `docs/release-notes/v<VERSION>.md`. Keep README installation commands version-free, using `--prerelease` for pre-alpha releases.
 2. Commit, then push `main` and the matching `v<VERSION>` tag.
-3. The release workflow builds and checks the installed package on Linux and Windows, runs the full suite with real Roslyn on Linux, publishes to NuGet.org and GitHub Packages, and creates a GitHub release with the `.nupkg` attached. Prerelease versions are marked as GitHub prereleases.
+3. The release workflow builds and checks the installed package on Linux and Windows, runs the full suite with real Roslyn on Linux, publishes to NuGet.org and GitHub Packages, and creates a GitHub release with the `.nupkg` attached. GitHub releases are marked as regular releases and **Latest** so they appear in the repository sidebar. Pre-alpha package versions retain their SemVer prerelease suffix and still require `--prerelease` for version-free .NET tool installation.
 
 To retry publication, run the **Release** workflow manually with the existing tag. NuGet duplicate versions are skipped; an existing GitHub release is preserved.
 

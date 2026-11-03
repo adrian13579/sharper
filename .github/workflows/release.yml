@@ -138,10 +138,6 @@ jobs:
           echo "GitHub release $RELEASE_TAG already exists."
           exit 0
         fi
-        release_args=()
-        if [[ "$RELEASE_TAG" == *-* ]]; then
-          release_args+=(--prerelease --latest=false)
-        fi
         gh release create "$RELEASE_TAG" artifacts/packages/*.nupkg \
-          --verify-tag --title "Sharplint ${RELEASE_TAG#v}" \
-          --notes-file "docs/release-notes/$RELEASE_TAG.md" "${release_args[@]}"
+          --verify-tag --prerelease=false --latest --title "Sharplint ${RELEASE_TAG#v}" \
+          --notes-file "docs/release-notes/$RELEASE_TAG.md"
