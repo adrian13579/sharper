@@ -18,26 +18,26 @@ An agent can check a file or directory, use diagnostic codes and source location
 
 ## Requirements and installation
 
-Sharplint is available as a .NET tool. The current release is **[0.2.0-prealpha.2](https://github.com/adrian13579/sharplint/releases/tag/v0.2.0-prealpha.2)**.
+Sharplint is available as a .NET tool in pre-alpha.
 
-- Install the .NET **10 SDK** to install and run the tool.
-- Install the [official Roslyn language server](https://github.com/dotnet/roslyn/blob/main/src/LanguageServer/roslyn-language-server/README.md). The tested version is pinned below; other versions must support the protocol described in [the service contract](https://github.com/adrian13579/sharplint/blob/main/docs/lsp-service.md).
+- Install the .NET SDK selected by [global.json](https://github.com/adrian13579/sharplint/blob/main/global.json) to install and run the tool.
+- Install the [official Roslyn language server](https://github.com/dotnet/roslyn/blob/main/src/LanguageServer/roslyn-language-server/README.md) with support for the protocol described in [the service contract](https://github.com/adrian13579/sharplint/blob/main/docs/lsp-service.md).
 - Restore the target solution's dependencies and build custom analyzer projects before checking.
 
 ```sh
-dotnet tool install --global sharplint --version 0.2.0-prealpha.2
-dotnet tool install --global roslyn-language-server --version 5.13.0-1.26514.10
+dotnet tool install --global sharplint --prerelease
+dotnet tool install --global roslyn-language-server --prerelease
 sharplint --version
 ```
 
 ### Build and install from source
 
-Use the SDK selected by `global.json` (**10.0.202**, with `latestMinor` roll-forward). From a checkout:
+Use the SDK selected by `global.json`. From a checkout:
 
 ```sh
 dotnet build SharpLint.slnx -m:1
 dotnet pack src/SharpLint.Cli -c Release -o artifacts/packages
-dotnet tool install --global sharplint --version 0.2.0-prealpha.2 --add-source ./artifacts/packages
+dotnet tool install --global sharplint --prerelease --add-source ./artifacts/packages
 ```
 
 On Windows, you can also build with `.\build.ps1` from PowerShell. Each repository `.sh` script has a matching `.ps1` script with the same arguments.
@@ -62,7 +62,7 @@ Configure your MCP client with an absolute workspace path:
 }
 ```
 
-During development, use `"command": "dotnet"` and prepend the absolute path to `src/SharpLint.Cli/bin/Debug/net10.0/sharplint.dll` to `args`. Logs go to stderr; stdout carries MCP messages.
+During development, use `"command": "dotnet"` and prepend the absolute path to the built `sharplint.dll` to `args`. Logs go to stderr; stdout carries MCP messages.
 
 There are two tools:
 
@@ -87,28 +87,5 @@ sharplint mcp --workspace /path/to/repo --timeout 120
 Each CLI invocation starts its own Roslyn session. Use MCP for repeated checks in a persistent session.
 
 Exit codes: **0** = complete document check with zero error-severity diagnostics, **1** = complete document check with diagnostic errors, **2** = incomplete, timed out, failed or invalid request, **130** = cancelled. `status` uses 0 for an available diagnostic session and 2 for failures.
-
-## Ordinary and custom analyzers
-
-Use normal .NET project configuration and `.editorconfig`:
-
-```xml
-<PropertyGroup>
-  <EnableNETAnalyzers>true</EnableNETAnalyzers>
-  <AnalysisLevel>latest</AnalysisLevel>
-</PropertyGroup>
-<!-- For a custom analyzer built as part of your solution: -->
-<ItemGroup>
-  <ProjectReference Include="../MyAnalyzer/MyAnalyzer.csproj"
-                    OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-</ItemGroup>
-```
-
-```ini
-[*.cs]
-dotnet_diagnostic.CA1822.severity = warning
-```
-
-Roslyn loads analyzer NuGet packages through the same native project integration. Build custom analyzer projects and restore packages before checking. Sharplint forwards the resulting diagnostics using their original codes and severities.
 
 Sharplint is licensed under [Apache 2.0](https://github.com/adrian13579/sharplint/blob/main/LICENSE).

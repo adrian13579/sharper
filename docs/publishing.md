@@ -19,7 +19,7 @@ Set the GitHub repository variable `NUGET_USER` to the NuGet.org profile usernam
 
 ## Release
 
-1. Update `<Version>` in `src/SharpLint.Cli/SharpLint.Cli.csproj`, the README's installation commands, and `docs/release-notes/v<VERSION>.md`.
+1. Update `<Version>` in `src/SharpLint.Cli/SharpLint.Cli.csproj` and add `docs/release-notes/v<VERSION>.md`. Keep README installation commands version-free, using `--prerelease` for pre-alpha releases.
 2. Commit, then push `main` and the matching `v<VERSION>` tag.
 3. The release workflow builds and checks the installed package on Linux and Windows, runs the full suite with real Roslyn on Linux, publishes to NuGet, and creates a GitHub release with the `.nupkg` attached. Prerelease versions are marked as GitHub prereleases.
 
