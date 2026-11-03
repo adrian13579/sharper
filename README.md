@@ -4,6 +4,13 @@
   <img src="logo.png" alt="SharpLint logo" width="600" />
 </p>
 
+<p align="center">
+  <a href="https://github.com/adrian13579/sharplint/actions/workflows/dotnet.yml"><img src="https://github.com/adrian13579/sharplint/actions/workflows/dotnet.yml/badge.svg?branch=main" alt="Build status" /></a>
+  <a href="https://github.com/adrian13579/sharplint/actions/workflows/dotnet.yml"><img src="https://raw.githubusercontent.com/adrian13579/sharplint/badges/coverage.svg" alt="Test coverage" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="License: Apache 2.0" /></a>
+  <a href="https://github.com/adrian13579/sharplint/issues"><img src="https://img.shields.io/github/issues/adrian13579/sharplint" alt="Open issues" /></a>
+</p>
+
 SharpLint is a local, read-only bridge from Microsoft's Roslyn language server to AI coding agents. It exposes compiler and ordinary Roslyn analyzer diagnostics through MCP stdio and a CLI, with one shared diagnostic service.
 
 ```mermaid
