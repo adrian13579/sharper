@@ -32,4 +32,4 @@ dotnet pack src/SharpLint.Cli -c Release -o artifacts/packages
 pwsh -NoProfile -File tests/scripts/Test-ToolPackage.ps1
 ```
 
-The package check installs from an isolated local feed and checks metadata, the command name, version, help, diagnostic exit codes and source-fix feedback using the controlled LSP server.
+The package check installs from an isolated local feed and checks metadata, the command name, version, help, diagnostic exit codes and source-fix feedback using the controlled LSP server. Packaged READMEs use standard Markdown images and links; raw HTML outside code examples fails validation because NuGet displays it as text.

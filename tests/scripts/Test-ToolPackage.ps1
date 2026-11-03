@@ -28,6 +28,12 @@ try {
     foreach ($entry in @('README.md', 'LICENSE', 'tools/net10.0/any/sharplint.dll', 'tools/net10.0/any/SharpLint.Analysis.dll')) {
         Assert-True ($null -ne $archive.GetEntry($entry)) "Missing package content: $entry"
     }
+    $reader = New-Object IO.StreamReader($archive.GetEntry('README.md').Open())
+    try { $readme = $reader.ReadToEnd() }
+    finally { $reader.Dispose() }
+    $prose = [regex]::Replace($readme, '(?ms)^```[^\r\n]*\r?\n.*?^```[^\r\n]*', '')
+    $prose = [regex]::Replace($prose, '`[^`\r\n]*`', '')
+    Assert-True (-not [regex]::IsMatch($prose, '</?[A-Za-z][^>]*>')) 'Package README must use NuGet-supported Markdown outside code examples'
 }
 finally {
     $archive.Dispose()
