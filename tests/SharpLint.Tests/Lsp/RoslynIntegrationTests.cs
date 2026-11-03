@@ -91,17 +91,17 @@ public sealed class RoslynIntegrationTests
         await using var client = await McpClient.CreateAsync(new StdioClientTransport(new StdioClientTransportOptions
         {
             Command = "dotnet", WorkingDirectory = fixture.Root,
-            Arguments = [RoslynFixture.CliPath, "mcp", "--workspace", fixture.Root, "--server", RoslynFixture.ServerPath],
+            Arguments = [RoslynFixture.CliPath, "mcp", "--server", RoslynFixture.ServerPath],
         }), cancellationToken: deadline.Token);
         var tools = await client.ListToolsAsync(cancellationToken: deadline.Token);
         Assert.Equal(new[] { "sharplint_check", "sharplint_status" }, tools.Select(t => t.Name).Order(StringComparer.Ordinal));
-        var statusResult = await client.CallToolAsync("sharplint_status", cancellationToken: deadline.Token);
+        var statusResult = await client.CallToolAsync("sharplint_status", new Dictionary<string, object?> { ["workspace"] = fixture.Root }, cancellationToken: deadline.Token);
         Assert.NotNull(statusResult.StructuredContent);
         Assert.True(statusResult.StructuredContent.Value.GetProperty("available").GetBoolean());
         JsonElement result = default;
         for (var attempt = 0; attempt < 3; attempt++)
         {
-            var check = await client.CallToolAsync("sharplint_check", new Dictionary<string, object?> { ["path"] = "Domain/Widget.cs" }, cancellationToken: deadline.Token);
+            var check = await client.CallToolAsync("sharplint_check", new Dictionary<string, object?> { ["workspace"] = fixture.Root, ["path"] = "Domain/Widget.cs" }, cancellationToken: deadline.Token);
             Assert.False(check.IsError == true);
             Assert.NotNull(check.StructuredContent);
             result = check.StructuredContent.Value;
@@ -113,20 +113,8 @@ public sealed class RoslynIntegrationTests
         Assert.Contains(result.GetProperty("diagnostics").EnumerateArray(), d => d.GetProperty("code").GetString() == "CS0103");
         Assert.True(result.GetProperty("diagnosticCount").GetInt32() > 0);
         Assert.True(result.GetProperty("durationMs").GetDouble() > 0);
-        var statusAgain = await client.CallToolAsync("sharplint_status", cancellationToken: deadline.Token);
+        var statusAgain = await client.CallToolAsync("sharplint_status", new Dictionary<string, object?> { ["workspace"] = fixture.Root }, cancellationToken: deadline.Token);
         Assert.Equal(statusResult.StructuredContent.Value.GetProperty("processId").GetInt32(), statusAgain.StructuredContent!.Value.GetProperty("processId").GetInt32());
-    }
-
-    [RoslynFact]
-    public async Task Actual_cli_returns_json_and_diagnostic_exit_code()
-    {
-        await using var fixture = await RoslynFixture.CreateAsync();
-        var result = await RoslynFixture.RunAsync("dotnet", [RoslynFixture.CliPath, "check", "Domain/Widget.cs", "--server", RoslynFixture.ServerPath, "--format", "json"], fixture.Root);
-        Assert.True(result.Code == 1, result.Output + result.Error);
-        using var json = JsonDocument.Parse(result.Output);
-        Assert.Equal("completed", json.RootElement.GetProperty("status").GetString());
-        Assert.True(json.RootElement.GetProperty("complete").GetBoolean());
-        Assert.Contains(json.RootElement.GetProperty("diagnostics").EnumerateArray(), d => d.GetProperty("code").GetString() == "CS0103");
     }
 }
 
@@ -174,10 +162,11 @@ internal sealed class RoslynFixture : IAsyncDisposable
         return result;
     }
 
-    public static async Task<(int Code, string Output, string Error)> RunAsync(string command, IEnumerable<string> arguments, string directory)
+    public static async Task<(int Code, string Output, string Error)> RunAsync(string command, IEnumerable<string> arguments, string directory, IReadOnlyDictionary<string, string>? environment = null)
     {
         var start = new ProcessStartInfo(command) { WorkingDirectory = directory, RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
         start.Environment["MSBUILDDISABLENODEREUSE"] = "1";
+        if (environment is not null) foreach (var (key, value) in environment) start.Environment[key] = value;
         foreach (var argument in arguments) start.ArgumentList.Add(argument);
         using var process = Process.Start(start)!;
         using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(3));

@@ -56,23 +56,73 @@ try {
     $helpText = & $tool --help
     Assert-True ($LASTEXITCODE -eq 0 -and ($helpText -join "`n").Contains('Usage: sharplint')) 'Installed command help failed'
 
+    $copilotConfig = Join-Path $testRoot 'copilot/mcp-config.json'
+    $codeConfig = Join-Path $testRoot 'vscode/mcp.json'
+    & $tool setup copilot --copilot-config $copilotConfig --vscode-config $codeConfig
+    Assert-True ($LASTEXITCODE -eq 0) 'Installed agent setup command failed'
+    $copilot = Get-Content -LiteralPath $copilotConfig -Raw | ConvertFrom-Json
+    $code = Get-Content -LiteralPath $codeConfig -Raw | ConvertFrom-Json
+    Assert-True ($copilot.mcpServers.sharplint.args -contains 'mcp' -and $code.servers.sharplint.args -contains 'mcp') 'Both clients must start MCP'
+    Assert-True ($copilot.mcpServers.sharplint.args -notcontains '--workspace' -and $code.servers.sharplint.args -notcontains '--workspace') 'Agent setup must be repository-independent'
+
     $workspace = Join-Path $testRoot 'workspace'
     New-Item -ItemType Directory -Path $workspace | Out-Null
     $source = Join-Path $workspace 'Sample.cs'
     Set-Content -LiteralPath $source -Value 'missing'
     $server = Join-Path $repoRoot 'tests/SharpLint.FakeServer/bin/Debug/net10.0/SharpLint.FakeServer.dll'
-    $result = & $tool check $source --workspace $workspace --server $server --format json
-    Assert-True ($LASTEXITCODE -eq 1) "Installed command must return 1 for diagnostic errors: $result"
-    $diagnostics = ($result -join "`n") | ConvertFrom-Json
-    Assert-True ($diagnostics.complete -and $diagnostics.freshness -eq 'verified') 'Installed command must return complete, fresh document diagnostics'
-    Assert-True ($diagnostics.diagnostics.code -contains 'CS0103') 'Installed command must return the compiler diagnostic'
-
-    Set-Content -LiteralPath $source -Value 'fixed'
-    $result = & $tool check $source --workspace $workspace --server $server --format json
-    Assert-True ($LASTEXITCODE -eq 0) "Installed command must return 0 after the source is fixed: $result"
-    $diagnostics = ($result -join "`n") | ConvertFrom-Json
-    Assert-True ($diagnostics.complete -and $diagnostics.diagnosticCount -eq 0) 'Installed command must report the fix'
-    Write-Output "sharplint $version package metadata, installation, help, version, and diagnostic checks passed."
+    $mcp = New-Object Diagnostics.Process
+    $mcp.StartInfo = New-Object Diagnostics.ProcessStartInfo
+    $mcp.StartInfo.FileName = $tool
+    $mcp.StartInfo.UseShellExecute = $false
+    $mcp.StartInfo.RedirectStandardInput = $true
+    $mcp.StartInfo.RedirectStandardOutput = $true
+    $mcp.StartInfo.RedirectStandardError = $true
+    foreach ($argument in @('mcp', '--server', $server)) { $mcp.StartInfo.ArgumentList.Add($argument) }
+    Assert-True ($mcp.Start()) 'Installed MCP server failed to start'
+    $mcp.StandardInput.AutoFlush = $true
+    $stderr = $mcp.StandardError.ReadToEndAsync()
+    $mcpState = [PSCustomObject]@{ Id = 0; Process = $mcp }
+    function Invoke-McpRequest([string] $Method, [hashtable] $Parameters) {
+        $mcpState.Id++
+        $message = @{ jsonrpc = '2.0'; id = $mcpState.Id; method = $Method; params = $Parameters }
+        $mcpState.Process.StandardInput.WriteLine(($message | ConvertTo-Json -Depth 30 -Compress))
+        while ($true) {
+            $read = $mcpState.Process.StandardOutput.ReadLineAsync()
+            Assert-True ($read.Wait(30000)) "MCP response timed out: $Method"
+            $line = $read.GetAwaiter().GetResult()
+            Assert-True ($null -ne $line) "MCP server disconnected: $Method"
+            $reply = $line | ConvertFrom-Json
+            if ($reply.id -eq $mcpState.Id) {
+                Assert-True ($null -eq $reply.error) "MCP request failed: $line"
+                Assert-True (-not $reply.result.isError) "MCP tool failed: $line"
+                return $reply.result
+            }
+        }
+    }
+    try {
+        $null = Invoke-McpRequest 'initialize' @{ protocolVersion = '2025-11-25'; capabilities = @{}; clientInfo = @{ name = 'sharplint-package-check'; version = '1' } }
+        $mcp.StandardInput.WriteLine('{"jsonrpc":"2.0","method":"notifications/initialized"}')
+        $tools = Invoke-McpRequest 'tools/list' @{}
+        Assert-True ($tools.tools.name -contains 'sharplint_check' -and $tools.tools.name -contains 'sharplint_status') 'Installed MCP tools are missing'
+        $status = (Invoke-McpRequest 'tools/call' @{ name = 'sharplint_status'; arguments = @{ workspace = $workspace } }).structuredContent
+        Assert-True ($status.available) 'Installed MCP server must initialize Roslyn'
+        $request = @{ name = 'sharplint_check'; arguments = @{ workspace = $workspace; path = 'Sample.cs' } }
+        $diagnostics = (Invoke-McpRequest 'tools/call' $request).structuredContent
+        Assert-True ($diagnostics.complete -and $diagnostics.freshness -eq 'verified') 'Installed MCP tool must return fresh document diagnostics'
+        Assert-True ($diagnostics.diagnostics.code -contains 'CS0103') 'Installed MCP tool must return compiler feedback'
+        Set-Content -LiteralPath $source -Value 'fixed'
+        $diagnostics = (Invoke-McpRequest 'tools/call' $request).structuredContent
+        Assert-True ($diagnostics.complete -and $diagnostics.diagnosticCount -eq 0) 'Installed MCP tool must report the fix'
+        $again = (Invoke-McpRequest 'tools/call' @{ name = 'sharplint_status'; arguments = @{ workspace = $workspace } }).structuredContent
+        Assert-True ($status.processId -eq $again.processId) 'Installed MCP server must reuse the warm Roslyn process'
+        Write-Output "sharplint $version package metadata, installation, help, version, and MCP session checks passed."
+    }
+    finally {
+        $mcp.StandardInput.Close()
+        if (-not $mcp.WaitForExit(10000)) { $mcp.Kill($true); $mcp.WaitForExit() }
+        if ($mcp.ExitCode -ne 0) { [Console]::Error.WriteLine($stderr.GetAwaiter().GetResult()) }
+        $mcp.Dispose()
+    }
 }
 finally {
     Remove-Item -LiteralPath $testRoot -Recurse -Force

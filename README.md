@@ -7,14 +7,11 @@
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](https://github.com/adrian13579/sharplint/blob/main/LICENSE)
 [![Open issues](https://img.shields.io/github/issues/adrian13579/sharplint)](https://github.com/adrian13579/sharplint/issues)
 
-Sharplint connects AI coding agents to C# compiler and analyzer diagnostics from Microsoft's official Roslyn language server. It provides a local, read-only MCP server and CLI backed by the same diagnostic service.
+Sharplint is a local MCP server that gives coding agents C# compiler and analyzer feedback from Microsoft's official Roslyn language server.
 
-An agent can check a file or directory, use diagnostic codes and source locations to guide an edit, then check again for feedback. Sharplint synchronizes files from disk, requests diagnostics over LSP, and returns structured results with completion and freshness information.
+The agent selects the repository it is working on, checks a file or directory, uses diagnostic codes and source locations to guide an edit, and checks again. Sharplint keeps Roslyn sessions warm across these tool calls, including when the agent switches between repositories.
 
-- **MCP tools** give agents access to diagnostics and language-server status.
-- **CLI commands** provide readable or JSON output for terminals and scripts.
-- **Persistent MCP sessions** reuse Roslyn across source edits.
-- **Native analyzer configuration** uses your project's NuGet packages, analyzer references and `.editorconfig`.
+The `sharplint` executable starts the MCP server and configures agent connections.
 
 ## Requirements and installation
 
@@ -44,48 +41,57 @@ On Windows, you can also build with `.\build.ps1` from PowerShell. Each reposito
 
 Use trusted projects: loading projects through Roslyn evaluates MSBuild and may run project build logic.
 
-## MCP
+## Set up GitHub Copilot
 
-Configure your MCP client with an absolute workspace path:
+Register Sharplint for both Copilot CLI and VS Code:
+
+```sh
+sharplint setup copilot
+```
+
+To configure one client:
+
+```sh
+sharplint setup copilot --client cli
+sharplint setup copilot --client vscode
+```
+
+Setup merges the Sharplint entry into the clients' user configuration, preserving other servers and settings. It registers the executable you are running. Restart the client's MCP connection after setup, then ask the agent to use Sharplint for its working repository.
+
+For custom profiles or portable installations, use `--copilot-config` or `--vscode-config` to select the configuration file. `--server` selects a custom Roslyn executable or DLL.
+
+## MCP configuration
+
+For other MCP clients, add a server using this configuration:
 
 ```json
 {
   "mcpServers": {
     "sharplint": {
       "command": "sharplint",
-      "args": ["mcp", "--workspace", "/absolute/path/to/repository"],
-      "env": {
-        "SHARPLINT_ROSLYN_PATH": "/absolute/path/to/roslyn-language-server"
-      }
+      "args": ["mcp"]
     }
   }
 }
 ```
 
-During development, use `"command": "dotnet"` and prepend the absolute path to the built `sharplint.dll` to `args`. Logs go to stderr; stdout carries MCP messages.
+The same server connection can serve multiple repositories. The agent passes its repository directory in each tool call, or an absolute source path to discover the repository. Clients advertising MCP workspace roots can also supply the context.
 
-There are two tools:
+- `sharplint_check(workspace?, path?, solution?)` returns C# document diagnostics for the selected repository, file or directory.
+- `sharplint_status(workspace?, solution?)` reports the selected repository's Roslyn session, readiness and capabilities.
 
-- `sharplint_check(path?)`: reconcile disk and request diagnostics. An omitted path checks C# documents recursively under the workspace root, excluding generated sources in `bin` and `obj`. A path selects a file or directory inside that root.
-- `sharplint_status()`: initialize or inspect Roslyn availability, project loading, diagnostic capabilities, session/process identity, errors and limitations.
+`workspace` is an absolute repository directory. `path` can be absolute or relative to that repository; an omitted path checks its C# documents. `solution` selects a solution when a repository contains several.
 
-The MCP process keeps one Roslyn session warm. Source edits reuse that session; changes to project inputs or the source file set reload the session. Checks support cancellation and a configurable timeout.
+The server keeps up to four repository/solution contexts warm and releases the least recently used context when it needs another. Source edits reuse the session; changes to project inputs or source file membership reload it. Diagnostics include scope, completion and freshness metadata.
 
-## CLI
+## Start the server
 
 ```sh
-sharplint check
-sharplint check src/Example.cs
-sharplint check --path ./src --format json
-sharplint check src/Example.cs --workspace /path/to/repo --solution Example.slnx
-sharplint status --format json
-sharplint mcp --workspace /path/to/repo --timeout 120
+sharplint mcp
 ```
 
-`--server` selects an executable or language-server DLL. Otherwise discovery uses `SHARPLINT_ROSLYN_PATH`, `PATH`, then the default .NET global tool directory. `--workspace` defaults to the current directory; for compatibility, a directory passed to `check --path` also becomes the workspace if none is explicit. With one root solution, Roslyn auto-loads it; use `--solution` when several exist. A root without a solution uses Roslyn's automatic C# project discovery (maximum 500 projects).
+Running `sharplint` without arguments also starts MCP stdio. `--server` selects Roslyn explicitly; otherwise Sharplint discovers it through `SHARPLINT_ROSLYN_PATH`, `PATH`, and the .NET global tool directory. `--timeout` sets the tool request deadline.
 
-Each CLI invocation starts its own Roslyn session. Use MCP for repeated checks in a persistent session.
-
-Exit codes: **0** = complete document check with zero error-severity diagnostics, **1** = complete document check with diagnostic errors, **2** = incomplete, timed out, failed or invalid request, **130** = cancelled. `status` uses 0 for an available diagnostic session and 2 for failures.
+During development, launch the built `sharplint.dll` with `dotnet`. Logs go to stderr; stdout carries MCP messages.
 
 Sharplint is licensed under [Apache 2.0](https://github.com/adrian13579/sharplint/blob/main/LICENSE).

@@ -1,6 +1,6 @@
 # Diagnostic connector validation
 
-SharpLint contains two production projects: the shared LSP diagnostic service and its CLI/MCP agent host. Protocol, synchronization, lifecycle and real-server tests exercise that connector. Architecture tests enforce the production boundary: no embedded compiler, MSBuild workspace or policy engine.
+Sharplint contains two production projects: the shared LSP diagnostic service and the executable that hosts MCP and configures agents. Protocol, synchronization, lifecycle and real-server tests exercise that connector. Architecture tests enforce the production boundary: no embedded compiler, MSBuild workspace or policy engine.
 
 The tested environment is SDK **10.0.202**, runtime **10.0.6**, official Roslyn language server **5.13.0-1.26514.10**, official MCP SDK **2.3.0**, Ubuntu 22.04 x64. Real integration tests require `SHARPLINT_TEST_ROSLYN` and local sockets/named pipes.
 
@@ -20,7 +20,7 @@ Coverage and mutation target `SharpLint.Analysis`. The mutation threshold is **9
 
 ## Integration coverage
 
-Real-server tests assert compiler **CS0103**, SDK analyzer **CA1822**, custom analyzer **FIXTURE001** through a normal analyzer ProjectReference, external fix detection, cross-project semantic updates, create/delete/rename, project-reference reloads, persistent sessions and crash recovery. Actual CLI and MCP entry points are tested against returned diagnostics, completion/freshness metadata and process identity.
+Real-server tests assert compiler **CS0103**, SDK analyzer **CA1822**, custom analyzer **FIXTURE001** through a normal analyzer ProjectReference, external fix detection, cross-project semantic updates, create/delete/rename, project-reference reloads, persistent sessions and crash recovery. MCP tools are tested against returned diagnostics, completion/freshness metadata and process identity. Executable tests cover MCP launch and agent setup.
 
 Controlled tests cover framing, correlation, capability registration, normalization, related information, empty reports, location-free model data, UTF-16 versions/ranges, watcher reconciliation/overflow, races, cancellation, deadlines and process cleanup. Location-free model support does not imply implemented workspace/project-level retrieval.
 

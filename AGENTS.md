@@ -1,17 +1,17 @@
-# Working on SharpLint
+# Working on Sharplint
 
-SharpLint is a local, read-only connector between Microsoft's official Roslyn language server and coding agents. CLI and MCP share one diagnostic service. Run commands from the repository root.
+Sharplint is a local, read-only connector between Microsoft's official Roslyn language server and coding agents. MCP is the diagnostic interface; the executable hosts MCP and configures agents. Run commands from the repository root.
 
 ## Sources of truth
 
 - Read `docs/lsp-service.md` before changing the diagnostic contract, LSP lifecycle or synchronization guarantees.
-- Establish implemented behavior from current code and tests. Do not treat a capability advertised by Roslyn as a capability implemented by SharpLint.
+- Establish implemented behavior from current code and tests. Do not treat a capability advertised by Roslyn as a capability implemented by Sharplint.
 - Keep README, the service contract and CLI/MCP tool descriptions consistent with actual scope and freshness guarantees.
 
 ## Repository layout
 
 - `src/SharpLint.Analysis/`: diagnostic service, LSP framing/connection/session, file synchronization and normalized response models. It uses only .NET libraries and must not reference Roslyn or MSBuild packages.
-- `src/SharpLint.Cli/`: command dispatch, pretty/JSON output and official C# MCP SDK stdio hosting. Both interfaces use `DiagnosticService`.
+- `src/SharpLint.Cli/`: MCP stdio hosting, per-repository session pooling, repository selection and Copilot setup. MCP tools use `DiagnosticService`.
 - `tests/SharpLint.Tests/`: protocol, synchronization, lifecycle, architecture, CLI and real Roslyn/MCP tests.
 - `tests/SharpLint.FakeServer/`: controlled stdio LSP server for connector tests.
 - `tests/SharpLint.Tests/Fixtures/Lsp/`: real multi-project solution and ordinary custom Roslyn analyzer. Analyzer dependencies belong to this fixture, not production projects.
@@ -20,11 +20,12 @@ SharpLint is a local, read-only connector between Microsoft's official Roslyn la
 ## Architectural boundaries
 
 - Roslyn owns workspace loading, project evaluation, compilation, source generators, analyzer execution and native analyzer configuration.
-- SharpLint owns LSP/MCP lifecycle, synchronization, diagnostic normalization/filtering, completion/freshness reporting, errors and cancellation.
+- Sharplint owns LSP/MCP lifecycle, synchronization, diagnostic normalization/filtering, completion/freshness reporting, errors and cancellation.
 - Do not add a rule engine, fluent policy DSL, executable configuration loader, analyzer registry, package manager, custom compiler or Roslyn workspace cache.
-- Users enable ordinary and custom analyzers through project references, NuGet integration and `.editorconfig`. SharpLint does not need an analyzer inventory.
+- Users enable ordinary and custom analyzers through project references, NuGet integration and `.editorconfig`. Sharplint does not need an analyzer inventory.
 - Diagnostics are read-only. Never apply workspace edits or modify user source. Do not automatically restore/install packages into user projects.
-- MCP stdout carries protocol messages only. Send logs to stderr.
+- MCP stdout carries protocol messages only. Send logs to stderr. Keep diagnostic operations in MCP tools; executable commands host/configure MCP. Do not reintroduce standalone diagnostic commands.
+- MCP tool calls select repositories dynamically. Keep the bounded session pool warm per repository/solution; dispose evicted contexts and all contexts on shutdown. Copilot setup must preserve unrelated JSONC settings/comments and use no fixed workspace.
 - Check scope is C# document pull diagnostics. Never equate an empty array with successful solution/build verification, or report uncertain/stale results as verified.
 - Treat diagnostic codes and JSON fields as public contracts. Preserve codes, severities, optional source and related information; do not invent analyzer identities. Positions are zero-based UTF-16 and paths are normalized absolute paths in every output format.
 
@@ -39,8 +40,10 @@ dotnet test SharpLint.slnx -m:1
 SHARPLINT_TEST_ROSLYN=/absolute/path/to/roslyn-language-server dotnet test SharpLint.slnx -m:1
 # Focused protocol tests:
 dotnet test tests/SharpLint.Tests/SharpLint.Tests.csproj --filter FullyQualifiedName~ProtocolTests
-# CLI:
-dotnet run --project src/SharpLint.Cli -- check --path ./some/dir --format json
+# MCP host:
+dotnet run --project src/SharpLint.Cli -- mcp
+# Agent setup (writes user configuration):
+dotnet run --project src/SharpLint.Cli -- setup copilot
 ```
 
 - Build Debug before CLI/MCP tests: they locate `src/SharpLint.Cli/bin/Debug/net10.0/sharplint.dll`. Real-server tests are explicitly skipped without `SHARPLINT_TEST_ROSLYN`; report those skips and do not present fake-server tests as real integration results.

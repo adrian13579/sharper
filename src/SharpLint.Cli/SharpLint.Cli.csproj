@@ -6,10 +6,10 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>sharplint</ToolCommandName>
     <PackageId>sharplint</PackageId>
-    <Version>0.2.0-prealpha.2</Version>
+    <Version>0.2.0-prealpha.3</Version>
     <Title>Sharplint</Title>
     <Authors>adrian13579</Authors>
-    <Description>Read-only Roslyn LSP diagnostics for coding agents through MCP and CLI.</Description>
+    <Description>An MCP server connecting coding agents to Roslyn compiler and analyzer diagnostics.</Description>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/adrian13579/sharplint</PackageProjectUrl>
     <RepositoryUrl>https://github.com/adrian13579/sharplint</RepositoryUrl>

@@ -46,6 +46,9 @@ jobs:
     - name: Check PowerShell wrappers
       shell: pwsh
       run: ./tests/scripts/Test-PowerShellScripts.ps1
+    - name: Test MCP routing and Copilot setup on Windows
+      if: runner.os == 'Windows'
+      run: dotnet test SharpLint.slnx --no-build -m:1 --filter "FullyQualifiedName~CliTests|FullyQualifiedName~AgentWorkflowTests"
     - name: Install tested Roslyn language server
       if: runner.os == 'Linux'
       run: dotnet tool install --tool-path "$RUNNER_TEMP/roslyn" roslyn-language-server --version 5.13.0-1.26514.10

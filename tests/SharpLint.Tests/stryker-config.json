@@ -2,7 +2,7 @@
   "stryker-config": {
     "project": "SharpLint.Analysis.csproj",
     "configuration": "Debug",
-    "test-case-filter": "FullyQualifiedName!~SharpLint.Tests.Lsp.CliTests&FullyQualifiedName!~SharpLint.Tests.Lsp.RoslynIntegrationTests",
+    "test-case-filter": "FullyQualifiedName!~SharpLint.Tests.Lsp.CliTests&FullyQualifiedName!~SharpLint.Tests.Lsp.AgentWorkflowTests&FullyQualifiedName!~SharpLint.Tests.Lsp.RoslynIntegrationTests",
     "reporters": ["progress", "html", "json"],
     "concurrency": 2,
     "thresholds": {
