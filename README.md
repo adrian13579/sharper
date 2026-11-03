@@ -127,4 +127,4 @@ See the [service contract](docs/lsp-service.md) for diagnostic scope, project-co
 - **References and analyzers:** run `dotnet restore`, build analyzer projects, and check solution selection and analyzer configuration.
 - **Incomplete checks:** inspect `errors` and `limitations`, then retry once the files are stable. A subsequent request starts a new session after a failure or cancellation.
 
-Contributor build and validation instructions are in [AGENTS.md](AGENTS.md). Sharplint is licensed under [Apache 2.0](LICENSE).
+Sharplint is licensed under [Apache 2.0](LICENSE).
