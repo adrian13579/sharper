@@ -1,7 +1,7 @@
-# SharpLint
+# Sharplint
 
 <p align="center">
-  <img src="logo.png" alt="SharpLint logo" width="600" />
+  <img src="logo.png" alt="Sharplint logo" width="600" />
 </p>
 
 <p align="center">
@@ -11,9 +11,9 @@
   <a href="https://github.com/adrian13579/sharplint/issues"><img src="https://img.shields.io/github/issues/adrian13579/sharplint" alt="Open issues" /></a>
 </p>
 
-SharpLint connects AI coding agents to C# compiler and analyzer diagnostics from Microsoft's official Roslyn language server. It provides a local, read-only MCP server and CLI backed by the same diagnostic service.
+Sharplint connects AI coding agents to C# compiler and analyzer diagnostics from Microsoft's official Roslyn language server. It provides a local, read-only MCP server and CLI backed by the same diagnostic service.
 
-An agent can check a file or directory, use diagnostic codes and source locations to guide an edit, then check again for feedback. SharpLint synchronizes files from disk, requests diagnostics over LSP, and returns structured results with completion and freshness information.
+An agent can check a file or directory, use diagnostic codes and source locations to guide an edit, then check again for feedback. Sharplint synchronizes files from disk, requests diagnostics over LSP, and returns structured results with completion and freshness information.
 
 - **MCP tools** give agents access to diagnostics and language-server status.
 - **CLI commands** provide readable or JSON output for terminals and scripts.
@@ -22,7 +22,7 @@ An agent can check a file or directory, use diagnostic codes and source location
 
 ## Requirements and installation
 
-- Build SharpLint with the SDK in `global.json`: .NET **10.0.202**, with `latestMinor` roll-forward.
+- Build Sharplint with the SDK in `global.json`: .NET **10.0.202**, with `latestMinor` roll-forward.
 - Run with .NET **10**. The tested Roslyn server also requires .NET 10.
 - Install the [official Roslyn language server](https://github.com/dotnet/roslyn/blob/main/src/LanguageServer/roslyn-language-server/README.md). The tested version is pinned below; other versions must support the protocol described in [the service contract](docs/lsp-service.md).
 - Restore the target solution's dependencies and build custom analyzer projects before checking.
@@ -103,7 +103,7 @@ Use normal .NET project configuration and `.editorconfig`:
 dotnet_diagnostic.CA1822.severity = warning
 ```
 
-Roslyn loads analyzer NuGet packages through the same native project integration. Build custom analyzer projects and restore packages before checking. SharpLint forwards the resulting diagnostics using their original codes and severities.
+Roslyn loads analyzer NuGet packages through the same native project integration. Build custom analyzer projects and restore packages before checking. Sharplint forwards the resulting diagnostics using their original codes and severities.
 
 ## Diagnostic feedback
 
@@ -117,7 +117,7 @@ CLI JSON and MCP structured content use the same response schema. Each check rep
 
 Positions are **zero-based UTF-16** in JSON, MCP and pretty output. File paths are absolute and normalized using the host OS.
 
-`complete: true` with `freshness: verified` means Roslyn completed the selected document pulls and SharpLint observed stable tracked inputs inside the workspace root before and after the request. Agents should read these fields together with `errors` and `limitations` when deciding their next step. Keep external dependencies and toolchains fixed during a session, and restart after changes outside the workspace root.
+`complete: true` with `freshness: verified` means Roslyn completed the selected document pulls and Sharplint observed stable tracked inputs inside the workspace root before and after the request. Agents should read these fields together with `errors` and `limitations` when deciding their next step. Keep external dependencies and toolchains fixed during a session, and restart after changes outside the workspace root.
 
 See the [service contract](docs/lsp-service.md) for diagnostic scope, project-context behavior and freshness guarantees.
 
@@ -127,4 +127,4 @@ See the [service contract](docs/lsp-service.md) for diagnostic scope, project-co
 - **References and analyzers:** run `dotnet restore`, build analyzer projects, and check solution selection and analyzer configuration.
 - **Incomplete checks:** inspect `errors` and `limitations`, then retry once the files are stable. A subsequent request starts a new session after a failure or cancellation.
 
-Contributor build and validation instructions are in [AGENTS.md](AGENTS.md). SharpLint is licensed under [Apache 2.0](LICENSE).
+Contributor build and validation instructions are in [AGENTS.md](AGENTS.md). Sharplint is licensed under [Apache 2.0](LICENSE).
