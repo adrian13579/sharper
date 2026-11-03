@@ -107,20 +107,4 @@ dotnet_diagnostic.CA1822.severity = warning
 
 Roslyn loads analyzer NuGet packages through the same native project integration. Build custom analyzer projects and restore packages before checking. Sharplint forwards the resulting diagnostics using their original codes and severities.
 
-## Diagnostic feedback
-
-CLI JSON and MCP structured content use the same response schema. Each check reports C# document diagnostics for the selected files in Roslyn's active project context.
-
-- `diagnostics` contains codes, severities, messages and locations, plus source, related information, tags and diagnostic data when supplied by Roslyn.
-- `status`, `complete` and `freshness` describe the outcome of the document check and synchronization of workspace inputs.
-- `scope` and `requestedPath` identify the files selected for checking.
-- `errors` and `limitations` explain loading issues, uncertainty and the scope of the result.
-- `durationMs` and `diagnosticCount` summarize the check.
-
-Positions are **zero-based UTF-16** in JSON, MCP and pretty output. File paths are absolute and normalized using the host OS.
-
-`complete: true` with `freshness: verified` means Roslyn completed the selected document pulls and Sharplint observed stable tracked inputs inside the workspace root before and after the request. Agents should read these fields together with `errors` and `limitations` when deciding their next step. Keep external dependencies and toolchains fixed during a session, and restart after changes outside the workspace root.
-
-See the [service contract](docs/lsp-service.md) for diagnostic scope, project-context behavior and freshness guarantees.
-
 Sharplint is licensed under [Apache 2.0](LICENSE).
