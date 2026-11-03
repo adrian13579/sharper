@@ -17,11 +17,19 @@ Follow the [NuGet Trusted Publishing guide](https://learn.microsoft.com/en-us/nu
 
 Set the GitHub repository variable `NUGET_USER` to the NuGet.org profile username (`xtales`). The publish job uses `NuGet/login@v1` and `id-token: write` to obtain a temporary publishing key. Authentication happens after package validation.
 
+## GitHub Packages
+
+The release workflow also uploads the same tool package to `https://nuget.pkg.github.com/adrian13579/index.json`. It authenticates with the job's automatic `GITHUB_TOKEN` and `packages: write` permission, following [GitHub's workflow publishing guide](https://docs.github.com/en/packages/managing-github-packages-using-github-actions-workflows/publishing-and-installing-a-package-with-github-actions).
+
+The package's `RepositoryUrl` connects it to this repository so it appears under **Packages**. The workflow verifies that association and the published version, then records the package link and visibility in its summary. Credentials exist only in the runner's temporary configuration, which is removed after the upload.
+
+To publish an existing release to GitHub Packages, run the **Release** workflow from `main` and provide its existing version tag. Both registries skip duplicate versions, and the existing GitHub release is preserved.
+
 ## Release
 
 1. Update `<Version>` in `src/SharpLint.Cli/SharpLint.Cli.csproj` and add `docs/release-notes/v<VERSION>.md`. Keep README installation commands version-free, using `--prerelease` for pre-alpha releases.
 2. Commit, then push `main` and the matching `v<VERSION>` tag.
-3. The release workflow builds and checks the installed package on Linux and Windows, runs the full suite with real Roslyn on Linux, publishes to NuGet, and creates a GitHub release with the `.nupkg` attached. Prerelease versions are marked as GitHub prereleases.
+3. The release workflow builds and checks the installed package on Linux and Windows, runs the full suite with real Roslyn on Linux, publishes to NuGet.org and GitHub Packages, and creates a GitHub release with the `.nupkg` attached. Prerelease versions are marked as GitHub prereleases.
 
 To retry publication, run the **Release** workflow manually with the existing tag. NuGet duplicate versions are skipped; an existing GitHub release is preserved.
 

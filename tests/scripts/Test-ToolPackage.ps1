@@ -25,6 +25,7 @@ try {
     Assert-True ($metadata.version -eq $version) 'Package version must match the project'
     Assert-True ($metadata.packageTypes.packageType.name -eq 'DotnetTool') 'Package must be a .NET tool'
     Assert-True ($metadata.license.InnerText -eq 'Apache-2.0') 'Package license must be Apache-2.0'
+    Assert-True ($metadata.repository.url -eq 'https://github.com/adrian13579/sharplint') 'Package must link to its GitHub repository'
     foreach ($entry in @('README.md', 'LICENSE', 'tools/net10.0/any/sharplint.dll', 'tools/net10.0/any/SharpLint.Analysis.dll')) {
         Assert-True ($null -ne $archive.GetEntry($entry)) "Missing package content: $entry"
     }

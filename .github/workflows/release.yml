@@ -71,6 +71,7 @@ jobs:
     permissions:
       contents: write
       id-token: write
+      packages: write
     steps:
     - uses: actions/checkout@v4
       with:
@@ -99,6 +100,36 @@ jobs:
       env:
         NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
       run: dotnet nuget push artifacts/packages/*.nupkg --source https://api.nuget.org/v3/index.json --api-key "$NUGET_API_KEY" --skip-duplicate
+    - name: Publish to GitHub Packages
+      env:
+        GH_PACKAGES_TOKEN: ${{ github.token }}
+      run: |
+        umask 077
+        github_packages_config=$(mktemp "$RUNNER_TEMP/github-packages.XXXXXX.config")
+        trap 'rm -f "$github_packages_config"' EXIT
+        printf '<configuration><packageSources><clear /></packageSources></configuration>\n' > "$github_packages_config"
+        dotnet nuget add source "https://nuget.pkg.github.com/${GITHUB_REPOSITORY_OWNER}/index.json" \
+          --name github --username "$GITHUB_ACTOR" --password "$GH_PACKAGES_TOKEN" \
+          --store-password-in-clear-text --configfile "$github_packages_config"
+        dotnet nuget push artifacts/packages/*.nupkg --source github \
+          --configfile "$github_packages_config" --api-key "$GH_PACKAGES_TOKEN" --skip-duplicate
+    - name: Verify GitHub package repository association
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        for attempt in 1 2 3 4 5 6; do
+          if gh api "users/${GITHUB_REPOSITORY_OWNER}/packages/nuget/sharplint" > "$RUNNER_TEMP/github-package.json" \
+            && jq -e --arg repo "$GITHUB_REPOSITORY" '.repository.full_name == $repo' "$RUNNER_TEMP/github-package.json" >/dev/null; then
+            break
+          fi
+          sleep 5
+        done
+        jq -e --arg repo "$GITHUB_REPOSITORY" '.repository.full_name == $repo' "$RUNNER_TEMP/github-package.json"
+        jq '{name, html_url, visibility, repository: .repository.full_name}' "$RUNNER_TEMP/github-package.json"
+        gh api --paginate "users/${GITHUB_REPOSITORY_OWNER}/packages/nuget/sharplint/versions" \
+          | jq -se --arg version "${RELEASE_TAG#v}" 'add | any(.[]; .name == $version)'
+        jq -r '"Published [" + .name + "](" + .html_url + ") linked to " + .repository.full_name + ". Visibility: " + .visibility + "."' \
+          "$RUNNER_TEMP/github-package.json" >> "$GITHUB_STEP_SUMMARY"
     - name: Publish GitHub release
       env:
         GH_TOKEN: ${{ github.token }}
