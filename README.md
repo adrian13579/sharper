@@ -121,10 +121,4 @@ Positions are **zero-based UTF-16** in JSON, MCP and pretty output. File paths a
 
 See the [service contract](docs/lsp-service.md) for diagnostic scope, project-context behavior and freshness guarantees.
 
-## Troubleshooting
-
-- **Server setup:** install the pinned tool or set `--server` / `SHARPLINT_ROSLYN_PATH` to an absolute path. Use `dotnet --info` and `sharplint status --format json` to inspect runtime and session details.
-- **References and analyzers:** run `dotnet restore`, build analyzer projects, and check solution selection and analyzer configuration.
-- **Incomplete checks:** inspect `errors` and `limitations`, then retry once the files are stable. A subsequent request starts a new session after a failure or cancellation.
-
 Sharplint is licensed under [Apache 2.0](LICENSE).
