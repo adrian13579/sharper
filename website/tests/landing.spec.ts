@@ -24,10 +24,10 @@ test("production base path, assets and documentation links load without errors",
   await expect(
     page.getByText("RAPID RULE FEEDBACK", { exact: false }),
   ).toBeVisible();
-  const cards = page.locator(".doc-card");
-  await expect(cards).toHaveCount(6);
-  for (const link of await cards.all())
-    await expect(link).toHaveAttribute("href", /^\/sharper\/docs\/.+\/$/);
+  await expect(page.locator("main > section")).toHaveCount(1);
+  await expect(
+    page.getByRole("link", { name: "Get started", exact: true }),
+  ).toHaveAttribute("href", "/sharper/docs/npm/");
   expect(
     await page
       .locator("img")
@@ -54,20 +54,11 @@ test("feedback leads the page and the hero has no console example", async ({
   await page.goto("./");
   await expect(page.locator(".hero")).toContainText("Fast feedback.");
   await expect(
-    page.getByRole("link", { name: /Configure a custom LSP server/ }),
-  ).toHaveAttribute("href", /docs\/custom-language-servers\/$/);
-  await expect(
     page.locator(".hero pre, .hero .demo-shell, .hero .setup-window"),
   ).toHaveCount(0);
   await expect(
-    page.getByRole("heading", { name: "Enforce your project rules." }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: /Feedback & rule verification/ }),
-  ).toHaveAttribute("href", /docs\/feedback\/$/);
-  await expect(
-    page.getByRole("link", { name: /Explore code navigation/ }),
-  ).toBeVisible();
+    page.getByRole("link", { name: "Start building" }),
+  ).toHaveAttribute("href", "/sharper/docs/npm/");
 });
 
 test("theme persists and both desktop themes have no serious accessibility findings", async ({
@@ -96,30 +87,6 @@ test("theme persists and both desktop themes have no serious accessibility findi
   });
 });
 
-test("installation method changes copyable commands", async ({
-  page,
-  context,
-}) => {
-  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-  await page.goto("./");
-  await page.getByRole("button", { name: "npx", exact: true }).click();
-  await expect(
-    page.getByLabel("Install commands", { exact: true }),
-  ).toContainText("npx --yes @adrian13579/sharper@next");
-  await page.getByRole("button", { name: "Copy install commands" }).click();
-  await expect(page.getByRole("status")).toContainText("Commands copied");
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain(
-    "npx --yes @adrian13579/sharper@next",
-  );
-  await page.getByRole("button", { name: "npm", exact: true }).click();
-  await expect(
-    page.getByLabel("Install commands", { exact: true }),
-  ).toContainText("npm install --global @adrian13579/sharper@next");
-  expect(
-    await page.getByLabel("Install commands", { exact: true }).textContent(),
-  ).not.toContain("cargo install");
-});
-
 test("mobile navigation, layout and accessibility remain usable", async ({
   page,
 }) => {
@@ -145,12 +112,6 @@ test("mobile navigation, layout and accessibility remain usable", async ({
         () => document.documentElement.scrollWidth <= window.innerWidth,
       ),
     ).toBe(true);
-    expect(
-      await page
-        .locator(".doc-card > p")
-        .first()
-        .evaluate((element) => parseFloat(getComputedStyle(element).fontSize)),
-    ).toBeGreaterThanOrEqual(16);
   }
   await page.setViewportSize({ width: 390, height: 844 });
   const results = await new AxeBuilder({ page })

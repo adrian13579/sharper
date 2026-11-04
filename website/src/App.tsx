@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 
 const repository = "https://github.com/adrian13579/sharper";
 const docs = (file: string) =>
@@ -59,103 +59,6 @@ function ThemeIcon({ theme }: { theme: Theme }) {
   );
 }
 
-function CopyButton({ value }: { value: string }) {
-  const [copied, setCopied] = useState(false);
-  const [error, setError] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  useEffect(() => () => clearTimeout(timer.current), []);
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      setError(false);
-      clearTimeout(timer.current);
-      timer.current = setTimeout(() => setCopied(false), 2500);
-    } catch {
-      setError(true);
-    }
-  }
-  return (
-    <>
-      <button
-        className="copy-button"
-        type="button"
-        onClick={copy}
-        aria-label="Copy install commands"
-      >
-        {copied ? "✓ Copied" : "Copy"}
-        <svg
-          width="13"
-          height="13"
-          viewBox="0 0 20 20"
-          fill="none"
-          stroke="currentColor"
-          aria-hidden="true"
-        >
-          <rect x="6" y="6" width="10" height="11" rx="2" />
-          <path d="M12 6V3H3v10h3" />
-        </svg>
-      </button>
-      <span className="copy-feedback" role="status">
-        {copied
-          ? "Commands copied to clipboard."
-          : error
-            ? "Clipboard unavailable. Select and copy the commands below."
-            : ""}
-      </span>
-    </>
-  );
-}
-
-const documents = [
-  {
-    number: "01",
-    tag: "START HERE",
-    title: "Connect your agent",
-    description:
-      "Guided setup, custom profiles and configuration for your preferred client.",
-    file: "agent-setup",
-  },
-  {
-    number: "02",
-    tag: "EXPLORE THE TOOLS",
-    title: "Feedback & rule verification",
-    description: "Baseline, edit, check and fix with native project rules.",
-    file: "feedback",
-  },
-  {
-    number: "03",
-    tag: "KNOW THE CONTRACT",
-    title: "How Sharper works",
-    description:
-      "Session lifecycle, synchronization, scope and freshness guarantees.",
-    file: "lsp-service",
-  },
-  {
-    number: "04",
-    tag: "INSTALL & CONNECT",
-    title: "npm / npx installation",
-    description: "Install with npm or connect your agent through npx.",
-    file: "npm",
-  },
-  {
-    number: "05",
-    tag: "SUPPORTED ENVIRONMENTS",
-    title: "Compatibility",
-    description:
-      "Language-server versions, platform targets and upgrade guidance.",
-    file: "compatibility",
-  },
-  {
-    number: "06",
-    tag: "CONFIGURE YOUR RULES",
-    title: "Language servers & custom rules",
-    description:
-      "Connect your language services and custom LSP rule enforcers.",
-    file: "custom-language-servers",
-  },
-];
-
 export default function App() {
   const [theme, setTheme] = useState<Theme>("light");
   const [themeReady, setThemeReady] = useState(false);
@@ -174,7 +77,6 @@ export default function App() {
     setThemeReady(true);
   }, []);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [installMode, setInstallMode] = useState<"npm" | "npx">("npm");
   useLayoutEffect(() => {
     if (!themeReady) return;
     document.documentElement.dataset.theme = theme;
@@ -185,10 +87,6 @@ export default function App() {
       /* Theme still works without storage. */
     }
   }, [theme, themeReady]);
-  const install =
-    installMode === "npm"
-      ? "npm install --global @adrian13579/sharper@next\nsharper setup"
-      : "npx --yes @adrian13579/sharper@next mcp --lsp-config /absolute/path/servers.json";
   const logo = asset(`logo-${theme}.png`);
   return (
     <>
@@ -204,7 +102,7 @@ export default function App() {
           className={menuOpen ? "nav-links is-open" : "nav-links"}
           aria-label="Main navigation"
         >
-          <a href="#workflow" onClick={() => setMenuOpen(false)}>
+          <a href={docs("feedback")} onClick={() => setMenuOpen(false)}>
             How it works
           </a>
           <a href={docs("overview")} onClick={() => setMenuOpen(false)}>
@@ -223,7 +121,7 @@ export default function App() {
           >
             <ThemeIcon theme={theme} />
           </button>
-          <a className="button button-small" href="#get-started">
+          <a className="button button-small" href={docs("npm")}>
             Get started <Arrow />
           </a>
           <button
@@ -261,7 +159,7 @@ export default function App() {
               <strong>evidence you can inspect.</strong>
             </p>
             <div className="hero-buttons">
-              <a className="button" href="#get-started">
+              <a className="button" href={docs("npm")}>
                 Start building <Arrow />
               </a>
               <a className="text-link" href={repository}>
@@ -275,333 +173,6 @@ export default function App() {
               <i />
               <span>APACHE 2.0</span>
             </div>
-          </div>
-        </section>
-        <div className="languages-bar container">
-          <p>
-            One interface.
-            <br />
-            <strong>Your languages. Your rules.</strong>
-          </p>
-          <div className="language-item">
-            <span className="language-symbol">npm</span>
-            <div>
-              <strong>Install once</strong>
-              <span>npm or npx</span>
-            </div>
-          </div>
-          <div className="language-item">
-            <span className="language-symbol">LSP</span>
-            <div>
-              <strong>Language services</strong>
-              <span>Configured for your files</span>
-            </div>
-          </div>
-          <div className="language-item">
-            <span className="language-symbol">+</span>
-            <div>
-              <strong>Rule enforcers</strong>
-              <span>Your project policies</span>
-            </div>
-          </div>
-          <div className="language-item">
-            <span className="language-symbol">MCP</span>
-            <div>
-              <strong>Coding agents</strong>
-              <span>The same feedback tools</span>
-            </div>
-          </div>
-        </div>
-        <section
-          className="features container section-space"
-          aria-labelledby="features-title"
-        >
-          <div className="section-intro">
-            <p className="eyebrow">A SHORTER EDIT-CHECK-FIX LOOP.</p>
-            <h2 id="features-title">
-              Catch violations early.
-              <br />
-              Verify every meaningful edit.
-            </h2>
-            <p>
-              Keep feedback close to the edit. Persistent local sessions reuse
-              loaded project context, while your existing configuration defines
-              the rules your agent checks.
-            </p>
-          </div>
-          <div className="feature-grid">
-            <article>
-              <span className="feature-number">[01]</span>
-              <h3>Get feedback while you work.</h3>
-              <p>
-                Check edits without rebuilding language-server context for every
-                call. Get precise compiler, type, analyzer and lint findings for
-                the files that matter.
-              </p>
-              <code>edit / check / fix</code>
-            </article>
-            <article>
-              <span className="feature-number">[02]</span>
-              <h3>Enforce your project rules.</h3>
-              <p>
-                Apply the checks your project defines through compiler, analyzer
-                and rule-server configuration. Agents use the reported
-                violations to correct their changes.
-              </p>
-              <code>LSP / native configuration / custom rules</code>
-            </article>
-            <article>
-              <span className="feature-number">[03]</span>
-              <h3>Verify the feedback.</h3>
-              <p>
-                See what was checked and whether the analysis completed on
-                current inputs. Inspect findings separately: completed analysis
-                can still report rule violations.
-              </p>
-              <code>complete · freshness · scope</code>
-            </article>
-          </div>
-        </section>
-        <section
-          className="custom-rules container"
-          aria-labelledby="custom-rules-title"
-        >
-          <p className="eyebrow">YOUR RULES. THE SAME FEEDBACK LOOP.</p>
-          <h2 id="custom-rules-title">
-            Sharper speaks LSP. Bring your own enforcer.
-          </h2>
-          <p>
-            Built a custom rule server? If it implements the supported Language
-            Server Protocol contract, connect it to your agent through Sharper.
-            Configure it once; matching files include its findings alongside
-            native project checks.
-          </p>
-          <a className="text-link" href={docs("custom-language-servers")}>
-            Configure a custom LSP server <Arrow diagonal />
-          </a>
-        </section>
-        <section
-          className="navigation-perk container"
-          aria-labelledby="navigation-title"
-        >
-          <h2 id="navigation-title">
-            Need more context? Navigate the code, too.
-          </h2>
-          <p>
-            Definitions, implementations and references help your agent
-            understand the impact of a change. These supporting tools share the
-            same local MCP interface.
-          </p>
-          <a className="text-link" href={docs("code-navigation")}>
-            Explore code navigation <Arrow diagonal />
-          </a>
-        </section>
-        <section
-          id="workflow"
-          className="workflow section-space"
-          aria-labelledby="workflow-title"
-        >
-          <div className="container workflow-grid">
-            <div>
-              <p className="eyebrow">THE EVERYDAY EDIT LOOP</p>
-              <h2 id="workflow-title">
-                Edit. Check.
-                <br />
-                Fix. Verify.
-              </h2>
-              <p className="section-lead">
-                Turn project rules into actionable feedback.
-                <br />
-                Close the loop after every edit.
-              </p>
-              <ol className="workflow-list">
-                <li>
-                  <span>01</span>
-                  <div>
-                    <h3>Establish the baseline</h3>
-                    <p>
-                      Check the relevant files before editing so your agent can
-                      distinguish existing findings from new violations.
-                    </p>
-                  </div>
-                </li>
-                <li>
-                  <span>02</span>
-                  <div>
-                    <h3>Edit and check</h3>
-                    <p>
-                      Make the edit with your normal tools, then request
-                      feedback for the affected files and dependent code.
-                    </p>
-                  </div>
-                </li>
-                <li>
-                  <span>03</span>
-                  <div>
-                    <h3>Fix violations and verify</h3>
-                    <p>
-                      Correct introduced violations and recheck. Confirm
-                      current, completed analysis, inspect remaining findings,
-                      and run relevant builds and tests separately.
-                    </p>
-                  </div>
-                </li>
-              </ol>
-            </div>
-            <div className="setup-example">
-              <div className="setup-window">
-                <div className="setup-window-top">
-                  <span className="terminal-icon" aria-hidden="true">
-                    ›_
-                  </span>
-                  <span>guided setup</span>
-                  <span>EXAMPLE</span>
-                </div>
-                <div className="terminal-body">
-                  <p className="terminal-command">
-                    <span>$</span> sharper setup
-                  </p>
-                  <p className="terminal-brand">SHARPER</p>
-                  <p>
-                    Let's connect your languages
-                    <br />
-                    and coding agents.
-                  </p>
-                  <p className="terminal-step">
-                    1 / 3&nbsp; Choose your languages
-                  </p>
-                  <p>
-                    <span className="terminal-check">✓</span> Your configured
-                    languages
-                  </p>
-                  <p className="terminal-step">
-                    2 / 3&nbsp; Connect your LSP servers
-                  </p>
-                  <p>
-                    <span className="terminal-check">✓</span> Existing servers
-                    detected
-                    <br />
-                    <span className="terminal-muted">
-                      &nbsp; Install servers with their own tooling.
-                    </span>
-                  </p>
-                  <p className="terminal-step">
-                    3 / 3&nbsp; Connect your agents
-                  </p>
-                  <p>
-                    <span className="terminal-check">✓</span> Choose a client
-                    and confirm registration
-                  </p>
-                  <p className="terminal-end">
-                    Ready for your next edit.
-                    <span className="terminal-cursor" />
-                  </p>
-                </div>
-              </div>
-              <p className="setup-caption">
-                Works with <strong>Codex</strong>, <strong>Claude Code</strong>,{" "}
-                <strong>OpenCode</strong> and <strong>GitHub Copilot</strong>.
-              </p>
-            </div>
-          </div>
-        </section>
-        <section
-          id="get-started"
-          className="container section-space start-section"
-          aria-labelledby="start-title"
-        >
-          <div className="start-copy">
-            <p className="eyebrow">MAKE YOUR NEXT EDIT SHARPER</p>
-            <h2 id="start-title">
-              Start local.
-              <br />
-              Stay in control.
-            </h2>
-            <p>
-              Install with npm, then let guided setup connect your languages and
-              agents.
-            </p>
-            <p className="requirements">
-              Requires Node.js 22.22.2 or newer. Install your language servers
-              and restore target-project dependencies before analysis.
-            </p>
-            <a className="text-link" href={docs("npm")}>
-              Full installation guide <Arrow diagonal />
-            </a>
-          </div>
-          <div className="install-panel">
-            <div className="install-heading">
-              <div
-                className="platform-switch"
-                role="group"
-                aria-label="Installation method"
-              >
-                <button
-                  type="button"
-                  aria-pressed={installMode === "npm"}
-                  onClick={() => setInstallMode("npm")}
-                >
-                  npm
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={installMode === "npx"}
-                  onClick={() => setInstallMode("npx")}
-                >
-                  npx
-                </button>
-              </div>
-              <span>PRE-ALPHA · {process.env.NEXT_PUBLIC_SHARPER_VERSION}</span>
-            </div>
-            <div className="install-code">
-              <CopyButton value={install} />
-              <pre tabIndex={0} aria-label="Install commands">
-                <code>{install}</code>
-              </pre>
-            </div>
-            <p className="install-note">
-              Windows x64 / Linux x64 (glibc)
-              <br />
-              <a href="https://www.npmjs.com/package/@adrian13579/sharper">
-                Check available npm versions
-              </a>
-              . Sharper is pre-alpha; registry availability depends on
-              publication.
-            </p>
-          </div>
-        </section>
-        <section
-          id="documentation"
-          className="documentation container section-space"
-          aria-labelledby="docs-title"
-        >
-          <div className="docs-heading">
-            <div>
-              <p className="eyebrow">GO A LITTLE DEEPER</p>
-              <h2 id="docs-title">The details are open.</h2>
-            </div>
-            <p>
-              Practical guides and explicit contracts.
-              <br />
-              Documentation lives with the code on GitHub.
-            </p>
-          </div>
-          <div className="docs-grid">
-            {documents.map((document) => (
-              <a
-                className="doc-card"
-                key={document.file}
-                href={docs(document.file)}
-              >
-                <div className="doc-top">
-                  <span>{document.tag}</span>
-                  <Arrow diagonal />
-                </div>
-                <h3>{document.title}</h3>
-                <p>{document.description}</p>
-                <span className="doc-number">/{document.number}</span>
-              </a>
-            ))}
           </div>
         </section>
       </main>
