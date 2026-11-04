@@ -9,7 +9,7 @@
 
 **Rapid rule feedback for coding agents. Check, fix, verify after every edit.**
 
-Sharper connects your agent to language services and custom LSP rule enforcers through MCP. Warm, focused LSP checks can provide feedback faster and at lower cost than repeatedly running a full build or test suite. Catch violations while the agent works: the earlier the feedback, the less work builds on a mistake.
+Sharper gives your agent actionable compiler and rule findings through MCP, with precise locations and evidence about the checked scope. Connect your language services and custom LSP rule enforcers to keep feedback close to each edit. Warm, focused LSP checks can provide feedback faster and at lower cost than repeatedly running a full build or test suite. Catch violations while the agent works: the earlier the feedback, the less work builds on a mistake.
 
 A custom enforcer could check forbidden dependencies or layer boundaries. [See an example](https://adrian13579.github.io/sharper/docs/architecture-rules/).
 

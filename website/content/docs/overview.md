@@ -6,9 +6,9 @@ Sharper brings findings from your compiler, analyzers and custom LSP services in
 
 A full build or test run can do much more work than is needed to catch a rule violation in the code an agent just edited. Sharper reuses warm LSP services to request focused findings, which can make repeated feedback cheaper and faster than running those broader checks after every edit.
 
-The value is the short correction loop. Find a violation early, fix it while the change is small and still in context, and avoid building more work on top of the mistake. The earlier the feedback, the better. Actual latency depends on your services, rules and workspace; there is no universal speedup guarantee.
+The value is the short correction loop. Find a violation early, fix it while the change is small and still in context, and avoid building more work on top of the mistake. The earlier the feedback, the better. Latency depends on your services, rules and workspace.
 
-LSP findings cover the analysis your services provide. They do not exercise runtime behavior or prove that a build or test suite would pass.
+LSP findings cover the analysis your services provide. Builds and tests provide complementary evidence about compilation and runtime behavior.
 
 ## Get started
 
@@ -40,9 +40,9 @@ Omitting `path` covers mapped source documents across the workspace. Every match
 
 ## Read the result
 
-Require `status: "completed"`, `complete: true` and `freshness: "verified"` before treating analysis as current. These fields describe the request; they do not mean every rule passed. Inspect diagnostics and severities, since completed analysis can contain errors. Partial, stale, failed or cancelled requests do not establish a clean result.
+Require `status: "completed"`, `complete: true` and `freshness: "verified"` before treating analysis as current. These fields describe analysis completion and freshness. Read diagnostics and severities to assess rule compliance. For a partial, stale, failed or cancelled request, address the reported condition and check again.
 
-Sharper reports findings and never applies source edits or blocks commits. Empty diagnostics do not prove a build or test suite passed. Keep toolchains and external dependencies stable during a session, and restart after changing them. `sharper_status` reports availability, not verification.
+Sharper returns findings for your agent to act on, together with evidence about the checked scope. Keep toolchains and external dependencies stable during a session, and restart after changing them. Use `sharper_status` to inspect server availability and capabilities.
 
 ## Agent guidance
 

@@ -111,9 +111,9 @@ export default function App() {
               <span>Sharper code.</span>
             </h1>
             <p className="hero-description">
-              Catch rule violations before your agent builds on them. Warm LSP
-              feedback can be cheaper and faster than a full build or test run.
-              Bring your rules through a{" "}
+              Give your agent actionable rule findings after each edit. Warm LSP
+              sessions keep feedback fast and focused, with less work than
+              repeated full builds or test runs. Bring your rules through a{" "}
               <a className="hero-rule-link" href={docs("architecture-rules")}>
                 custom LSP enforcer
               </a>

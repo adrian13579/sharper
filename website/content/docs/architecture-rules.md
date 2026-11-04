@@ -1,6 +1,6 @@
 # Example: a custom architecture enforcer
 
-This example illustrates a service you could build or install separately. Sharper does not include an architecture analyzer, dependency policy or architecture rules. It connects an external LSP service's findings to your agent.
+This example connects a team-owned architecture enforcer to an agent through Sharper. The external service defines the architecture rules; Sharper delivers its findings through the same feedback tools used for language analysis.
 
 Suppose your team has written an LSP enforcer for its own architecture guidelines. Connecting that service lets the agent receive precise diagnostics, correct violations and recheck through Sharper.
 
@@ -13,7 +13,7 @@ Suppose your project separates domain, application and infrastructure code. Your
 - A module may use another module only through its public API.
 - New dependencies must follow your project's allowed dependency graph.
 
-These are examples of rules your enforcer implements. Sharper does not ship these checks or define their configuration. You own the architecture policy, its exceptions and the program that evaluates it.
+Your enforcer implements these example rules and owns their configuration, exceptions and evaluation.
 
 ## Example finding
 
@@ -37,7 +37,7 @@ Install or build your enforcer separately. For example, a team-owned program cal
 }
 ```
 
-`architecture-lsp` is an illustrative program, not a package supplied by Sharper. Replace the command, arguments and mappings with your enforcer's actual interface. Add this entry alongside your language service to receive both sets of findings. Configure architecture rules using the enforcer's own configuration format. Sharper can pass its documented initialization options or settings; it does not interpret a rules DSL.
+`architecture-lsp` represents your own separately installed service in this example. Replace the command, arguments and mappings with your enforcer's actual interface. Add this entry alongside your language service to receive both sets of findings. Configure architecture rules using the enforcer's own configuration format. Sharper passes initialization options and settings to the service, which interprets its own rule configuration.
 
 Connect the profile using [configuration](custom-language-servers.md#connect-your-agent), or launch MCP through npx:
 
@@ -49,13 +49,13 @@ See [server profiles](custom-language-servers.md) for all configuration fields.
 
 ## What your enforcer must speak
 
-Use Sharper's [server requirements](custom-language-servers.md#server-requirements): stdio framing, initialization, UTF-16 positions, document synchronization and `textDocument/diagnostic` pulls. Return standard diagnostic codes, severities, messages and source ranges. A push-only server cannot provide verified checks through Sharper.
+Use Sharper's [server requirements](custom-language-servers.md#server-requirements): stdio framing, initialization, UTF-16 positions, document synchronization and `textDocument/diagnostic` pulls. Return standard diagnostic codes, severities, messages and source ranges. Document-pull reports provide the completion evidence used for verified checks.
 
-Give findings stable codes and actionable messages. Include related locations when they help explain a dependency or boundary. Advertise only supported capabilities; a rule-only service does not need to offer navigation. Treat cancellation and analysis completion accurately.
+Give findings stable codes and actionable messages. Include related locations when they help explain a dependency or boundary. Advertise the capabilities your service implements; a rule-only service can focus on diagnostics. Treat cancellation and analysis completion accurately.
 
-If an architecture rule depends on several files, your enforcer must track those dependencies and recompute affected findings. A clean check of one document does not prove the whole dependency graph is valid. Choose a scope that covers the change and qualify the enforcer's cross-file behavior.
+If an architecture rule depends on several files, your enforcer must track those dependencies and recompute affected findings. Choose a scope that covers the change and qualify the enforcer's cross-file behavior to assess the relevant dependency graph.
 
-Sharper reports the service's findings; it does not force the agent to call a tool or block commits. Use CI and repository policies if you need mandatory enforcement.
+Sharper gives the agent actionable findings during editing. CI and repository policies can use the same rules for mandatory merge checks.
 
 ## Validate the policy
 
