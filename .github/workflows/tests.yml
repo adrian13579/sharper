@@ -1,0 +1,77 @@
+name: Tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rust:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust toolchain
+        run: rustup show active-toolchain
+      - run: cargo fmt --check
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      - run: cargo build --locked --example fake-lsp
+      - run: cargo test --locked -- --test-threads=4
+      - run: cargo build --locked --release
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Test native release MCP host
+        shell: pwsh
+        run: |
+          $app = if ($IsWindows) { 'sharper.exe' } else { 'sharper' }
+          $env:SHARPER_TEST_HOST = (Resolve-Path "target/release/$app").Path
+          cargo test --locked --test mcp -- --test-threads=3
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm ci --prefix tests/mcp-client --ignore-scripts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tests/mcp-client/smoke.mjs
+      - run: node --test packaging/npm/test/launcher.test.cjs tests/release.test.mjs
+      - name: Build and smoke test local npm package
+        shell: pwsh
+        run: |
+          $native = if ($IsWindows) { '--windows' } else { '--linux' }
+          $app = if ($IsWindows) { 'sharper.exe' } else { 'sharper' }
+          node scripts/package-npm.mjs $native "target/release/$app" --allow-partial --output artifacts/npm
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node scripts/test-package.mjs
+  real-servers:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: tests/language-tools/package-lock.json
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.202'
+      - run: npm ci --prefix tests/language-tools --ignore-scripts
+      - name: Install optional qualification server
+        shell: pwsh
+        run: |
+          $tools = Join-Path $env:RUNNER_TEMP 'sharper-roslyn'
+          dotnet tool install --tool-path $tools roslyn-language-server --version 5.13.0-1.26514.10
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $name = if ($IsWindows) { 'roslyn-language-server.exe' } else { 'roslyn-language-server' }
+          $server = Get-ChildItem -LiteralPath $tools -Recurse -File -Filter $name | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $server) { throw 'Official server executable not found' }
+          "SHARPER_TEST_ROSLYN=$server" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "SHARPER_TEST_NODE_TOOLS=$((Resolve-Path tests/language-tools).Path)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Run explicitly enabled real server tests
+        run: cargo test --locked --test real_servers -- --ignored --test-threads=1

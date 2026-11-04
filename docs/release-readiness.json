@@ -1,0 +1,40 @@
+{
+  "version": "0.3.0-prealpha.1",
+  "commit": null,
+  "windows": {
+    "status": "pending",
+    "report": null,
+    "realServerTests": 0,
+    "skipped": 0
+  },
+  "linux": {
+    "status": "pending",
+    "report": null,
+    "realServerTests": 0,
+    "skipped": 0
+  },
+  "clients": {
+    "status": "pending",
+    "report": null
+  },
+  "stability": {
+    "status": "pending",
+    "report": null,
+    "durationMinutes": 0,
+    "documentsPerWorkspace": 0
+  },
+  "benchmark": {
+    "status": "pending",
+    "report": null,
+    "samplesPerWarmScenario": 0
+  },
+  "coverage": {
+    "status": "pending",
+    "report": null
+  },
+  "mutation": {
+    "status": "stopped",
+    "score": null,
+    "report": null
+  }
+}

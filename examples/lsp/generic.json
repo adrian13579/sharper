@@ -1,0 +1,14 @@
+{
+  "servers": [
+    {
+      "id": "project-rules",
+      "command": "/absolute/path/rule-server",
+      "arguments": [
+        "--stdio"
+      ],
+      "languages": {
+        ".orbit": "planet"
+      }
+    }
+  ]
+}

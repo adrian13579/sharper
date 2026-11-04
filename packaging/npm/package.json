@@ -1,0 +1,48 @@
+{
+  "name": "@adrian13579/sharper",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Language-agnostic LSP feedback and rule verification for coding agents, powered by a native Rust host.",
+  "license": "Apache-2.0",
+  "author": "adrian13579",
+  "type": "commonjs",
+  "bin": {
+    "sharper": "bin/sharper.cjs"
+  },
+  "files": [
+    "bin/",
+    "native/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.22.2"
+  },
+  "os": [
+    "win32",
+    "linux"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adrian13579/sharper.git",
+    "directory": "packaging/npm"
+  },
+  "homepage": "https://github.com/adrian13579/sharper",
+  "bugs": {
+    "url": "https://github.com/adrian13579/sharper/issues"
+  },
+  "keywords": [
+    "mcp",
+    "lsp",
+    "rust",
+    "code-feedback",
+    "rule-enforcement",
+    "coding-agents"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

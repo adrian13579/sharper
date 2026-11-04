@@ -1,0 +1,9 @@
+pub mod config;
+pub mod engine;
+pub mod framing;
+pub mod lsp;
+pub mod mcp;
+pub mod normalize;
+pub mod rpc;
+pub mod setup;
+pub mod workspace;

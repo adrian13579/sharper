@@ -1,0 +1,14 @@
+{
+  "dependencies": {
+    "eslint": "10.14.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.72.1",
+    "typescript-language-server": "6.0.3",
+    "vscode-langservers-extracted": "4.10.0"
+  },
+  "name": "sharper-integration-tools",
+  "private": true,
+  "engines": {
+    "node": ">=22.22.2"
+  }
+}

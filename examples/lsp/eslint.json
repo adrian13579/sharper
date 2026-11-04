@@ -1,0 +1,41 @@
+{
+  "servers": [
+    {
+      "id": "lint-rules",
+      "command": "node",
+      "arguments": [
+        "/absolute/path/vscode-langservers-extracted/bin/vscode-eslint-language-server",
+        "--stdio"
+      ],
+      "languages": {
+        ".ts": "typescript",
+        ".tsx": "typescriptreact",
+        ".js": "javascript",
+        ".jsx": "javascriptreact"
+      },
+      "navigation": false,
+      "settings": {
+        "validate": "on",
+        "packageManager": "",
+        "useESLintClass": true,
+        "experimental": {
+          "useFlatConfig": false
+        },
+        "codeActionOnSave": {
+          "enable": false,
+          "mode": "all"
+        },
+        "format": false,
+        "problems": {
+          "shortenToSingleLine": false
+        },
+        "options": {},
+        "quiet": false,
+        "onIgnoredFiles": "warn",
+        "rulesCustomizations": [],
+        "run": "onType",
+        "nodePath": null
+      }
+    }
+  ]
+}

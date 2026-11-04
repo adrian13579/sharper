@@ -1,0 +1,100 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to release
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ inputs.tag || github.ref }}
+  cancel-in-progress: false
+env:
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+jobs:
+  native:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win-x64
+            app: sharper.exe
+          - os: ubuntu-latest
+            platform: linux-x64
+            app: sharper
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node scripts/check-release.mjs
+      - run: cargo fmt --check
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      - run: cargo build --locked --example fake-lsp
+      - run: cargo test --locked -- --test-threads=4
+      - run: cargo build --locked --release
+      - name: Exercise release executable through MCP
+        shell: pwsh
+        run: |
+          $env:SHARPER_TEST_HOST = (Resolve-Path 'target/release/${{ matrix.app }}').Path
+          cargo test --locked --test mcp -- --test-threads=3
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm ci --prefix tests/mcp-client --ignore-scripts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tests/mcp-client/smoke.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.platform }}
+          path: target/release/${{ matrix.app }}
+  publish:
+    needs: native
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: native-*
+          path: artifacts/native
+      - run: node scripts/package-npm.mjs --windows artifacts/native/native-win-x64/sharper.exe --linux artifacts/native/native-linux-x64/sharper --output artifacts/npm
+      - name: Prepare native release assets
+        run: |
+          mkdir -p artifacts/release
+          cp artifacts/native/native-win-x64/sharper.exe artifacts/release/sharper-win-x64.exe
+          cp artifacts/native/native-linux-x64/sharper artifacts/release/sharper-linux-x64
+          cp artifacts/npm/*.tgz artifacts/release/
+          cd artifacts/release
+          sha256sum * > SHA256SUMS
+      - name: Publish GitHub prerelease or stable release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" artifacts/release/* --clobber
+          elif [[ "$RELEASE_TAG" == *-* ]]; then
+            gh release create "$RELEASE_TAG" artifacts/release/* --prerelease --notes-file "docs/release-notes/$RELEASE_TAG.md"
+          else
+            gh release create "$RELEASE_TAG" artifacts/release/* --notes-file "docs/release-notes/$RELEASE_TAG.md"
+          fi
+      - name: Publish npm using trusted publishing
+        if: vars.NPM_PUBLISH_ENABLED == 'true'
+        run: |
+          if [[ "$RELEASE_TAG" == *-* ]]; then
+            npm publish artifacts/npm/*.tgz --access public --provenance --tag next
+          else
+            npm publish artifacts/npm/*.tgz --access public --provenance
+          fi

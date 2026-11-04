@@ -1,0 +1,933 @@
+{
+  "status": "passed",
+  "recordedAtUtc": "2026-11-03T23:52:27.146929+00:00",
+  "runtime": ".NET 10.0.14",
+  "sdk": "10.0.403",
+  "revision": "55f039c23a3c7cf5f7230bda6f3bfa3b729549c8",
+  "sourceDirty": false,
+  "os": "Microsoft Windows 10.0.26300",
+  "architecture": "X64",
+  "logicalProcessors": 20,
+  "cpu": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
+  "server": "C:\\Users\\13056\\AppData\\Local\\Temp\\sharplint-readiness-roslyn\\.store\\roslyn-language-server\\5.13.0-1.26514.10\\roslyn-language-server.win-x64\\5.13.0-1.26514.10\\tools\\net10.0\\win-x64\\roslyn-language-server.exe",
+  "samplesPerWarmScenario": 20,
+  "coldSamples": 5,
+  "unit": "milliseconds",
+  "includes": "Full disk reconciliation and bounded incomplete-result retries; project changes include session reload. No build or restore in timed checks.",
+  "scenarios": {
+    "initialLoad": {
+      "samples": [
+        {
+          "durationMs": 5057.7596,
+          "status": "completed",
+          "attempts": 1
+        },
+        {
+          "durationMs": 4761.4014,
+          "status": "completed",
+          "attempts": 1
+        },
+        {
+          "durationMs": 4745.7684,
+          "status": "completed",
+          "attempts": 1
+        },
+        {
+          "durationMs": 4832.5652,
+          "status": "completed",
+          "attempts": 1
+        },
+        {
+          "durationMs": 4622.8146,
+          "status": "completed",
+          "attempts": 1
+        }
+      ],
+      "medianMs": 4761.4014,
+      "p95Ms": 5057.7596,
+      "incompleteOrFailed": 0
+    },
+    "unchangedFile": {
+      "samples": [
+        {
+          "durationMs": 40.876,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 280.4771,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 213.7122,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 177.8287,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 219.3182,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 553.2799,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 206.9738,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 181.192,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 207.7839,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 196.311,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 181.4315,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 183.8419,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 304.81,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 232.5176,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 203.7176,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 277.1589,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 237.9656,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 295.8483,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 199.1617,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 290.5502,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        }
+      ],
+      "medianMs": 210.74804999999998,
+      "p95Ms": 304.81,
+      "incompleteOrFailed": 0
+    },
+    "syntaxEdit": {
+      "samples": [
+        {
+          "durationMs": 409.8006,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 353.6095,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 397.4046,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 373.3356,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 556.1352,
+          "status": "completed",
+          "attempts": 2,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 807.6908,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 358.0633,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 377.4975,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 385.2656,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 430.3418,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 361.6149,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 392.5998,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 411.0906,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 411.9732,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 366.0779,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 392.5697,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 380.4618,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 392.0382,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 413.0717,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 434.7945,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        }
+      ],
+      "medianMs": 392.58475,
+      "p95Ms": 556.1352,
+      "incompleteOrFailed": 0
+    },
+    "semanticEdit": {
+      "samples": [
+        {
+          "durationMs": 376.3453,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 286.597,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 312.4397,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 241.3,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 276.6916,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 457.5762,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 248.092,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 274.2078,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 249.6192,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 457.1518,
+          "status": "completed",
+          "attempts": 2,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 234.62,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 279.7453,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 267.4931,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 294.1808,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 301.3931,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 276.3275,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 271.4217,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 448.4482,
+          "status": "completed",
+          "attempts": 2,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 313.4309,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 287.512,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        }
+      ],
+      "medianMs": 283.17115,
+      "p95Ms": 457.1518,
+      "incompleteOrFailed": 0
+    },
+    "multipleChangedFiles": {
+      "samples": [
+        {
+          "durationMs": 1106.3822,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 1065.909,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 997.1141,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 1040.9684,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 1307.9394,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 1778.4663,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 1082.7482,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 1076.2029,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 1038.687,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 1012.0795,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 948.9672,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 1087.1605,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 1186.2666,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 1138.9348,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 1191.0802,
+          "status": "completed",
+          "attempts": 2,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 983.1319,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 1006.6381,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 1235.8106,
+          "status": "completed",
+          "attempts": 2,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 1037.9599,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 1025.6895,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        }
+      ],
+      "medianMs": 1071.05595,
+      "p95Ms": 1307.9394,
+      "incompleteOrFailed": 0
+    },
+    "repeatedWarmCall": {
+      "samples": [
+        {
+          "durationMs": 37.1367,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 41.2841,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 38.5181,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 37.7088,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 170.6685,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 35.9177,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 48.3579,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 36.8809,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 145.9669,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 38.8348,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 176.758,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 37.2189,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 47.8293,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 47.3632,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 35.912,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 37.7777,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 124.7992,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 41.5913,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 33.8687,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 38.065,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        }
+      ],
+      "medianMs": 38.67645,
+      "p95Ms": 170.6685,
+      "incompleteOrFailed": 0
+    },
+    "projectReferenceReload": {
+      "samples": [
+        {
+          "durationMs": 7760.0095,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 7700.3179,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 7946.5293,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 8112.4273,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 12341.9699,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 9869.206,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 8445.4909,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 7804.6485,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 8069.0129,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 7899.7285,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 8198.0801,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 7841.5891,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 7936.7744,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 8496.7492,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 8147.0584,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 7902.6237,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 7904.1292,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 7736.0546,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 7895.853,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        },
+        {
+          "durationMs": 7950.8227,
+          "status": "completed",
+          "attempts": 1,
+          "complete": true,
+          "freshness": "verified"
+        }
+      ],
+      "medianMs": 7941.65185,
+      "p95Ms": 9869.206,
+      "incompleteOrFailed": 0
+    }
+  }
+}

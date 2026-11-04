@@ -1,0 +1,82 @@
+# Sharper
+
+![Sharper logo](https://raw.githubusercontent.com/adrian13579/sharper/main/logo.svg)
+
+[![Tests](https://github.com/adrian13579/sharper/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/adrian13579/sharper/actions/workflows/tests.yml)
+[![Build](https://github.com/adrian13579/sharper/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/adrian13579/sharper/actions/workflows/build.yml)
+[![Latest release](https://img.shields.io/github/v/release/adrian13579/sharper?include_prereleases&label=release)](https://github.com/adrian13579/sharper/releases)
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+
+**Fast feedback after every edit. Your languages. Your rules.**
+
+Sharper is a native **Rust** tool connecting coding agents to **Language Server Protocol** services. Get compiler, analyzer and rule-enforcement findings, fix violations, and verify the affected scope through one MCP interface. Language support comes from your configured servers and file mappings, rather than a built-in language list.
+
+**[Website](https://adrian13579.github.io/sharper/) | [Documentation](https://adrian13579.github.io/sharper/#documentation) | [Get started](#get-started)**
+
+> **Not ready for production.** Sharper is pre-alpha. Interfaces may change, and the Rust migration requires fresh cross-platform and production qualification. See [readiness](docs/production-readiness.md).
+
+## Why Sharper
+
+- **Keep feedback close to the edit.** Reuse warm local server sessions instead of starting a fresh language server for every check.
+- **Enforce your native rules.** Your compiler, analyzers and custom LSP rule servers define the checks. Sharper returns evidence for your agent to act on.
+- **Use your languages.** Configure extensions, LSP language IDs and server commands. Multiple matching servers can contribute findings to the same files.
+- **Verify with evidence.** Inspect findings, precise locations, checked scope, completion and freshness separately.
+- **Navigate when useful.** Definitions, implementations and references are supporting capabilities when your configured server advertises them.
+
+Sharper reports violations; it does not apply edits or block commits. Clean document diagnostics complement builds/tests and never certify them. Verified feedback requires the supported LSP contract, including document pulls; speaking some part of LSP alone is insufficient.
+
+## Get started
+
+Build from a checkout using the pinned Rust toolchain and a native linker:
+
+```sh
+git clone https://github.com/adrian13579/sharper.git
+cd sharper
+cargo install --path . --locked
+sharper setup
+```
+
+Or check [releases](https://github.com/adrian13579/sharper/releases) for native Windows/Linux x64 binaries. [npm distribution](docs/npm.md) bundles those binaries when published. No .NET runtime or SDK is required to build or run Sharper; individual language servers retain their own runtime requirements.
+
+Configure one or more LSP servers, then connect **Codex, Claude Code, OpenCode or GitHub Copilot**:
+
+```sh
+sharper setup codex --lsp-config /absolute/path/servers.json
+```
+
+Use the same option with the other client setup commands. Guided setup can create a profile and register your client after confirmation. Install language servers and restore target-project dependencies with their native tooling. See [server configuration](docs/custom-language-servers.md) and [agent setup](docs/agent-setup.md).
+
+## Tools
+
+| Tool | Purpose |
+| --- | --- |
+| `sharper_check` | Get configured compiler, analyzer and rule-server findings for a file or directory. |
+| `sharper_status` | Inspect server availability and advertised capabilities. |
+| `sharper_definition` | Find symbol definitions. |
+| `sharper_implementation` | Find implementations. |
+| `sharper_references` | Find references, optionally including declarations. |
+
+For example, pass this to `sharper_check`:
+
+```json
+{"workspace":"/work/app","path":"src"}
+```
+
+Follow **baseline, edit, check, fix, verify**. A current completed request can still contain errors: inspect severities and remaining findings. Run relevant builds and tests separately. See [the feedback workflow](docs/feedback.md).
+
+## Documentation
+
+- [LSP server profiles and custom rule enforcers](docs/custom-language-servers.md)
+- [Feedback and rule verification](docs/feedback.md)
+- [Agent setup](docs/agent-setup.md) / [supporting navigation](docs/code-navigation.md)
+- [Service contract](docs/lsp-service.md) / [compatibility and real-server tests](docs/compatibility.md)
+- [Native installation](docs/native-installation.md) / [npm packaging](docs/npm.md)
+- [Rust migration](docs/migration-to-rust.md) / [release notes](docs/release-notes)
+
+## Contributing
+
+Follow [AGENTS.md](AGENTS.md) for Rust validation and protocol boundaries. Bug reports should include your server versions, profile, minimal reproduction and actual tool response. See [website development](website/README.md) for the Next.js site.
+
+## License
+
+[Apache License 2.0](LICENSE). Sharper relies on external LSP servers for language semantics and rule execution.

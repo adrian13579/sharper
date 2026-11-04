@@ -1,0 +1,3 @@
+
+# npm executable shebangs must remain portable across build hosts.
+packaging/npm/**/*.cjs text eol=lf
