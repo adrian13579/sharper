@@ -2019,3 +2019,9 @@ footer a:hover {
     padding: 14px;
   }
 }
+
+.hero-rule-link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}

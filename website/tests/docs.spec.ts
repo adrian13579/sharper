@@ -13,7 +13,7 @@ test("docs navigation, full text search, anchors and every page work", async ({
   const links = await nav
     .getByRole("link")
     .evaluateAll((nodes) => nodes.map((node) => node.getAttribute("href")!));
-  expect(links).toHaveLength(8);
+  expect(links).toHaveLength(9);
   for (const link of links) {
     const response = await request.get(link);
     expect(response.status()).toBe(200);

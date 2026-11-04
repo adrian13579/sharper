@@ -10,6 +10,11 @@ export const entries = [
     title: "Language servers & rules",
     group: "Configuration",
   },
+  {
+    slug: "architecture-rules",
+    title: "Project architecture rules",
+    group: "Configuration",
+  },
   { slug: "code-navigation", title: "Code navigation", group: "Reference" },
   { slug: "lsp-service", title: "Service contract", group: "Reference" },
   { slug: "compatibility", title: "Compatibility", group: "Reference" },

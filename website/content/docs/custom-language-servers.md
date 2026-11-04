@@ -2,6 +2,10 @@
 
 **Sharper speaks LSP.** A compatible language server or custom rule enforcer can deliver its findings to your agent through Sharper. Support is configured by protocol capabilities and file mappings, rather than a fixed language list. The server owns rules and semantics; Sharper owns transport and verification evidence.
 
+## Enforce your project's architecture
+
+Your custom enforcer can turn rules such as "domain code must not import infrastructure" into diagnostics the agent can fix and recheck. Connect it alongside your language service to receive architecture and compiler findings through the same tool. See [project architecture rules](architecture-rules.md) for the idea, an example profile and the enforcement boundaries.
+
 ## Configure your services
 
 Create a JSON file outside your projects:

@@ -153,10 +153,13 @@ export default function App() {
               <span>Sharper code.</span>
             </h1>
             <p className="hero-description">
-              Give your agent language-agnostic compiler, analyzer and rule
-              feedback after every meaningful edit. Check your project's rules,
-              fix violations, and verify the affected code with{" "}
-              <strong>evidence you can inspect.</strong>
+              Give your agent rapid feedback on compiler and rule violations.
+              Connect a{" "}
+              <a className="hero-rule-link" href={docs("architecture-rules")}>
+                custom LSP enforcer
+              </a>{" "}
+              for your project's architecture rules, so it can check, fix and
+              verify as it works.
             </p>
             <div className="hero-buttons">
               <a className="button" href={docs("npm")}>

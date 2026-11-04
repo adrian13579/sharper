@@ -13,6 +13,10 @@ Sharper brings your compiler, analyzer and custom rule findings into the agent's
 
 Sharper speaks Language Server Protocol (LSP). Your existing language services and custom enforcers supply the rules; Sharper delivers their findings through MCP with scope, completion and freshness evidence. Support follows your configured servers and file mappings, not a fixed language list.
 
+## Bring your architecture rules
+
+Connect a custom LSP enforcer to give your agent rapid feedback on project-specific constraints, such as allowed module dependencies and layer boundaries. See [project architecture rules](architecture-rules.md) to turn guidelines into findings your agent can fix and verify.
+
 ## Tools at a glance
 
 | Tool                     | Purpose                                                                  |

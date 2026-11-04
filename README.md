@@ -11,6 +11,8 @@
 
 Sharper gives coding agents **rapid feedback on rule violations**, so they can correct changes while the work is still in context. Reuse warm local sessions to check compiler, analyzer and custom rule findings, fix violations, and verify the affected scope through one MCP interface. It speaks **Language Server Protocol**, connecting your existing language services and custom rule enforcers across languages.
 
+Bring your own architecture rules: connect a [custom LSP enforcer](https://adrian13579.github.io/sharper/docs/architecture-rules/) to flag forbidden dependencies and layer violations, so your agent can fix and recheck them as it works.
+
 **[Website](https://adrian13579.github.io/sharper/) | [Documentation](https://adrian13579.github.io/sharper/docs/overview/) | [Get started](#get-started)**
 
 ## Why Sharper
