@@ -2,6 +2,10 @@
 
 Sharper is a Rust MCP connector for fast language-agnostic feedback, rule checks and scoped verification through configured LSP servers. Run commands from the repository root.
 
+## Product messaging
+
+Lead public messaging with rapid feedback on rule violations and the check, fix, verify workflow. Language-agnostic LSP connectivity enables that value; navigation is a supporting benefit. Keep implementation-language details out of the root README. Avoid unmeasured latency claims.
+
 ## Contracts and architecture
 
 - Read `docs/lsp-service.md` before changing lifecycle, synchronization or freshness. External servers own language semantics and rules. Sharper owns transport, synchronization, normalization, cancellation and evidence.

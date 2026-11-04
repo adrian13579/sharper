@@ -7,9 +7,9 @@
 [![Latest release](https://img.shields.io/github/v/release/adrian13579/sharper?include_prereleases&label=release)](https://github.com/adrian13579/sharper/releases)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
-**Fast feedback after every edit. Your languages. Your rules.**
+**Rapid rule feedback for coding agents. Check, fix, verify after every edit.**
 
-Sharper connects coding agents to **Language Server Protocol** services. Get compiler, analyzer and rule-enforcement findings, fix violations, and verify the affected scope through one MCP interface. Language support comes from your configured servers and file mappings, rather than a built-in language list.
+Sharper gives coding agents **rapid feedback on rule violations**, so they can correct changes while the work is still in context. Reuse warm local sessions to check compiler, analyzer and custom rule findings, fix violations, and verify the affected scope through one MCP interface. It speaks **Language Server Protocol**, connecting your existing language services and custom rule enforcers across languages.
 
 **[Website](https://adrian13579.github.io/sharper/) | [Documentation](https://adrian13579.github.io/sharper/#documentation) | [Get started](#get-started)**
 
