@@ -36,6 +36,6 @@ Navigation retains Location and LocationLink ranges, external/generated URIs and
 
 `sharper_status` reports availability and advertised capabilities, not diagnostic verification. Unsupported server-to-client requests receive method-not-found; workspace edits are rejected. `workspace/configuration` returns configured settings by dotted section lookup, and settings are also sent with didChangeConfiguration.
 
-See [configuration](custom-language-servers.md), [feedback](feedback.md) and [compatibility](compatibility.md). The Rust migration changes configuration and packaging; old .NET measurements are historical evidence only.
+See [configuration](custom-language-servers.md), [feedback](feedback.md) and [compatibility](compatibility.md). The Rust migration changes configuration and packaging; older measurements are historical evidence only.
 
 Requests cancelled/timed out before scope resolution may return compact uncertain metadata without resolved path details. Input/discovery failures use MCP isError responses. Neither represents verified findings.

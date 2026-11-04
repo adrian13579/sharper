@@ -28,6 +28,6 @@ Report checked scope, remaining findings and separate builds/tests run. Empty do
 
 ## Feedback performance
 
-Warm sessions avoid launching a language server for every edit. Configuration and membership changes can reload contexts. Initialization, workspace size, rules and server implementation affect latency; there is no universal response-time guarantee. Historical .NET performance results do not measure this Rust codebase.
+Warm sessions avoid launching a language server for every edit. Configuration and membership changes can reload contexts. Initialization, workspace size, rules and server implementation affect latency; there is no universal response-time guarantee. Historical performance results do not measure this Rust codebase.
 
 Definitions, implementations and references are optional [navigation perks](code-navigation.md), useful for understanding a change's impact rather than verifying rule compliance.

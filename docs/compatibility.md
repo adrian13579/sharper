@@ -14,7 +14,7 @@ Optional server-specific adapters are isolated configuration choices, not hardco
 - Actual Rust MCP executable tests cover JSON-RPC, roots, structured responses, timeouts, cancellation, process-tree shutdown and agent registration.
 - Optional real-server tests qualify configured Roslyn, TypeScript and ESLint examples; these are examples of integration, not the boundary of language support.
 
-The pinned Node tools in tests/language-tools use TypeScript 5.9.3, TypeScript Language Server 6.0.3, vscode-langservers-extracted 4.10.0 and ESLint 10.14.0. Roslyn qualification uses official roslyn-language-server 5.13.0-1.26514.10 and .NET 10 target fixtures. Those runtimes are test/server dependencies, not Rust host dependencies. Node 24 is used for these tests and website/npm tooling.
+The pinned Node tools in tests/language-tools use TypeScript 5.9.3, TypeScript Language Server 6.0.3, vscode-langservers-extracted 4.10.0 and ESLint 10.14.0. Roslyn qualification uses official roslyn-language-server 5.13.0-1.26514.10 and server-specific target fixtures. Those runtimes are test/server dependencies, not Rust host dependencies. Node 24 is used for these tests and website/npm tooling.
 
 ```sh
 npm ci --prefix tests/language-tools --ignore-scripts
@@ -27,4 +27,4 @@ Real-server tests are explicitly ignored by default and require the configured d
 
 ## Migration limits
 
-Version 0.3 changes runtime, profiles and distribution. See [migration](migration-to-rust.md). The previous .NET suite, coverage, mutation, benchmark and soak results do not qualify this Rust implementation. Source text must currently be UTF-8. Symlinks and inputs outside the declared reconciliation boundary remain unsupported.
+Version 0.3 changes runtime, profiles and distribution. See [migration](migration-to-rust.md). The previous implementation suite, coverage, mutation, benchmark and soak results do not qualify this Rust implementation. Source text must currently be UTF-8. Symlinks and inputs outside the declared reconciliation boundary remain unsupported.

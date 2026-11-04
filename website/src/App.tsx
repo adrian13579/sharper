@@ -132,10 +132,10 @@ const documents = [
   },
   {
     number: "04",
-    tag: "BUILD & PACKAGE",
-    title: "Native installation",
-    description: "Build the Rust executable or use a native release package.",
-    file: "native-installation",
+    tag: "INSTALL & CONNECT",
+    title: "npm / npx installation",
+    description: "Install with npm or connect your agent through npx.",
+    file: "npm",
   },
   {
     number: "05",
@@ -173,7 +173,7 @@ export default function App() {
     setThemeReady(true);
   }, []);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [platform, setPlatform] = useState<"windows" | "linux">("windows");
+  const [installMode, setInstallMode] = useState<"npm" | "npx">("npm");
   useLayoutEffect(() => {
     if (!themeReady) return;
     document.documentElement.dataset.theme = theme;
@@ -184,10 +184,10 @@ export default function App() {
       /* Theme still works without storage. */
     }
   }, [theme, themeReady]);
-  const install = `git clone https://github.com/adrian13579/sharper.git
-cd sharper
-cargo install --path . --locked --target ${platform === "windows" ? "x86_64-pc-windows-msvc" : "x86_64-unknown-linux-gnu"}
-sharper setup`;
+  const install =
+    installMode === "npm"
+      ? "npm install --global @adrian13579/sharper@next\nsharper setup"
+      : "npx --yes @adrian13579/sharper@next mcp --lsp-config /absolute/path/servers.json";
   const logo = asset(`logo-${theme}.png`);
   return (
     <>
@@ -517,18 +517,14 @@ sharper setup`;
               Stay in control.
             </h2>
             <p>
-              Build the current source candidate, then let guided setup connect
-              your languages and agents.
+              Install with npm, then let guided setup connect your languages and
+              agents.
             </p>
             <p className="requirements">
-              Requires the Rust toolchain in{" "}
-              <a href={`${repository}/blob/main/rust-toolchain.toml`}>
-                rust-toolchain.toml
-              </a>{" "}
-              and your platform's native linker. Restore target-project
-              dependencies before analysis.
+              Requires Node.js 22.22.2 or newer. Install your language servers
+              and restore target-project dependencies before analysis.
             </p>
-            <a className="text-link" href={docs("native-installation")}>
+            <a className="text-link" href={docs("npm")}>
               Full installation guide <Arrow diagonal />
             </a>
           </div>
@@ -537,24 +533,24 @@ sharper setup`;
               <div
                 className="platform-switch"
                 role="group"
-                aria-label="Build platform"
+                aria-label="Installation method"
               >
                 <button
                   type="button"
-                  aria-pressed={platform === "windows"}
-                  onClick={() => setPlatform("windows")}
+                  aria-pressed={installMode === "npm"}
+                  onClick={() => setInstallMode("npm")}
                 >
-                  Windows
+                  npm
                 </button>
                 <button
                   type="button"
-                  aria-pressed={platform === "linux"}
-                  onClick={() => setPlatform("linux")}
+                  aria-pressed={installMode === "npx"}
+                  onClick={() => setInstallMode("npx")}
                 >
-                  Linux
+                  npx
                 </button>
               </div>
-              <span>SOURCE · {process.env.NEXT_PUBLIC_SHARPER_VERSION}</span>
+              <span>PRE-ALPHA · {process.env.NEXT_PUBLIC_SHARPER_VERSION}</span>
             </div>
             <div className="install-code">
               <CopyButton value={install} />
@@ -563,11 +559,13 @@ sharper setup`;
               </pre>
             </div>
             <p className="install-note">
-              Native Rust executable · Windows x64 / Linux x64 (glibc)
+              Windows x64 / Linux x64 (glibc)
               <br />
-              <a href={`${repository}/releases`}>Check published releases</a> or
-              read about <a href={docs("npm")}>npm distribution</a>. Registry
-              availability is separate from this source build.
+              <a href="https://www.npmjs.com/package/@adrian13579/sharper">
+                Check available npm versions
+              </a>
+              . Sharper is pre-alpha; registry availability depends on
+              publication.
             </p>
           </div>
         </section>

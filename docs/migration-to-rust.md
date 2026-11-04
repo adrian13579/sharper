@@ -12,7 +12,7 @@ Tool calls continue to select workspace/path dynamically. Historical backend/bac
 
 ## Reinstall and register
 
-Build with Cargo or use an available native release/npm package. NuGet/.NET tool packages, .NET SDK build scripts, managed/native split and trim metadata are retired. The Rust host needs no .NET SDK/runtime. Individual servers still require their native tooling.
+Install through [npm or npx](npm.md). Standalone executable and source-install distribution paths are no longer offered. Language servers retain their own prerequisites.
 
 Run setup for your agent again with the profile path. JSONC registrations preserve unrelated settings/comments; Codex delegates configuration to its CLI. Guided setup creates/selects profiles and confirms registration. It no longer installs language-specific packages; install your chosen servers using their own instructions.
 
@@ -20,4 +20,4 @@ Run setup for your agent again with the profile path. JSONC registrations preser
 
 The workspace boundary now explicitly excludes .git, node_modules, target, artifacts and .next. Source files must be UTF-8; non-UTF-8 files fail rather than being silently misread. Reconciliation has declared file/count/size limits. See the service contract.
 
-The original C# tests and packaging scripts were replaced by Rust protocol, lifecycle and actual MCP executable tests. Historical benchmark/results files and release notes are preserved as historical .NET evidence only. Coverage, mutation, performance, stability, third-party server compatibility and production readiness require fresh Rust evidence. Sharper remains pre-alpha.
+The original C# tests and packaging scripts were replaced by Rust protocol, lifecycle and actual MCP executable tests. Historical benchmark/results files and release notes are preserved as historical evidence only. Coverage, mutation, performance, stability, third-party server compatibility and production readiness require fresh Rust evidence. Sharper remains pre-alpha.

@@ -57,7 +57,7 @@ jobs:
     needs: native
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       id-token: write
     steps:
       - uses: actions/checkout@v4
@@ -71,27 +71,7 @@ jobs:
           pattern: native-*
           path: artifacts/native
       - run: node scripts/package-npm.mjs --windows artifacts/native/native-win-x64/sharper.exe --linux artifacts/native/native-linux-x64/sharper --output artifacts/npm
-      - name: Prepare native release assets
-        run: |
-          mkdir -p artifacts/release
-          cp artifacts/native/native-win-x64/sharper.exe artifacts/release/sharper-win-x64.exe
-          cp artifacts/native/native-linux-x64/sharper artifacts/release/sharper-linux-x64
-          cp artifacts/npm/*.tgz artifacts/release/
-          cd artifacts/release
-          sha256sum * > SHA256SUMS
-      - name: Publish GitHub prerelease or stable release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" artifacts/release/* --clobber
-          elif [[ "$RELEASE_TAG" == *-* ]]; then
-            gh release create "$RELEASE_TAG" artifacts/release/* --prerelease --notes-file "docs/release-notes/$RELEASE_TAG.md"
-          else
-            gh release create "$RELEASE_TAG" artifacts/release/* --notes-file "docs/release-notes/$RELEASE_TAG.md"
-          fi
       - name: Publish npm using trusted publishing
-        if: vars.NPM_PUBLISH_ENABLED == 'true'
         run: |
           if [[ "$RELEASE_TAG" == *-* ]]; then
             npm publish artifacts/npm/*.tgz --access public --provenance --tag next

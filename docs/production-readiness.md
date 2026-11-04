@@ -1,6 +1,6 @@
 # Production readiness
 
-**Sharper is not ready for production.** The Rust migration is pre-alpha and requires new qualification. Do not carry .NET test, coverage, mutation, benchmark or soak numbers into Rust claims.
+**Sharper is not ready for production.** The Rust migration is pre-alpha and requires new qualification. Do not carry previous implementation test, coverage, mutation, benchmark or soak numbers into Rust claims.
 
 Current validation must distinguish controlled LSP fixtures, actual MCP executable checks and real external servers. A server advertising a capability is not sufficient evidence that its project semantics, rule configuration and synchronization satisfy the intended workflow.
 

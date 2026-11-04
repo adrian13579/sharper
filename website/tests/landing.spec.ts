@@ -99,28 +99,28 @@ test("theme persists and both desktop themes have no serious accessibility findi
   });
 });
 
-test("platform selection changes copyable installation commands", async ({
+test("installation method changes copyable commands", async ({
   page,
   context,
 }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("./");
-  await page.getByRole("button", { name: "Linux", exact: true }).click();
+  await page.getByRole("button", { name: "npx", exact: true }).click();
   await expect(
     page.getByLabel("Install commands", { exact: true }),
-  ).toContainText("--target x86_64-unknown-linux-gnu");
+  ).toContainText("npx --yes @adrian13579/sharper@next");
   await page.getByRole("button", { name: "Copy install commands" }).click();
   await expect(page.getByRole("status")).toContainText("Commands copied");
   expect(await page.evaluate(() => navigator.clipboard.readText())).toContain(
-    "--target x86_64-unknown-linux-gnu",
+    "npx --yes @adrian13579/sharper@next",
   );
-  await page.getByRole("button", { name: "Windows", exact: true }).click();
+  await page.getByRole("button", { name: "npm", exact: true }).click();
   await expect(
     page.getByLabel("Install commands", { exact: true }),
-  ).toContainText("--target x86_64-pc-windows-msvc");
+  ).toContainText("npm install --global @adrian13579/sharper@next");
   expect(
     await page.getByLabel("Install commands", { exact: true }).textContent(),
-  ).not.toContain("npm install --global");
+  ).not.toContain("cargo install");
 });
 
 test("mobile navigation, layout and accessibility remain usable", async ({

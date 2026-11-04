@@ -27,9 +27,14 @@ Sharper reports violations; it does not apply edits or block commits. Clean docu
 
 ## Get started
 
-See [native installation](docs/native-installation.md) for building from source, or check [releases](https://github.com/adrian13579/sharper/releases) for native Windows/Linux x64 binaries. [npm distribution](docs/npm.md) bundles those binaries when published. Individual language servers retain their own runtime requirements.
+Install through npm, then run guided setup:
 
-Run `sharper setup` for guided configuration.
+```sh
+npm install --global @adrian13579/sharper@next
+sharper setup
+```
+
+For an MCP client that launches commands directly, use `npx --yes @adrian13579/sharper@next mcp --lsp-config /absolute/path/servers.json`. See [npm installation](docs/npm.md) for requirements and registry availability.
 
 Configure one or more LSP servers, then connect **Codex, Claude Code, OpenCode or GitHub Copilot**:
 
@@ -63,7 +68,7 @@ Follow **baseline, edit, check, fix, verify**. A current completed request can s
 - [Feedback and rule verification](docs/feedback.md)
 - [Agent setup](docs/agent-setup.md) / [supporting navigation](docs/code-navigation.md)
 - [Service contract](docs/lsp-service.md) / [compatibility and real-server tests](docs/compatibility.md)
-- [Native installation](docs/native-installation.md) / [npm packaging](docs/npm.md)
+- [npm / npx installation](docs/npm.md)
 - [Release notes](docs/release-notes)
 
 ## Contributing

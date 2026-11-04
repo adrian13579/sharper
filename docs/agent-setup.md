@@ -1,6 +1,6 @@
 # Agent setup
 
-Install the Rust executable and your chosen language servers, then prepare an explicit [LSP profile](custom-language-servers.md). Sharper does not install project dependencies or automatically provision language-specific packages.
+Install Sharper through [npm](npm.md) and your chosen language servers, then prepare an explicit [LSP profile](custom-language-servers.md). Sharper does not install project dependencies or automatically provision language-specific packages.
 
 ## Guided setup
 
