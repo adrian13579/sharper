@@ -13,8 +13,26 @@ Sharper connects your agent to language services and custom LSP rule enforcers t
 
 A custom enforcer could check forbidden dependencies or layer boundaries. [See an example](https://adrian13579.github.io/sharper/docs/architecture-rules/).
 
-**[Website](https://adrian13579.github.io/sharper/) · [Documentation](https://adrian13579.github.io/sharper/docs/overview/) · [Install with npm / npx](https://adrian13579.github.io/sharper/docs/npm/)**
+**[Getting started](https://adrian13579.github.io/sharper/docs/overview/)**
+
+## Build from source
+
+Install the [pinned toolchain](rust-toolchain.toml) and a native linker, then:
+
+```sh
+git clone https://github.com/adrian13579/sharper.git
+cd sharper
+cargo build --locked --release
+```
+
+The executable is `target/release/sharper` (`sharper.exe` on Windows). Run it with `setup` for guided configuration.
+
+On Windows, install the Visual Studio C++ build tools and Windows SDK, then use `./build.ps1 --release` from PowerShell to resolve the linker libraries. Linux requires a C linker.
+
+## Contributing
 
 Contributions welcome. [Open an issue first](https://github.com/adrian13579/sharper/issues/new), then follow the [contributing guide](CONTRIBUTING.md) and include a design document explaining your changes and their value.
+
+## License
 
 [Apache License 2.0](LICENSE).
