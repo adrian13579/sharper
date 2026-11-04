@@ -31,7 +31,7 @@ On Windows, install the Visual Studio C++ build tools and Windows SDK, then use 
 
 ## Contributing
 
-Contributions welcome. [Open an issue first](https://github.com/adrian13579/sharper/issues/new), then follow the [contributing guide](CONTRIBUTING.md) and include a design document explaining your changes and their value.
+Contributions welcome. See the [contributing guide](CONTRIBUTING.md).
 
 ## License
 

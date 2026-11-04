@@ -10,7 +10,7 @@ Discuss the scope and approach with maintainers before investing in implementati
 
 ## Explain the design and value
 
-Every proposed contribution should include a design/contribution document linked from the issue and pull request. Use the [design template](.github/CONTRIBUTION_DESIGN_TEMPLATE.md). Keep the document proportionate: a small correction may need only a few paragraphs, while a feature or behavior change needs enough detail to review the approach and tradeoffs.
+Describe the contribution's design and value directly in the issue description. Carry that explanation into the pull request description, updated to reflect the final implementation. Keep it proportionate: a small correction may need only a few sentences, while a feature or behavior change needs enough detail to review the approach and tradeoffs.
 
 Explain:
 
@@ -19,7 +19,7 @@ Explain:
 - **Design and scope:** how the solution works, affected interfaces, boundaries and what is outside scope.
 - **Alternatives and tradeoffs:** why this approach fits, including compatibility, performance or maintenance costs.
 
-The document can be Markdown attached to the issue/PR or a committed file in the contribution branch. Make it accessible to reviewers and keep it aligned with the final implementation. Do not substitute a file inventory or generated changelog for an explanation of the change.
+Keep the explanation in the issue and pull request descriptions so reviewers can understand the proposal and implementation in place. A separate design document or committed Markdown file is optional.
 
 ## Implement a focused change
 
@@ -29,6 +29,6 @@ Use [AGENTS.md](AGENTS.md) for repository layout and architectural boundaries. T
 
 ## Open a pull request
 
-Link the issue and design/contribution document. Describe the problem, resulting behavior, user benefit. Call out compatibility changes, limitations and follow-up work. Use focused Conventional Commits, and update your proposal if the implementation changes during review.
+Link the issue. Explain the problem, resulting behavior, user benefit and design decisions in the pull request description. Call out compatibility changes, limitations and follow-up work. Use focused Conventional Commits, and update your proposal if the implementation changes during review.
 
 Be prepared to explain design decisions and revise the change based on feedback. Maintainers may request a smaller scope or decline changes that do not fit the project.

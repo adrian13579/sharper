@@ -1,10 +1,17 @@
-## Problem and resulting behavior
+## Problem and value
 
-Explain the problem, what changes and the value it offers.
+Explain the problem, who benefits and what this change offers.
 
 Issue: <!-- Link the issue discussed before implementation. -->
-Design/contribution document: <!-- Link the document using CONTRIBUTION_DESIGN_TEMPLATE.md. -->
 
-## Compatibility and limitations
+## Resulting behavior
 
-Describe relevant behavior changes, documentation updates and remaining limitations.
+Describe the user experience, with before/after examples where helpful.
+
+## Design and approach
+
+Explain how the change works, its scope and the reasons for the approach. Summarize relevant alternatives and tradeoffs here.
+
+## Compatibility and follow-up
+
+Describe relevant behavior changes, documentation updates and remaining work.
