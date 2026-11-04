@@ -5,6 +5,16 @@ import path from "node:path";
 
 const screenshots = path.resolve("../artifacts/website");
 
+// Keep layout checks independent of the external badge provider's availability.
+test.beforeEach(async ({ page }) => {
+  await page.route("https://img.shields.io/**", (route) =>
+    route.fulfill({
+      contentType: "image/svg+xml",
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="140" height="20"><rect width="140" height="20" fill="#555"/></svg>',
+    }),
+  );
+});
+
 test("production base path, assets and documentation links load without errors", async ({
   page,
 }) => {
@@ -25,6 +35,14 @@ test("production base path, assets and documentation links load without errors",
     page.getByText("RAPID RULE FEEDBACK", { exact: false }),
   ).toBeVisible();
   await expect(page.locator("main > section")).toHaveCount(1);
+  const stats = page.getByLabel("Project statistics");
+  await expect(
+    stats.getByRole("link", { name: "GitHub stars", exact: true }),
+  ).toHaveAttribute("href", /github.com\/adrian13579\/sharper\/stargazers$/);
+  await expect(
+    stats.getByRole("img", { name: "npm downloads per month" }),
+  ).toHaveAttribute("src", /shields.io\/npm\/dm\/@adrian13579\/sharper/);
+
   await expect(
     page.getByRole("link", { name: "Get started", exact: true }),
   ).toHaveAttribute("href", "/sharper/docs/npm/");

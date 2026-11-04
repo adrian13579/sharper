@@ -67,6 +67,13 @@ test("docs navigation, full text search, anchors and every page work", async ({
 test("docs themes, mobile menu and accessibility", async ({ page }) => {
   await page.goto("./docs/overview/");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(
+    page.getByRole("link", { name: "GitHub", exact: true }).locator("svg"),
+  ).toHaveCount(1);
+  await expect(
+    page.getByRole("button", { name: "Switch to dark theme" }).locator("svg"),
+  ).toHaveCount(1);
+
   for (const theme of ["light", "dark"]) {
     if ((await page.locator("html").getAttribute("data-theme")) !== theme)
       await page

@@ -2025,3 +2025,32 @@ footer a:hover {
   text-decoration: underline;
   text-underline-offset: 4px;
 }
+
+.project-stats {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 24px 0 0;
+}
+.project-stats a {
+  display: inline-flex;
+  align-items: center;
+}
+.project-stats img {
+  max-width: 100%;
+}
+.docs-header-actions .theme-toggle {
+  border: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.docs-header-actions .docs-github {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+}

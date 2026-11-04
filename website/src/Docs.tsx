@@ -2,6 +2,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Github, ThemeIcon } from "./Icons";
 type Document = { slug: string; title: string; group: string; content: string };
 const base = process.env.NEXT_PUBLIC_BASE_PATH || "";
 const href = (slug: string) => `${base}/docs/${slug}/`;
@@ -71,12 +72,19 @@ export default function Docs({
         </a>
         <span className="docs-header-label">Documentation</span>
         <div className="docs-header-actions">
-          <a href="https://github.com/adrian13579/sharper">GitHub</a>
+          <a
+            className="docs-github"
+            href="https://github.com/adrian13579/sharper"
+            aria-label="GitHub"
+          >
+            <Github />
+          </a>
           <button
+            className="theme-toggle"
             onClick={toggle}
             aria-label={`Switch to ${dark ? "light" : "dark"} theme`}
           >
-            {dark ? "Light" : "Dark"}
+            <ThemeIcon theme={dark ? "dark" : "light"} />
           </button>
           <button
             className="docs-menu"
