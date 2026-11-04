@@ -31,9 +31,6 @@ test("production base path, assets and documentation links load without errors",
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
     "Sharper code.",
   );
-  await expect(
-    page.getByText("RAPID RULE FEEDBACK", { exact: false }),
-  ).toBeVisible();
   await expect(page.locator("main > section")).toHaveCount(1);
   const stats = page.getByLabel("Project statistics");
   await expect(

@@ -102,10 +102,6 @@ export default function App() {
       <main id="main" tabIndex={-1}>
         <section className="hero container" aria-labelledby="hero-title">
           <div className="hero-copy">
-            <a className="release-label" href={docs("overview")}>
-              <span className="status-dot" /> RAPID RULE FEEDBACK{" "}
-              <Arrow diagonal />
-            </a>
             <p className="eyebrow hero-eyebrow">
               FAST FEEDBACK. PROJECT RULES. VERIFIED RESULTS.
             </p>
