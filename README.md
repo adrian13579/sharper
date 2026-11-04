@@ -9,11 +9,11 @@
 
 **Fast feedback after every edit. Your languages. Your rules.**
 
-Sharper is a native **Rust** tool connecting coding agents to **Language Server Protocol** services. Get compiler, analyzer and rule-enforcement findings, fix violations, and verify the affected scope through one MCP interface. Language support comes from your configured servers and file mappings, rather than a built-in language list.
+Sharper connects coding agents to **Language Server Protocol** services. Get compiler, analyzer and rule-enforcement findings, fix violations, and verify the affected scope through one MCP interface. Language support comes from your configured servers and file mappings, rather than a built-in language list.
 
 **[Website](https://adrian13579.github.io/sharper/) | [Documentation](https://adrian13579.github.io/sharper/#documentation) | [Get started](#get-started)**
 
-> **Not ready for production.** Sharper is pre-alpha. Interfaces may change, and the Rust migration requires fresh cross-platform and production qualification. See [readiness](docs/production-readiness.md).
+> **Not ready for production.** Sharper is pre-alpha. Interfaces may change, and cross-platform and production qualification are still in progress. See [readiness](docs/production-readiness.md).
 
 ## Why Sharper
 
@@ -27,16 +27,9 @@ Sharper reports violations; it does not apply edits or block commits. Clean docu
 
 ## Get started
 
-Build from a checkout using the pinned Rust toolchain and a native linker:
+See [native installation](docs/native-installation.md) for building from source, or check [releases](https://github.com/adrian13579/sharper/releases) for native Windows/Linux x64 binaries. [npm distribution](docs/npm.md) bundles those binaries when published. Individual language servers retain their own runtime requirements.
 
-```sh
-git clone https://github.com/adrian13579/sharper.git
-cd sharper
-cargo install --path . --locked
-sharper setup
-```
-
-Or check [releases](https://github.com/adrian13579/sharper/releases) for native Windows/Linux x64 binaries. [npm distribution](docs/npm.md) bundles those binaries when published. No .NET runtime or SDK is required to build or run Sharper; individual language servers retain their own runtime requirements.
+Run `sharper setup` for guided configuration.
 
 Configure one or more LSP servers, then connect **Codex, Claude Code, OpenCode or GitHub Copilot**:
 
@@ -71,11 +64,11 @@ Follow **baseline, edit, check, fix, verify**. A current completed request can s
 - [Agent setup](docs/agent-setup.md) / [supporting navigation](docs/code-navigation.md)
 - [Service contract](docs/lsp-service.md) / [compatibility and real-server tests](docs/compatibility.md)
 - [Native installation](docs/native-installation.md) / [npm packaging](docs/npm.md)
-- [Rust migration](docs/migration-to-rust.md) / [release notes](docs/release-notes)
+- [Release notes](docs/release-notes)
 
 ## Contributing
 
-Follow [AGENTS.md](AGENTS.md) for Rust validation and protocol boundaries. Bug reports should include your server versions, profile, minimal reproduction and actual tool response. See [website development](website/README.md) for the Next.js site.
+Follow [AGENTS.md](AGENTS.md) for validation and protocol boundaries. Bug reports should include your server versions, profile, minimal reproduction and actual tool response. See [website development](website/README.md) for the Next.js site.
 
 ## License
 
