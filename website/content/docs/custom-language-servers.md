@@ -2,10 +2,6 @@
 
 **Sharper speaks LSP.** A compatible language server or custom rule enforcer can deliver its findings to your agent through Sharper. Support is configured by protocol capabilities and file mappings, rather than a fixed language list. The server owns rules and semantics; Sharper owns transport and verification evidence.
 
-## Enforce your project's architecture
-
-Your custom enforcer can turn rules such as "domain code must not import infrastructure" into diagnostics the agent can fix and recheck. Connect it alongside your language service to receive architecture and compiler findings through the same tool. See [project architecture rules](architecture-rules.md) for the idea, an example profile and the enforcement boundaries.
-
 ## Configure your services
 
 Create a JSON file outside your projects:
@@ -33,9 +29,19 @@ A bare command resolves on PATH. Relative executable paths resolve against the p
 
 Optional `navigation: false` disables a rule-only service for navigation. Optional `readyNotification` names an explicit server readiness notification; without it, initialization completes readiness and the server must make its own diagnostic request completion meaningful.
 
-The old single-server object is still accepted with default ID `custom`, but no built-in language checks are added implicitly. Install servers separately and use trusted programs/configurations: external servers run with your user's permissions. Profiles are explicit startup data, never auto-discovered from target repositories.
+Install servers separately and use trusted programs/configurations: external servers run with your user's permissions. Profiles are explicit startup data, never auto-discovered from target repositories.
 
-## Connect the agent
+## Connect your agent
+
+After saving `servers.json`, register it with your agent. Install the required language services separately; Sharper does not install project dependencies.
+
+### Guided setup
+
+Run `sharper setup` or bare `sharper` in an interactive terminal. Choose an existing profile or create one by entering a server command, literal JSON argument array and extension mappings. Choose where to save it, review the write, then select a client and confirm registration. An existing file is never silently replaced. Type q or close input to cancel.
+
+Colors are disabled when output is redirected, with `--no-color`, or with NO_COLOR. Profiles and agent registrations remain after completed writes. Install missing servers with their native tooling; setup does not claim to validate server protocol compatibility. Use sharper_status and a scoped check after connecting.
+
+### Direct registration
 
 ```sh
 sharper setup codex --lsp-config /absolute/path/servers.json
@@ -44,11 +50,29 @@ sharper setup opencode --lsp-config /absolute/path/servers.json
 sharper setup copilot --lsp-config /absolute/path/servers.json
 ```
 
-Use your client's command or run guided `sharper setup` to create/select a profile. Direct MCP launch is `sharper mcp --lsp-config ...`. `SHARPER_LSP_CONFIG` is an optional fallback. Restart the client's MCP connection after profile changes.
+- Codex requires its native CLI. `--codex-path` / `--codex-home` select an executable/profile. Sharper delegates TOML edits to `codex mcp add` and propagates errors.
+- Claude Code writes ~/.claude.json or CLAUDE_CONFIG_DIR/.claude.json. `--config` overrides it.
+- OpenCode writes its global opencode.json under XDG_CONFIG_HOME (or ~/.config). `--config` / OPENCODE_CONFIG override it.
+- Copilot configures CLI and VS Code by default; `--client cli|vscode|both` selects scope. `--copilot-config` / `--vscode-config` override paths. COPILOT_HOME and platform-specific VS Code user directories are honored.
 
-The agent keeps passing workspace and affected path to the ordinary tools. File/directory checks include every matching configured service. No source match or unavailable rules is an explicit failure, not a clean verification. Navigation uses the first enabled matching service advertising the requested capability.
+JSONC updates preserve unrelated values/comments and existing owned environment values. Files are validated before edits and written atomically per file. Setup stores the executable and absolute profile path, without a fixed workspace. Restart the MCP connection after registration or profile changes.
 
-## Supported LSP contract
+For other clients using an mcpServers collection:
+
+```json
+{
+  "mcpServers": {
+    "sharper": {
+      "command": "/absolute/path/sharper",
+      "args": ["mcp", "--lsp-config", "/absolute/path/servers.json"]
+    }
+  }
+}
+```
+
+Use client-specific setup for Codex/OpenCode, which have different schemas.
+
+## Server requirements
 
 Implement the relevant [LSP 3.17](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/) capabilities:
 
@@ -59,10 +83,10 @@ Implement the relevant [LSP 3.17](https://microsoft.github.io/language-server-pr
 - Optional workspace/configuration and didChangeConfiguration using profile settings.
 - Cancellation, errors, refresh, capability changes and orderly shutdown.
 
-Sharper does not apply edits, forward arbitrary commands, provide formatting/rename/code actions, install dependencies or certify a server's rules. See [the service contract](lsp-service.md) for freshness boundaries.
+Sharper does not apply edits, forward arbitrary commands, provide formatting/rename/code actions, install dependencies or certify a server's rules. Checks cover mapped source documents within the selected workspace. Clean findings do not certify a build, tests or every possible rule.
 
 ## Compatibility profiles
 
 [Example profiles](https://github.com/adrian13579/sharper/tree/main/examples/lsp) illustrate real server integration, including optional readiness settings and the explicitly selected `diagnostics: "typeScript"` compatibility adapter. That adapter permits only the existing TypeScript synchronous syntax/semantic diagnostic commands. Standard `diagnostics: "pull"` is the default for every language.
 
-Speaking LSP alone is not a universal compatibility guarantee. Qualify each chosen server, its project settings and rule behavior against representative workspaces. See [compatibility tests](compatibility.md).
+Speaking LSP alone is not a universal compatibility guarantee. Qualify each chosen server, its project settings and rule behavior against representative workspaces. Test a known violation and its correction with your chosen configuration before relying on the findings.

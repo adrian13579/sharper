@@ -12,7 +12,7 @@ Lead public messaging with rapid feedback on rule violations and the check, fix,
 
 ## Contracts and architecture
 
-- Read `website/content/docs/lsp-service.md` before changing lifecycle, synchronization or freshness. External servers own language semantics and rules. Sharper owns transport, synchronization, normalization, cancellation and evidence.
+- Read `maintenance/lsp-service.md` before changing lifecycle, synchronization or freshness. External servers own language semantics and rules. Sharper owns transport, synchronization, normalization, cancellation and evidence.
 - Language support comes from explicit `--lsp-config` profiles, never hardcoded extension routing or repository-discovered executable configuration. Multiple matching servers contribute diagnostics. Do not add a rule engine, plugin registry, compiler workspace or unrestricted execute-command proxy.
 - Preserve the five MCP tool names. All source operations are read-only. Never apply workspace edits or install project dependencies. MCP stdout is newline-delimited JSON-RPC only; logs go to stderr.
 - Keep bounded warm sessions per workspace/server, evict/dispose contexts and stop child process groups/jobs on cancellation and shutdown. Initialization, queueing and analysis share a request deadline.

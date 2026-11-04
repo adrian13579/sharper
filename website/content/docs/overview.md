@@ -1,32 +1,43 @@
 # Rapid rule feedback for your agent
 
-Sharper brings your compiler, analyzer and custom rule findings into the agent's editing loop. Check the affected code, fix violations, and verify the result without starting a fresh language server for every request.
+Sharper brings findings from your compiler, analyzers and custom LSP services into the agent's editing loop. Check affected code, fix violations and verify the result through one MCP interface, reusing warm local server sessions.
 
-## Start with a small loop
+## Get started
 
-1. [Install Sharper with npm](npm.md) or configure an npx MCP command.
-2. [Connect your agent](agent-setup.md) using an explicit server profile.
-3. [Configure your language services and rules](custom-language-servers.md).
-4. Establish a baseline, edit, check, fix and verify with [the feedback workflow](feedback.md).
+1. [Install Sharper with npm or npx](npm.md).
+2. [Create your server profile and connect your agent](custom-language-servers.md).
+3. Follow the workflow below while making changes.
 
 ## Your languages. Your rules.
 
-Sharper speaks Language Server Protocol (LSP). Your existing language services and custom enforcers supply the rules; Sharper delivers their findings through MCP with scope, completion and freshness evidence. Support follows your configured servers and file mappings, not a fixed language list.
+Sharper speaks Language Server Protocol (LSP). Your configured services supply language analysis and rules; Sharper returns their findings with scope, completion and freshness evidence. Language support follows your server profiles and file mappings.
 
-## Bring your architecture rules
+A custom service could check project-specific constraints. For an illustration, see the [architecture enforcer example](architecture-rules.md). That enforcer and its rules are supplied by you, not built into Sharper.
 
-Connect a custom LSP enforcer to give your agent rapid feedback on project-specific constraints, such as allowed module dependencies and layer boundaries. See [project architecture rules](architecture-rules.md) to turn guidelines into findings your agent can fix and verify.
+## Workflow
 
-## Tools at a glance
+1. **Baseline:** check relevant files before editing to identify existing findings.
+2. **Edit:** use the agent's normal tools and write changes to disk.
+3. **Check:** call `sharper_check` on affected files or directories, including dependent code when shared interfaces change.
+4. **Fix:** correct introduced violations using their codes, severities and locations, then check again.
+5. **Verify:** confirm current, completed analysis, inspect remaining findings and run relevant builds and tests separately.
 
-| Tool                     | Purpose                                                                  |
-| ------------------------ | ------------------------------------------------------------------------ |
-| `sharper_check`          | Get compiler, analyzer and rule-server findings for a file or directory. |
-| `sharper_status`         | Inspect availability and capabilities.                                   |
-| `sharper_definition`     | Find a symbol's definition.                                              |
-| `sharper_implementation` | Find implementations.                                                    |
-| `sharper_references`     | Find references.                                                         |
+For example, pass this to `sharper_check`:
 
-## Know what a check proves
+```json
+{ "workspace": "/work/app", "path": "src" }
+```
 
-A completed, current check can still contain violations. Inspect findings and their severities before deciding the next step. Clean document diagnostics complement builds and tests; they do not certify them. Sharper reports findings and never applies source edits. See the [service contract](lsp-service.md) for exact boundaries.
+Omitting `path` covers mapped source documents across the workspace. Every matching configured service contributes feedback.
+
+## Read the result
+
+Require `status: "completed"`, `complete: true` and `freshness: "verified"` before treating analysis as current. These fields describe the request; they do not mean every rule passed. Inspect diagnostics and severities, since completed analysis can contain errors. Partial, stale, failed or cancelled requests do not establish a clean result.
+
+Sharper reports findings and never applies source edits or blocks commits. Empty diagnostics do not prove a build or test suite passed. Keep toolchains and external dependencies stable during a session, and restart after changing them. `sharper_status` reports availability, not verification.
+
+## Agent guidance
+
+Add a short instruction to your project's agent guidance:
+
+> Establish a baseline before editing. Check affected code after changes, fix introduced violations, and recheck. Before finishing, confirm analysis is completed and current, report remaining findings, and run relevant builds and tests separately.

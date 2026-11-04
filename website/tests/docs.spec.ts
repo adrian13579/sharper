@@ -13,18 +13,22 @@ test("docs navigation, full text search, anchors and every page work", async ({
   const links = await nav
     .getByRole("link")
     .evaluateAll((nodes) => nodes.map((node) => node.getAttribute("href")!));
-  expect(links).toHaveLength(9);
+  expect(links).toHaveLength(4);
+  await expect(nav).not.toContainText("Workflow");
+  await expect(nav).not.toContainText("Service contract");
+  await expect(nav).toContainText("Examples");
+
   for (const link of links) {
     const response = await request.get(link);
     expect(response.status()).toBe(200);
   }
   await page.getByRole("searchbox").fill("requireResultId");
   await expect(page.locator(".docs-search-results")).toContainText(
-    "Language servers & rules",
+    "Server & agent setup",
   );
   await page
     .locator(".docs-search-results")
-    .getByRole("link", { name: /Language servers/ })
+    .getByRole("link", { name: /Server & agent setup/ })
     .click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     "Language servers and custom rule enforcers",
@@ -34,6 +38,11 @@ test("docs navigation, full text search, anchors and every page work", async ({
     .getByRole("link", { name: "Configure your services" })
     .click();
   await expect(page).toHaveURL(/#configure-your-services$/);
+  const headings = await page.locator(".docs-article h2").allTextContents();
+  expect(headings.indexOf("Connect your agent")).toBeGreaterThan(
+    headings.indexOf("Configure your services"),
+  );
+
   // Every local content link and heading fragment resolves.
   for (const link of links) {
     await page.goto(link);

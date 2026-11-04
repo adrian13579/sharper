@@ -102,9 +102,6 @@ export default function App() {
           className={menuOpen ? "nav-links is-open" : "nav-links"}
           aria-label="Main navigation"
         >
-          <a href={docs("feedback")} onClick={() => setMenuOpen(false)}>
-            How it works
-          </a>
           <a href={docs("overview")} onClick={() => setMenuOpen(false)}>
             Documentation
           </a>
@@ -158,8 +155,8 @@ export default function App() {
               <a className="hero-rule-link" href={docs("architecture-rules")}>
                 custom LSP enforcer
               </a>{" "}
-              for your project's architecture rules, so it can check, fix and
-              verify as it works.
+              such as one checking project-specific architecture rules, so it
+              can check, fix and verify as it works.
             </p>
             <div className="hero-buttons">
               <a className="button" href={docs("npm")}>

@@ -11,7 +11,7 @@
 
 Sharper connects your agent to language services and custom LSP rule enforcers through MCP. Catch compiler findings, architecture violations and project-specific rule failures while the agent works.
 
-Bring your own rules, including forbidden dependencies and layer boundaries. [Learn how custom enforcement works](https://adrian13579.github.io/sharper/docs/architecture-rules/).
+A custom enforcer could check forbidden dependencies or layer boundaries. [See an example](https://adrian13579.github.io/sharper/docs/architecture-rules/).
 
 **[Website](https://adrian13579.github.io/sharper/) · [Documentation](https://adrian13579.github.io/sharper/docs/overview/) · [Install with npm / npx](https://adrian13579.github.io/sharper/docs/npm/)**
 
