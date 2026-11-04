@@ -1,6 +1,6 @@
 # Publishing Rust releases
 
-Cargo.toml is the version source of truth. Commit Cargo.lock and a matching docs/release-notes/vVERSION.md. Tag vVERSION only after Windows/Linux builds, controlled/native MCP tests, real-server qualification and package checks pass.
+Cargo.toml is the version source of truth. Commit Cargo.lock and a matching maintenance/release-notes/vVERSION.md. Tag vVERSION only after Windows/Linux builds, controlled/native MCP tests, real-server qualification and package checks pass.
 
 The release workflow checks the requested tag and readiness metadata, builds and tests both platform executables, then assembles a complete npm package. It publishes only to npm using trusted publishing with provenance. Prereleases use `next`; stable releases use `latest`. Native executables are internal CI artifacts, not separate public downloads. Configure the npm package's trusted publisher for this repository and release workflow before releasing. A publication failure fails the workflow.
 
