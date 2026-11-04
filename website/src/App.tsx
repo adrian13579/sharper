@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useState } from "react";
 import { Github, ThemeIcon } from "./Icons";
+import ProjectStats from "./ProjectStats";
 
 const repository = "https://github.com/adrian13579/sharper";
 const docs = (file: string) =>
@@ -83,9 +84,6 @@ export default function App() {
           >
             <ThemeIcon theme={theme} />
           </button>
-          <a className="button button-small" href={docs("npm")}>
-            Get started <Arrow />
-          </a>
           <button
             className="menu-toggle"
             type="button"
@@ -121,33 +119,13 @@ export default function App() {
             </p>
             <div className="hero-buttons">
               <a className="button" href={docs("npm")}>
-                Start building <Arrow />
+                Get started <Arrow />
               </a>
               <a className="text-link" href={repository}>
                 <Github /> Explore on GitHub
               </a>
             </div>
-            <div className="project-stats" aria-label="Project statistics">
-              <a href={`${repository}/stargazers`} aria-label="GitHub stars">
-                <img
-                  src="https://img.shields.io/github/stars/adrian13579/sharper?style=flat&label=GitHub%20stars&color=6d28d9"
-                  alt="GitHub stars"
-                  width="130"
-                  height="20"
-                />
-              </a>
-              <a
-                href="https://www.npmjs.com/package/@adrian13579/sharper"
-                aria-label="npm downloads per month"
-              >
-                <img
-                  src="https://img.shields.io/npm/dm/@adrian13579/sharper?style=flat&label=downloads%2Fmonth&color=6d28d9"
-                  alt="npm downloads per month"
-                  width="175"
-                  height="20"
-                />
-              </a>
-            </div>
+            <ProjectStats />
             <div className="hero-footnote">
               <span>LOCAL MCP SERVER</span>
               <i />

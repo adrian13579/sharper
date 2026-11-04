@@ -11,7 +11,7 @@
   --muted: #65656f;
   --line: #e4e4e7;
   --soft: #f7f7f9;
-  --button: #6d28d9;
+  --button: #0f766e;
   --button-ink: #fff;
   --success: #386444;
   --success-bg: #eaf3eb;
@@ -19,22 +19,22 @@
   --error: #a84a34;
   --error-bg: #fcf1eb;
   --code-bg: #fafafa;
-  --accent: #6d28d9;
-  --accent-soft: #f3efff;
+  --accent: #0f766e;
+  --accent-soft: #edf8f5;
   --mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
   color-scheme: light;
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --accent: #c4b5fd;
-  --accent-soft: #201932;
+  --accent: #5eead4;
+  --accent-soft: #102c29;
   --bg: #09090b;
   --surface: #111114;
   --ink: #f4f4f5;
   --muted: #a1a1aa;
   --line: #29292f;
   --soft: #18181c;
-  --button: #7c3aed;
+  --button: #0f766e;
   --button-ink: #ffffff;
   --success: #a5cfaa;
   --success-bg: #203125;
@@ -88,8 +88,8 @@ button:disabled {
   cursor: default;
 }
 ::selection {
-  background: #ddd6fe;
-  color: #3b0764;
+  background: #ccfbf1;
+  color: #134e4a;
 }
 .container {
   width: min(1240px, calc(100% - 96px));
@@ -721,13 +721,13 @@ h2 {
 }
 .terminal-brand {
   letter-spacing: 0.15em;
-  color: #c4b5fd;
+  color: #5eead4;
 }
 .terminal-step {
   color: #bae6fd;
 }
 .terminal-check {
-  color: #c4b5fd;
+  color: #5eead4;
   margin-right: 9px;
 }
 .terminal-muted {
@@ -744,7 +744,7 @@ h2 {
   width: 6px;
   height: 12px;
   margin-left: 5px;
-  background: #c4b5fd;
+  background: #5eead4;
   vertical-align: middle;
   animation: blink 1.3s steps(1) infinite;
 }
@@ -1530,7 +1530,7 @@ h2 {
   }
 }
 
-/* Cool neutral surfaces and violet accents inspired by OpenRouter. */
+/* Cool neutral surfaces and teal accents inspired by OpenRouter. */
 a:focus-visible,
 button:focus-visible,
 pre:focus-visible {
@@ -1546,11 +1546,11 @@ footer a:hover {
   box-shadow: 0 1px 2px #0000000a;
 }
 .button:hover {
-  background: #5b21b6;
+  background: #115e59;
   color: #fff;
 }
 :root[data-theme="dark"] .button:hover {
-  background: #7c3aed;
+  background: #0f766e;
 }
 .eyebrow {
   color: var(--accent);
@@ -2054,3 +2054,32 @@ footer a:hover {
   width: 36px;
   height: 36px;
 }
+
+.project-stats {
+  gap: 20px;
+  margin-top: 28px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.project-stats a {
+  gap: 8px;
+  padding: 4px 0;
+  transition: color 0.15s ease;
+}
+.project-stats a:hover {
+  color: var(--accent);
+}
+.project-stats strong {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.stats-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--line);
+  align-self: center;
+}
+
+.project-stats {margin-bottom:14px;}

@@ -5,13 +5,14 @@ import path from "node:path";
 
 const screenshots = path.resolve("../artifacts/website");
 
-// Keep layout checks independent of the external badge provider's availability.
+// Deterministic provider responses for layout and accessibility checks.
 test.beforeEach(async ({ page }) => {
-  await page.route("https://img.shields.io/**", (route) =>
-    route.fulfill({
-      contentType: "image/svg+xml",
-      body: '<svg xmlns="http://www.w3.org/2000/svg" width="140" height="20"><rect width="140" height="20" fill="#555"/></svg>',
-    }),
+  await page.route(
+    "https://api.github.com/repos/adrian13579/sharper",
+    (route) => route.fulfill({ json: { stargazers_count: 42 } }),
+  );
+  await page.route("https://api.npmjs.org/downloads/point/**", (route) =>
+    route.fulfill({ json: { downloads: 1234 } }),
   );
 });
 
@@ -36,9 +37,14 @@ test("production base path, assets and documentation links load without errors",
   await expect(
     stats.getByRole("link", { name: "GitHub stars", exact: true }),
   ).toHaveAttribute("href", /github.com\/adrian13579\/sharper\/stargazers$/);
+  await expect(stats).toContainText("42");
+  await expect(stats).toContainText("1.2K");
+  await expect(stats.locator("img")).toHaveCount(0);
   await expect(
-    stats.getByRole("img", { name: "npm downloads per month" }),
-  ).toHaveAttribute("src", /shields.io\/npm\/dm\/@adrian13579\/sharper/);
+    page
+      .locator("header")
+      .getByRole("link", { name: "Get started", exact: true }),
+  ).toHaveCount(0);
 
   await expect(
     page.getByRole("link", { name: "Get started", exact: true }),
@@ -71,9 +77,10 @@ test("feedback leads the page and the hero has no console example", async ({
   await expect(
     page.locator(".hero pre, .hero .demo-shell, .hero .setup-window"),
   ).toHaveCount(0);
-  await expect(
-    page.getByRole("link", { name: "Start building" }),
-  ).toHaveAttribute("href", "/sharper/docs/npm/");
+  await expect(page.getByRole("link", { name: "Get started" })).toHaveAttribute(
+    "href",
+    "/sharper/docs/npm/",
+  );
 });
 
 test("theme persists and both desktop themes have no serious accessibility findings", async ({
@@ -138,4 +145,22 @@ test("mobile navigation, layout and accessibility remain usable", async ({
     path: path.join(screenshots, "mobile-light.png"),
     fullPage: true,
   });
+});
+
+test("statistics handle unavailable providers without fabricated counts", async ({
+  page,
+}) => {
+  await page.route(
+    "https://api.github.com/repos/adrian13579/sharper",
+    (route) => route.fulfill({ status: 503, json: { message: "Unavailable" } }),
+  );
+  await page.route("https://api.npmjs.org/downloads/point/**", (route) =>
+    route.fulfill({ status: 404, json: { error: "Not found" } }),
+  );
+  await page.goto("./");
+  const stats = page.getByLabel("Project statistics");
+  await expect(stats.locator("strong")).toHaveText(["—", "—"]);
+  await expect(
+    stats.getByRole("link", { name: "GitHub stars", exact: true }),
+  ).toHaveAttribute("title", /unavailable/);
 });
