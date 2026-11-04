@@ -27,6 +27,10 @@ The executable is `target/release/sharper` (`sharper.exe` on Windows). Run it wi
 
 On Windows, install the Visual Studio C++ build tools and Windows SDK, and run the build from a Developer PowerShell. Linux requires a C linker.
 
+## Changelog
+
+See the [changelog](https://adrian13579.github.io/sharper/docs/changelog/) for updates.
+
 ## Contributing
 
 Contributions welcome. See the [contributing guide](CONTRIBUTING.md).
