@@ -15,6 +15,6 @@ A custom enforcer could check forbidden dependencies or layer boundaries. [See a
 
 **[Website](https://adrian13579.github.io/sharper/) · [Documentation](https://adrian13579.github.io/sharper/docs/overview/) · [Install with npm / npx](https://adrian13579.github.io/sharper/docs/npm/)**
 
-Contributions welcome. See [AGENTS.md](AGENTS.md) for development guidance and [GitHub issues](https://github.com/adrian13579/sharper/issues) to report problems.
+Contributions welcome. [Open an issue first](https://github.com/adrian13579/sharper/issues/new), then follow the [contributing guide](CONTRIBUTING.md) and include a design document explaining your changes and their value.
 
 [Apache License 2.0](LICENSE).

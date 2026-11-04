@@ -165,7 +165,7 @@ export default function App() {
         <p>A sharper edge for your coding agent.</p>
         <div>
           <a href={`${repository}/issues`}>Issues</a>
-          <a href={`${repository}/blob/main/AGENTS.md`}>Contribute</a>
+          <a href={`${repository}/blob/main/CONTRIBUTING.md`}>Contribute</a>
           <a href={`${repository}/blob/main/LICENSE`}>Apache 2.0</a>
           <span>Source {process.env.NEXT_PUBLIC_SHARPER_VERSION}</span>
         </div>
