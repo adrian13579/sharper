@@ -2,6 +2,14 @@
 
 Sharper brings findings from your compiler, analyzers and custom LSP services into the agent's editing loop. Check affected code, fix violations and verify the result through one MCP interface, reusing warm local server sessions.
 
+## Why early feedback matters
+
+A full build or test run can do much more work than is needed to catch a rule violation in the code an agent just edited. Sharper reuses warm LSP services to request focused findings, which can make repeated feedback cheaper and faster than running those broader checks after every edit.
+
+The value is the short correction loop. Find a violation early, fix it while the change is small and still in context, and avoid building more work on top of the mistake. The earlier the feedback, the better. Actual latency depends on your services, rules and workspace; there is no universal speedup guarantee.
+
+LSP findings cover the analysis your services provide. They do not exercise runtime behavior or prove that a build or test suite would pass.
+
 ## Get started
 
 1. [Install Sharper with npm or npx](npm.md).
@@ -20,7 +28,7 @@ A custom service could check project-specific constraints. For an illustration, 
 2. **Edit:** use the agent's normal tools and write changes to disk.
 3. **Check:** call `sharper_check` on affected files or directories, including dependent code when shared interfaces change.
 4. **Fix:** correct introduced violations using their codes, severities and locations, then check again.
-5. **Verify:** confirm current, completed analysis, inspect remaining findings and run relevant builds and tests separately.
+5. **Verify:** confirm current, completed analysis, inspect remaining findings.
 
 For example, pass this to `sharper_check`:
 
@@ -40,4 +48,4 @@ Sharper reports findings and never applies source edits or blocks commits. Empty
 
 Add a short instruction to your project's agent guidance:
 
-> Establish a baseline before editing. Check affected code after changes, fix introduced violations, and recheck. Before finishing, confirm analysis is completed and current, report remaining findings, and run relevant builds and tests separately.
+> Establish a baseline before editing. Check affected code after changes, fix introduced violations, and recheck. Before finishing, confirm analysis is completed and current, and report remaining findings.
