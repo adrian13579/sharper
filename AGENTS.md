@@ -12,7 +12,7 @@ Lead public messaging with rapid feedback on rule violations and the check, fix,
 
 ## Contracts and architecture
 
-- Read `docs/lsp-service.md` before changing lifecycle, synchronization or freshness. External servers own language semantics and rules. Sharper owns transport, synchronization, normalization, cancellation and evidence.
+- Read `website/content/docs/lsp-service.md` before changing lifecycle, synchronization or freshness. External servers own language semantics and rules. Sharper owns transport, synchronization, normalization, cancellation and evidence.
 - Language support comes from explicit `--lsp-config` profiles, never hardcoded extension routing or repository-discovered executable configuration. Multiple matching servers contribute diagnostics. Do not add a rule engine, plugin registry, compiler workspace or unrestricted execute-command proxy.
 - Preserve the five MCP tool names. All source operations are read-only. Never apply workspace edits or install project dependencies. MCP stdout is newline-delimited JSON-RPC only; logs go to stderr.
 - Keep bounded warm sessions per workspace/server, evict/dispose contexts and stop child process groups/jobs on cancellation and shutdown. Initialization, queueing and analysis share a request deadline.
@@ -44,7 +44,7 @@ cargo build --locked --release
 node --test packaging/npm/test/launcher.test.cjs
 ```
 
-Run real-server tests separately with `cargo test --locked --test real_servers -- --ignored --test-threads=1`; set `SHARPER_TEST_NODE_TOOLS` and `SHARPER_TEST_ROSLYN` as described in docs/compatibility.md. Report ignored tests explicitly; controlled fixtures are not real integration evidence. `SHARPER_TEST_HOST` selects a release executable for MCP tests. The optional official JavaScript MCP SDK smoke test is `npm ci --prefix tests/mcp-client --ignore-scripts` followed by `node tests/mcp-client/smoke.mjs`. Run build/test/coverage/benchmarks sequentially. Mutation testing remains stopped at the user's request; do not restart it.
+Run real-server tests separately with `cargo test --locked --test real_servers -- --ignored --test-threads=1`; set `SHARPER_TEST_NODE_TOOLS` and `SHARPER_TEST_ROSLYN` with SHARPER_TEST_NODE_TOOLS pointing to tests/language-tools and SHARPER_TEST_ROSLYN pointing to the server executable. Report ignored tests explicitly; controlled fixtures are not real integration evidence. `SHARPER_TEST_HOST` selects a release executable for MCP tests. The optional official JavaScript MCP SDK smoke test is `npm ci --prefix tests/mcp-client --ignore-scripts` followed by `node tests/mcp-client/smoke.mjs`. Run build/test/coverage/benchmarks sequentially. Mutation testing remains stopped at the user's request; do not restart it.
 
 Website: from `website`, run `npm ci --ignore-scripts`, `npm run build`, then `npm test` after installing Playwright Chromium (or set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`). Review desktop/mobile screenshots. No Rust tests are necessary for docs-only changes.
 
@@ -53,3 +53,5 @@ Do not claim old .NET coverage, mutation or benchmark results apply to Rust. Pre
 ## Hygiene
 
 Use a dedicated codex/ branch/worktree, preserve unrelated edits, do not hand-edit generated target/node_modules/build artifacts. Update documentation alongside public behavior. Make coherent Conventional Commits with imperative descriptions and a BREAKING CHANGE footer for contract changes.
+
+Consumer documentation lives in website/content/docs and is published under /docs/. Keep public copy focused on rapid rule feedback; omit implementation language and production-readiness pages. Maintenance records live under maintenance/.

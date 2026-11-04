@@ -4,7 +4,7 @@ const base = process.env.NEXT_PUBLIC_BASE_PATH || "";
 export const metadata: Metadata = {
   title: "Sharper - a sharper edge for your coding agent",
   description:
-    "Language-agnostic feedback and rule verification for coding agents. A native Rust connector between configured LSP servers and MCP clients.",
+    "Language-agnostic feedback and rule verification for coding agents. Connect your language services and custom rule enforcers through MCP.",
   metadataBase: new URL("https://adrian13579.github.io"),
   alternates: { canonical: `${base}/` },
   openGraph: {

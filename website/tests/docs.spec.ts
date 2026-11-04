@@ -1,0 +1,96 @@
+import { test, expect } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
+import { mkdir } from "node:fs/promises";
+test("docs navigation, full text search, anchors and every page work", async ({
+  page,
+  request,
+}) => {
+  await page.goto("./docs/overview/");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Rapid rule feedback for your agent",
+  );
+  const nav = page.getByRole("navigation", { name: "Documentation sections" });
+  const links = await nav
+    .getByRole("link")
+    .evaluateAll((nodes) => nodes.map((node) => node.getAttribute("href")!));
+  expect(links).toHaveLength(8);
+  for (const link of links) {
+    const response = await request.get(link);
+    expect(response.status()).toBe(200);
+  }
+  await page.getByRole("searchbox").fill("requireResultId");
+  await expect(page.locator(".docs-search-results")).toContainText(
+    "Language servers & rules",
+  );
+  await page
+    .locator(".docs-search-results")
+    .getByRole("link", { name: /Language servers/ })
+    .click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Language servers and custom rule enforcers",
+  );
+  await page
+    .getByRole("navigation", { name: "On this page" })
+    .getByRole("link", { name: "Configure your services" })
+    .click();
+  await expect(page).toHaveURL(/#configure-your-services$/);
+  // Every local content link and heading fragment resolves.
+  for (const link of links) {
+    await page.goto(link);
+    const contentLinks = await page
+      .locator(".docs-article a")
+      .evaluateAll((nodes) =>
+        nodes
+          .map((node) => node.getAttribute("href")!)
+          .filter((href) => href.startsWith("/sharper/")),
+      );
+    for (const target of contentLinks) {
+      expect((await request.get(target.split("#")[0])).status()).toBe(200);
+    }
+    expect(await page.locator("body").innerText()).not.toMatch(
+      /\bRust\b|production readiness/i,
+    );
+  }
+  await page.goto("./docs/overview/");
+  await page.getByRole("searchbox").fill("no-such-rule-xyz");
+  await expect(page.getByRole("status")).toHaveText("0 results");
+});
+test("docs themes, mobile menu and accessibility", async ({ page }) => {
+  await page.goto("./docs/overview/");
+  for (const theme of ["light", "dark"]) {
+    if ((await page.locator("html").getAttribute("data-theme")) !== theme)
+      await page
+        .getByRole("button", { name: `Switch to ${theme} theme` })
+        .click();
+    const results = await new AxeBuilder({ page }).analyze();
+    expect(
+      results.violations.filter(
+        (v) => v.impact === "serious" || v.impact === "critical",
+      ),
+    ).toEqual([]);
+  }
+  await mkdir("../artifacts/website", { recursive: true });
+  await page.screenshot({
+    path: "../artifacts/website/docs-desktop.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "Sections", exact: true }).click();
+  await expect(page.getByRole("searchbox")).toBeVisible();
+  await page
+    .getByRole("navigation", { name: "Documentation sections" })
+    .getByRole("link", { name: "Installation", exact: true })
+    .click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Install with npm or npx",
+  );
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: "../artifacts/website/docs-mobile.png",
+    fullPage: true,
+  });
+});

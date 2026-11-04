@@ -16,17 +16,20 @@ Global installation is recommended for guided agent registration so the recorded
 Configure your MCP client to launch npx directly:
 
 ```json
-{"mcpServers":{"sharper":{"command":"npx","args":["--yes","@adrian13579/sharper@next","mcp","--lsp-config","/absolute/path/servers.json"]}}}
+{
+  "mcpServers": {
+    "sharper": {
+      "command": "npx",
+      "args": [
+        "--yes",
+        "@adrian13579/sharper@next",
+        "mcp",
+        "--lsp-config",
+        "/absolute/path/servers.json"
+      ]
+    }
+  }
+}
 ```
 
 Adapt the enclosing schema to your client. Pin an exact published version instead of `next` for reproducible installations. Check [npm](https://www.npmjs.com/package/@adrian13579/sharper) for available versions; a source version is not proof of registry publication.
-
-## Maintainer packaging
-
-Build both platform executables and assemble the package:
-
-```sh
-node scripts/package-npm.mjs --windows /path/sharper.exe --linux /path/sharper --output artifacts/npm
-```
-
-`--allow-partial` is for local validation only. Never publish a partial package. The builder stamps the version from Cargo.toml into a staging copy; the source template remains private. See [publishing](publishing.md).

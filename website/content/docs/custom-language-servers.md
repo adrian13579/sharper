@@ -59,6 +59,6 @@ Sharper does not apply edits, forward arbitrary commands, provide formatting/ren
 
 ## Compatibility profiles
 
-[Example profiles](../examples/lsp) illustrate real server integration, including optional readiness settings and the explicitly selected `diagnostics: "typeScript"` compatibility adapter. That adapter permits only the existing TypeScript synchronous syntax/semantic diagnostic commands. Standard `diagnostics: "pull"` is the default for every language.
+[Example profiles](https://github.com/adrian13579/sharper/tree/main/examples/lsp) illustrate real server integration, including optional readiness settings and the explicitly selected `diagnostics: "typeScript"` compatibility adapter. That adapter permits only the existing TypeScript synchronous syntax/semantic diagnostic commands. Standard `diagnostics: "pull"` is the default for every language.
 
 Speaking LSP alone is not a universal compatibility guarantee. Qualify each chosen server, its project settings and rule behavior against representative workspaces. See [compatibility tests](compatibility.md).

@@ -27,7 +27,14 @@ JSONC updates preserve unrelated values/comments and existing owned environment 
 For other clients using an mcpServers collection:
 
 ```json
-{"mcpServers":{"sharper":{"command":"/absolute/path/sharper","args":["mcp","--lsp-config","/absolute/path/servers.json"]}}}
+{
+  "mcpServers": {
+    "sharper": {
+      "command": "/absolute/path/sharper",
+      "args": ["mcp", "--lsp-config", "/absolute/path/servers.json"]
+    }
+  }
+}
 ```
 
 Use client-specific setup for Codex/OpenCode, which have different schemas.
@@ -36,4 +43,4 @@ Use client-specific setup for Codex/OpenCode, which have different schemas.
 
 Use sharper_check to establish a baseline before meaningful changes. Edit with normal tools, then recheck affected files and dependent code. Pass the absolute workspace and affected path. Require completed, fresh analysis; inspect severities and remaining findings separately. Fix introduced violations, recheck, and run relevant builds/tests separately. Navigation tools provide optional context and use zero-based UTF-16 positions. Status reports availability, not diagnostic verification.
 
-See [feedback](feedback.md), [configuration](custom-language-servers.md) and [Rust migration](migration-to-rust.md).
+See [feedback](feedback.md), [configuration](custom-language-servers.md).

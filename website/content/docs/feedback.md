@@ -1,6 +1,6 @@
 # Fast feedback and rule verification
 
-Sharper keeps compiler, analyzer and rule-enforcement feedback close to agent edits. Its Rust host connects configured LSP services to MCP clients, reusing warm local sessions. Language support follows explicit profiles and protocol capabilities, not a built-in language list.
+Sharper keeps compiler, analyzer and rule-enforcement feedback close to agent edits. Its host connects configured LSP services to MCP clients, reusing warm local sessions. Language support follows explicit profiles and protocol capabilities, not a built-in language list.
 
 ## Baseline, edit, check, fix, verify
 
@@ -11,7 +11,7 @@ Sharper keeps compiler, analyzer and rule-enforcement feedback close to agent ed
 5. **Verify:** confirm current completed analysis, inspect remaining findings, and run relevant builds/tests separately.
 
 ```json
-{"workspace":"/work/app","path":"src"}
+{ "workspace": "/work/app", "path": "src" }
 ```
 
 Pass this to sharper_check. An omitted path covers mapped source documents across the workspace. Every matching configured server contributes feedback, and all selected services must complete with current inputs for overall verification.
@@ -28,6 +28,6 @@ Report checked scope, remaining findings and separate builds/tests run. Empty do
 
 ## Feedback performance
 
-Warm sessions avoid launching a language server for every edit. Configuration and membership changes can reload contexts. Initialization, workspace size, rules and server implementation affect latency; there is no universal response-time guarantee. Historical performance results do not measure this Rust codebase.
+Warm sessions avoid launching a language server for every edit. Configuration and membership changes can reload contexts. Initialization, workspace size, rules and server implementation affect latency; there is no universal response-time guarantee.
 
 Definitions, implementations and references are optional [navigation perks](code-navigation.md), useful for understanding a change's impact rather than verifying rule compliance.

@@ -3,7 +3,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 const repository = "https://github.com/adrian13579/sharper";
-const docs = (file: string) => `${repository}/blob/main/docs/${file}.md`;
+const docs = (file: string) =>
+  `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/docs/${file}/`;
 const asset = (name: string) =>
   `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/brand/${name}`;
 type Theme = "light" | "dark";
@@ -147,11 +148,11 @@ const documents = [
   },
   {
     number: "06",
-    tag: "PROJECT STATUS",
-    title: "Production readiness",
+    tag: "CONFIGURE YOUR RULES",
+    title: "Language servers & custom rules",
     description:
-      "The remaining qualification work and what current evidence covers.",
-    file: "production-readiness",
+      "Connect your language services and custom LSP rule enforcers.",
+    file: "custom-language-servers",
   },
 ];
 
@@ -206,7 +207,7 @@ export default function App() {
           <a href="#workflow" onClick={() => setMenuOpen(false)}>
             How it works
           </a>
-          <a href="#documentation" onClick={() => setMenuOpen(false)}>
+          <a href={docs("overview")} onClick={() => setMenuOpen(false)}>
             Documentation
           </a>
           <a href={repository}>
@@ -241,9 +242,9 @@ export default function App() {
       <main id="main" tabIndex={-1}>
         <section className="hero container" aria-labelledby="hero-title">
           <div className="hero-copy">
-            <a className="release-label" href={docs("production-readiness")}>
-              <span className="status-dot" /> PRE-ALPHA · NOT READY FOR
-              PRODUCTION <Arrow diagonal />
+            <a className="release-label" href={docs("overview")}>
+              <span className="status-dot" /> RAPID RULE FEEDBACK{" "}
+              <Arrow diagonal />
             </a>
             <p className="eyebrow hero-eyebrow">
               FAST FEEDBACK. PROJECT RULES. VERIFIED RESULTS.
@@ -283,10 +284,10 @@ export default function App() {
             <strong>Your languages. Your rules.</strong>
           </p>
           <div className="language-item">
-            <span className="language-symbol">RS</span>
+            <span className="language-symbol">npm</span>
             <div>
-              <strong>Rust</strong>
-              <span>Native executable</span>
+              <strong>Install once</strong>
+              <span>npm or npx</span>
             </div>
           </div>
           <div className="language-item">
@@ -602,19 +603,6 @@ export default function App() {
               </a>
             ))}
           </div>
-        </section>
-        <section className="project-note container">
-          <img src={asset(`icon-${theme}.png`)} width="64" height="64" alt="" />
-          <div>
-            <h2>Built in the open. Still taking shape.</h2>
-            <p>
-              Sharper is pre-alpha and intended for evaluation and development.
-              Interfaces may change, and production qualification is incomplete.
-            </p>
-          </div>
-          <a className="text-link" href={docs("production-readiness")}>
-            See release requirements <Arrow diagonal />
-          </a>
         </section>
       </main>
       <footer className="site-footer container">

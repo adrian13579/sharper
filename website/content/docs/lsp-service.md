@@ -1,6 +1,6 @@
 # Feedback and verification service contract
 
-Sharper is a Rust MCP stdio server and an LSP stdio client. External servers own semantics, project loading, rules, analyzers and native configuration. Sharper owns process lifecycle, synchronization, normalization and scoped verification. It does not edit source, install project dependencies, implement a rule engine or proxy arbitrary LSP commands.
+Sharper is an MCP stdio server and an LSP stdio client. External servers own semantics, project loading, rules, analyzers and native configuration. Sharper owns process lifecycle, synchronization, normalization and scoped verification. It does not edit source, install project dependencies, implement a rule engine or proxy arbitrary LSP commands.
 
 ## Language-agnostic routing
 
@@ -36,6 +36,4 @@ Navigation retains Location and LocationLink ranges, external/generated URIs and
 
 `sharper_status` reports availability and advertised capabilities, not diagnostic verification. Unsupported server-to-client requests receive method-not-found; workspace edits are rejected. `workspace/configuration` returns configured settings by dotted section lookup, and settings are also sent with didChangeConfiguration.
 
-See [configuration](custom-language-servers.md), [feedback](feedback.md) and [compatibility](compatibility.md). The Rust migration changes configuration and packaging; older measurements are historical evidence only.
-
-Requests cancelled/timed out before scope resolution may return compact uncertain metadata without resolved path details. Input/discovery failures use MCP isError responses. Neither represents verified findings.
+See [configuration](custom-language-servers.md), [feedback](feedback.md) and [compatibility](compatibility.md).

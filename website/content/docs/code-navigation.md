@@ -3,7 +3,12 @@
 Navigation is a useful addition to [feedback and rule verification](feedback.md). The same MCP tools work for any mapped language whose server advertises the corresponding LSP capability.
 
 ```json
-{"workspace":"/work/app","path":"src/example.orbit","line":5,"character":18}
+{
+  "workspace": "/work/app",
+  "path": "src/example.orbit",
+  "line": 5,
+  "character": 18
+}
 ```
 
 Pass these arguments to sharper_definition or sharper_implementation. sharper_references additionally accepts includeDeclaration (default false). Path must identify an existing configured source file. Lines and characters are zero-based UTF-16, including positions after non-BMP characters.

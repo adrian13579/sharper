@@ -22,15 +22,12 @@ test("production base path, assets and documentation links load without errors",
     "Sharper code.",
   );
   await expect(
-    page.getByText("PRE-ALPHA · NOT READY FOR PRODUCTION", { exact: false }),
+    page.getByText("RAPID RULE FEEDBACK", { exact: false }),
   ).toBeVisible();
   const cards = page.locator(".doc-card");
   await expect(cards).toHaveCount(6);
   for (const link of await cards.all())
-    await expect(link).toHaveAttribute(
-      "href",
-      /^https:\/\/github\.com\/adrian13579\/sharper\/blob\/main\/docs\/.+\.md$/,
-    );
+    await expect(link).toHaveAttribute("href", /^\/sharper\/docs\/.+\/$/);
   expect(
     await page
       .locator("img")
@@ -58,7 +55,7 @@ test("feedback leads the page and the hero has no console example", async ({
   await expect(page.locator(".hero")).toContainText("Fast feedback.");
   await expect(
     page.getByRole("link", { name: /Configure a custom LSP server/ }),
-  ).toHaveAttribute("href", /docs\/custom-language-servers\.md$/);
+  ).toHaveAttribute("href", /docs\/custom-language-servers\/$/);
   await expect(
     page.locator(".hero pre, .hero .demo-shell, .hero .setup-window"),
   ).toHaveCount(0);
@@ -67,7 +64,7 @@ test("feedback leads the page and the hero has no console example", async ({
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: /Feedback & rule verification/ }),
-  ).toHaveAttribute("href", /docs\/feedback\.md$/);
+  ).toHaveAttribute("href", /docs\/feedback\/$/);
   await expect(
     page.getByRole("link", { name: /Explore code navigation/ }),
   ).toBeVisible();
@@ -136,9 +133,11 @@ test("mobile navigation, layout and accessibility remain usable", async ({
     .getByRole("navigation", { name: "Main navigation" })
     .getByRole("link", { name: "Documentation", exact: true })
     .click();
-  await expect(
-    page.getByRole("button", { name: "Open navigation" }),
-  ).toHaveAttribute("aria-expanded", "false");
+  await expect(page).toHaveURL(/docs\/overview\/$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Rapid rule feedback for your agent",
+  );
+  await page.goto("./");
   for (const width of [320, 390, 768, 1440]) {
     await page.setViewportSize({ width, height: 844 });
     expect(

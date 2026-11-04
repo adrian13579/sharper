@@ -2,7 +2,7 @@
   "name": "@adrian13579/sharper",
   "version": "0.0.0",
   "private": true,
-  "description": "Language-agnostic LSP feedback and rule verification for coding agents, powered by a native Rust host.",
+  "description": "Rapid rule feedback and scoped verification for coding agents through configured LSP services and MCP.",
   "license": "Apache-2.0",
   "author": "adrian13579",
   "type": "commonjs",
@@ -37,7 +37,6 @@
   "keywords": [
     "mcp",
     "lsp",
-    "rust",
     "code-feedback",
     "rule-enforcement",
     "coding-agents"

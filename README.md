@@ -11,9 +11,7 @@
 
 Sharper gives coding agents **rapid feedback on rule violations**, so they can correct changes while the work is still in context. Reuse warm local sessions to check compiler, analyzer and custom rule findings, fix violations, and verify the affected scope through one MCP interface. It speaks **Language Server Protocol**, connecting your existing language services and custom rule enforcers across languages.
 
-**[Website](https://adrian13579.github.io/sharper/) | [Documentation](https://adrian13579.github.io/sharper/#documentation) | [Get started](#get-started)**
-
-> **Not ready for production.** Sharper is pre-alpha. Interfaces may change, and cross-platform and production qualification are still in progress. See [readiness](docs/production-readiness.md).
+**[Website](https://adrian13579.github.io/sharper/) | [Documentation](https://adrian13579.github.io/sharper/docs/overview/) | [Get started](#get-started)**
 
 ## Why Sharper
 
@@ -34,7 +32,7 @@ npm install --global @adrian13579/sharper@next
 sharper setup
 ```
 
-For an MCP client that launches commands directly, use `npx --yes @adrian13579/sharper@next mcp --lsp-config /absolute/path/servers.json`. See [npm installation](docs/npm.md) for requirements and registry availability.
+For an MCP client that launches commands directly, use `npx --yes @adrian13579/sharper@next mcp --lsp-config /absolute/path/servers.json`. See [npm installation](https://adrian13579.github.io/sharper/docs/npm/) for requirements and registry availability.
 
 Configure one or more LSP servers, then connect **Codex, Claude Code, OpenCode or GitHub Copilot**:
 
@@ -42,7 +40,7 @@ Configure one or more LSP servers, then connect **Codex, Claude Code, OpenCode o
 sharper setup codex --lsp-config /absolute/path/servers.json
 ```
 
-Use the same option with the other client setup commands. Guided setup can create a profile and register your client after confirmation. Install language servers and restore target-project dependencies with their native tooling. See [server configuration](docs/custom-language-servers.md) and [agent setup](docs/agent-setup.md).
+Use the same option with the other client setup commands. Guided setup can create a profile and register your client after confirmation. Install language servers and restore target-project dependencies with their native tooling. See [server configuration](https://adrian13579.github.io/sharper/docs/custom-language-servers/) and [agent setup](https://adrian13579.github.io/sharper/docs/agent-setup/).
 
 ## Tools
 
@@ -60,16 +58,11 @@ For example, pass this to `sharper_check`:
 {"workspace":"/work/app","path":"src"}
 ```
 
-Follow **baseline, edit, check, fix, verify**. A current completed request can still contain errors: inspect severities and remaining findings. Run relevant builds and tests separately. See [the feedback workflow](docs/feedback.md).
+Follow **baseline, edit, check, fix, verify**. A current completed request can still contain errors: inspect severities and remaining findings. Run relevant builds and tests separately. See [the feedback workflow](https://adrian13579.github.io/sharper/docs/feedback/).
 
 ## Documentation
 
-- [LSP server profiles and custom rule enforcers](docs/custom-language-servers.md)
-- [Feedback and rule verification](docs/feedback.md)
-- [Agent setup](docs/agent-setup.md) / [supporting navigation](docs/code-navigation.md)
-- [Service contract](docs/lsp-service.md) / [compatibility and real-server tests](docs/compatibility.md)
-- [npm / npx installation](docs/npm.md)
-- [Release notes](docs/release-notes)
+Browse the [documentation website](https://adrian13579.github.io/sharper/docs/overview/) for installation, agent setup, server configuration and the check, fix, verify workflow. Search all guides and navigate sections from the sidebar.
 
 ## Contributing
 

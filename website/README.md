@@ -9,3 +9,7 @@ The build reads Cargo.toml for the current version and copies canonical logos/ic
 Run npx playwright install chromium and npm test, or set PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH to an installed Chromium/Edge executable. Tests cover base-path assets, docs, theme persistence, clipboard, mobile navigation, responsive layout and automated light/dark accessibility. Screenshots go under ../artifacts/website.
 
 Lead with fast feedback, rule checks and scoped verification. The host is Rust and language support comes from configured LSP capabilities, not a language list. Keep pre-alpha status and scope honest; the browser never runs MCP or language servers. Setup examples are illustrative. Light/dark themes use neutral surfaces and violet accents with the original dimensional logo.
+
+## Documentation
+
+Canonical guides are Markdown in `content/docs/`. `src/lib/docs.ts` defines sidebar groups and ordering; static routes render every entry under `/docs/`. The shared documentation shell provides full-text search, section anchors, theme controls and previous/next links. Update guides here rather than adding duplicate root docs. Run the browser tests to check internal links, search and responsive navigation.
