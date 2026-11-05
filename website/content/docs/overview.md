@@ -36,9 +36,3 @@ Require `status: "completed"`, `complete: true` and `freshness: "verified"` befo
 Sharper returns findings for your agent to act on, together with evidence about the checked scope. Keep toolchains and external dependencies stable during a session, and restart after changing them. Use `sharper_status` to inspect server availability and capabilities.
 
 See [Tool response format](responses.md) for JSON examples, field definitions and error handling.
-
-## Agent guidance
-
-Add a short instruction to your project's agent guidance:
-
-> After editing files, check the affected code, fix introduced violations, and recheck. Before finishing, confirm analysis is completed and current, and report remaining findings.
