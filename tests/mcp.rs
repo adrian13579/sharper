@@ -121,6 +121,107 @@ fn world(mode: &str) -> Result<(TempDir, PathBuf, PathBuf)> {
     )?;
     Ok((t, root, profile))
 }
+fn git(root: &std::path::Path, args: &[&str]) -> Result<()> {
+    let output = std::process::Command::new("git")
+        .current_dir(root)
+        .args([
+            "-c",
+            "user.name=Sharper tests",
+            "-c",
+            "user.email=tests@sharper.invalid",
+            "-c",
+            "commit.gpgsign=false",
+            "-c",
+        ])
+        .arg(format!(
+            "core.hooksPath={}",
+            root.join(".git/no-hooks").display()
+        ))
+        .args(args)
+        .env_remove("GIT_DIR")
+        .env_remove("GIT_WORK_TREE")
+        .env_remove("GIT_INDEX_FILE")
+        .env_remove("GIT_COMMON_DIR")
+        .output()?;
+    assert!(
+        output.status.success(),
+        "git {args:?}: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+#[tokio::test]
+async fn client_root_selects_nested_worktree_and_keeps_parent_feedback_isolated() -> Result<()> {
+    let (_t, root, profile) = world("normal")?;
+    let root = sharper::workspace::clean(std::fs::canonicalize(root)?);
+    git(&root, &["init", "--quiet"])?;
+    git(&root, &["add", "test.orbit"])?;
+    git(&root, &["commit", "--quiet", "-m", "Create test checkout"])?;
+    let agent = root.join(".worktrees/agent");
+    git(
+        &root,
+        &[
+            "worktree",
+            "add",
+            "--quiet",
+            "-b",
+            "agent",
+            agent.to_str().unwrap(),
+        ],
+    )?;
+    let agent = sharper::workspace::clean(std::fs::canonicalize(agent)?);
+    assert!(agent.join(".git").is_file());
+    let mut client = Client::new(&profile, "20", vec![root.clone()]).await?;
+    let parent = client.call(2, "sharper_check", json!({"path":"."})).await?;
+    let result = &parent["result"]["structuredContent"];
+    assert_eq!(parent["result"]["isError"], false, "{parent}");
+    assert_eq!(result["complete"], true, "{parent}");
+    assert_eq!(
+        result["diagnosticCount"], 1,
+        "Nested worktree leaked into parent: {parent}"
+    );
+    assert_eq!(
+        result["diagnostics"][0]["filePath"],
+        json!(root.join("test.orbit"))
+    );
+    let parent_status = client.call(3, "sharper_status", json!({})).await?;
+    std::fs::write(agent.join("test.orbit"), "fixed")?;
+    let nested = client
+        .call(
+            4,
+            "sharper_check",
+            json!({"path":".worktrees/agent/test.orbit"}),
+        )
+        .await?;
+    let result = &nested["result"]["structuredContent"];
+    assert_eq!(nested["result"]["isError"], false, "{nested}");
+    assert_eq!(result["complete"], true, "{nested}");
+    assert_eq!(result["diagnosticCount"], 0);
+    assert_eq!(result["requestedPath"], json!(agent.join("test.orbit")));
+    let agent_status = client
+        .call(5, "sharper_status", json!({"workspace":agent}))
+        .await?;
+    let parent_state = &parent_status["result"]["structuredContent"];
+    let agent_state = &agent_status["result"]["structuredContent"];
+    assert_eq!(agent_state["workspace"], json!(agent));
+    assert_ne!(parent_state["processId"], agent_state["processId"]);
+    // Changes to the nested checkout's configuration must not restart the parent LSP.
+    std::fs::write(agent.join("project.config"), "agent rules")?;
+    let parent = client
+        .call(6, "sharper_check", json!({"path":"test.orbit"}))
+        .await?;
+    assert_eq!(
+        parent["result"]["structuredContent"]["complete"], true,
+        "{parent}"
+    );
+    assert_eq!(parent["result"]["structuredContent"]["diagnosticCount"], 1);
+    let parent_again = client.call(7, "sharper_status", json!({})).await?;
+    assert_eq!(
+        parent_again["result"]["structuredContent"]["processId"],
+        parent_state["processId"]
+    );
+    client.close().await
+}
 #[tokio::test]
 async fn actual_mcp_stdio_lists_tools_and_returns_structured_agnostic_feedback() -> Result<()> {
     let (_t, root, profile) = world("normal")?;

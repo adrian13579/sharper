@@ -16,6 +16,7 @@ Lead public messaging with rapid feedback on rule violations and the check, fix,
 - Language support comes from explicit `--lsp-config` profiles, never hardcoded extension routing or repository-discovered executable configuration. Multiple matching servers contribute diagnostics. Do not add a rule engine, plugin registry, compiler workspace or unrestricted execute-command proxy.
 - Preserve the five MCP tool names. All source operations are read-only. Never apply workspace edits or install project dependencies. MCP stdout is newline-delimited JSON-RPC only; logs go to stderr.
 - Keep bounded warm sessions per workspace/server, evict/dispose contexts and stop child process groups/jobs on cancellation and shutdown. Initialization, queueing and analysis share a request deadline.
+- Treat each Git worktree as its own workspace. Keep nested checkouts out of the parent workspace's synchronization and freshness boundary; never collapse worktrees onto their shared Git directory.
 - Hash disk before/after checks. Watchers are hints and invalidate in-flight results conservatively. Never equate clean document diagnostics with a successful build/test run. Completion/freshness and findings are separate facts.
 - Preserve diagnostic codes, unknown severities, source, data, tags and related information. Paths are absolute; positions are zero-based UTF-16. Keep deterministic numeric location ordering and preserve distinct findings/provenance.
 - Agent setup preserves unrelated JSONC bytes/comments and validates before writing. Codex delegates registration to its native CLI. Registration never fixes a workspace.
@@ -33,7 +34,7 @@ Lead public messaging with rapid feedback on rule violations and the check, fix,
 
 ## Validation
 
-Use the toolchain in `rust-toolchain.toml`. Windows needs MSVC C++ tools and a Windows SDK; `./build.ps1` resolves import libraries for normal PowerShell sessions. Linux needs a C linker.
+Use the toolchain in `rust-toolchain.toml`. Windows needs MSVC C++ tools and a Windows SDK; `./build.ps1` resolves import libraries for normal PowerShell sessions. Linux needs a C linker. Worktree regression tests need Git on `PATH`.
 
 ```sh
 cargo fmt --check
@@ -53,6 +54,8 @@ Do not claim old .NET coverage, mutation or benchmark results apply to Rust. Pre
 ## Hygiene
 
 Use a dedicated codex/ branch/worktree, preserve unrelated edits, do not hand-edit generated target/node_modules/build artifacts. Update documentation alongside public behavior. Make coherent Conventional Commits with imperative descriptions and a BREAKING CHANGE footer for contract changes.
+
+Include `Co-authored-by: Codex <noreply@openai.com>` in commits created with Codex.
 
 Consumer documentation lives in website/content/docs and is published under /docs/. Keep public copy focused on rapid rule feedback; omit implementation language and production-readiness pages. The canonical changelog is website/content/docs/changelog.md; add a matching version heading before a release. Stable-release evidence is supplied through READINESS_PATH.
 

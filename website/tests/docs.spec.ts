@@ -107,6 +107,10 @@ test("docs themes, mobile menu and accessibility", async ({ page }) => {
     fullPage: true,
   });
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({
+    path: "../artifacts/website/docs-overview-mobile.png",
+    fullPage: true,
+  });
   await page.getByRole("button", { name: "Sections", exact: true }).click();
   await expect(page.getByRole("searchbox")).toBeVisible();
   await page

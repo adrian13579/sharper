@@ -73,7 +73,7 @@ pub fn tools() -> Value {
             "Find references through a configured LSP server, optionally including declarations. Positions are zero-based UTF-16. Read-only.",
         ),
     ] {
-        let mut properties = json!({"workspace":{"type":"string","description":"Absolute repository directory; required unless absolute source path, a single client root, or fallback workspace selects it."}});
+        let mut properties = json!({"workspace":{"type":"string","description":"Absolute repository or agent worktree directory. Each checkout has separate language-server sessions. Required unless an absolute source path, a single client root, or fallback workspace selects it."}});
         let mut required = Vec::new();
         if name != "sharper_status" {
             properties["path"] = json!({"type":"string","description":"Source file or directory, absolute or relative to workspace."});

@@ -4,6 +4,11 @@ Changes to Sharper's source and user-facing behavior. Check [npm](https://www.np
 
 ## Unreleased
 
+### Worktrees
+
+- Agent checkouts use separate language-server sessions, working directories and workspace roots, including linked Git worktrees.
+- Requests inside a nested checkout select its own workspace; parent checks exclude nested checkouts and their file changes.
+
 ### Documentation and website
 
 - Theme-aware JSON syntax highlighting in documentation examples.

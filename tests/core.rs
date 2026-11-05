@@ -78,6 +78,129 @@ async fn stable(engine: &mut Engine, args: Args) -> Value {
     }
     value
 }
+fn git(root: &Path, args: &[&str]) -> Result<()> {
+    let output = std::process::Command::new("git")
+        .current_dir(root)
+        .args([
+            "-c",
+            "user.name=Sharper tests",
+            "-c",
+            "user.email=tests@sharper.invalid",
+            "-c",
+            "commit.gpgsign=false",
+            "-c",
+        ])
+        .arg(format!(
+            "core.hooksPath={}",
+            root.join(".git/no-hooks").display()
+        ))
+        .args(args)
+        .env_remove("GIT_DIR")
+        .env_remove("GIT_WORK_TREE")
+        .env_remove("GIT_INDEX_FILE")
+        .env_remove("GIT_COMMON_DIR")
+        .output()?;
+    assert!(
+        output.status.success(),
+        "git {args:?}: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(())
+}
+#[tokio::test]
+async fn linked_worktrees_keep_feedback_processes_and_working_directories_separate() -> Result<()> {
+    let w = World::new("normal", 1);
+    git(&w.root, &["init", "--quiet"])?;
+    git(&w.root, &["add", "example.orbit"])?;
+    git(
+        &w.root,
+        &["commit", "--quiet", "-m", "Create test checkout"],
+    )?;
+    let agent = w.root.parent().unwrap().join("agent checkout");
+    git(
+        &w.root,
+        &[
+            "worktree",
+            "add",
+            "--quiet",
+            "-b",
+            "agent",
+            agent.to_str().unwrap(),
+        ],
+    )?;
+    assert!(agent.join(".git").is_file());
+    std::fs::write(agent.join("example.orbit"), "fixed")?;
+    // Reading mode.txt makes the fixture's capabilities evidence of its actual cwd.
+    std::fs::write(w.root.join("mode.txt"), "normal")?;
+    std::fs::write(agent.join("mode.txt"), "nav-unsupported")?;
+    let mut config = Config::load(&w.config)?;
+    config.servers[0].arguments.drain(..2);
+    let mut engine = Engine::new(Some(config), Some(w.root.clone()));
+    let agent_args = Args {
+        path: Some(agent.join("example.orbit").to_string_lossy().into_owned()),
+        ..Default::default()
+    };
+    let main_result = stable(&mut engine, w.args()).await;
+    let agent_result = stable(&mut engine, agent_args.clone()).await;
+    assert_eq!(main_result["complete"], true, "{main_result}");
+    assert_eq!(main_result["diagnosticCount"], 1);
+    assert_eq!(agent_result["complete"], true, "{agent_result}");
+    assert_eq!(agent_result["diagnosticCount"], 0);
+    assert_eq!(
+        agent_result["requestedPath"],
+        json!(agent.join("example.orbit"))
+    );
+    let main_status = engine.call("sharper_status", w.args()).await?;
+    let agent_status = engine.call("sharper_status", agent_args.clone()).await?;
+    assert_eq!(main_status["workspace"], json!(w.root));
+    assert_eq!(agent_status["workspace"], json!(agent));
+    assert_ne!(main_status["processId"], agent_status["processId"]);
+    assert!(
+        !main_status["navigationCapabilities"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+    assert_eq!(agent_status["navigationCapabilities"], json!([]));
+    std::fs::write(agent.join("example.orbit"), "violation")?;
+    let changed = stable(&mut engine, agent_args.clone()).await;
+    assert_eq!(changed["complete"], true, "{changed}");
+    assert_eq!(
+        changed["diagnostics"][0]["filePath"],
+        json!(agent.join("example.orbit"))
+    );
+    std::fs::write(w.root.join("example.orbit"), "fixed")?;
+    let changed = stable(&mut engine, w.args()).await;
+    assert_eq!(changed["complete"], true, "{changed}");
+    assert_eq!(changed["diagnosticCount"], 0);
+    for (args, original) in [(w.args(), &main_status), (agent_args, &agent_status)] {
+        let current = engine.call("sharper_status", args).await?;
+        assert_eq!(current["processId"], original["processId"]);
+    }
+    engine.close().await;
+    let messages = w.messages();
+    let initializations: Vec<_> = messages
+        .iter()
+        .filter(|m| m["method"] == "initialize")
+        .collect();
+    assert_eq!(initializations.len(), 2);
+    for root in [&w.root, &agent] {
+        let uri = normalize::uri(root)?;
+        let initialization = initializations
+            .iter()
+            .find(|m| m["params"]["rootUri"] == uri)
+            .unwrap();
+        assert_eq!(initialization["params"]["workspaceFolders"][0]["uri"], uri);
+        assert_eq!(
+            initialization["params"]["workspaceFolders"]
+                .as_array()
+                .unwrap()
+                .len(),
+            1
+        );
+    }
+    Ok(())
+}
 #[tokio::test]
 async fn agnostic_feedback_preserves_metadata_and_reuses_warm_sessions() -> Result<()> {
     let w = World::new("handshake", 1);
