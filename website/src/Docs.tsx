@@ -1,6 +1,7 @@
 "use client";
 import { useState, type ReactNode } from "react";
 import Markdown from "react-markdown";
+import JsonCode from "./JsonCode";
 import remarkGfm from "remark-gfm";
 import { Github, ThemeIcon } from "./Icons";
 import { useTheme } from "./useTheme";
@@ -159,6 +160,16 @@ export default function Docs({
                     </a>
                   );
                 },
+                code: ({ className, children }) => (
+                  <code className={className}>
+                    {className?.split(/\s+/).includes("language-json") &&
+                    typeof children === "string" ? (
+                      <JsonCode text={children} />
+                    ) : (
+                      children
+                    )}
+                  </code>
+                ),
                 pre: ({ children }) => <pre tabIndex={0}>{children}</pre>,
               }}
             >

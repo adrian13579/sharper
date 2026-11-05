@@ -914,3 +914,28 @@ footer a:hover {
   background: var(--line);
   align-self: center;
 }
+
+.docs-article .json-key {
+  color: var(--accent);
+}
+.docs-article .json-string {
+  color: #92400e;
+}
+.docs-article .json-number {
+  color: #1d4ed8;
+}
+.docs-article .json-literal {
+  color: #9f1239;
+}
+.docs-article .json-punctuation {
+  color: var(--muted);
+}
+:root[data-theme="dark"] .docs-article .json-string {
+  color: #fbbf24;
+}
+:root[data-theme="dark"] .docs-article .json-number {
+  color: #93c5fd;
+}
+:root[data-theme="dark"] .docs-article .json-literal {
+  color: #fda4af;
+}

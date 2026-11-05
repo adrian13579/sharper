@@ -6,6 +6,8 @@ Changes to Sharper's source and user-facing behavior. Check [npm](https://www.np
 
 ### Documentation and website
 
+- Theme-aware JSON syntax highlighting in documentation examples.
+
 - Tool response reference with examples and field descriptions for feedback, status, navigation and errors.
 
 - Searchable website documentation with sidebar navigation, section links and light/dark themes.

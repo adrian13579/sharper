@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 test("docs navigation, full text search, anchors and every page work", async ({
   page,
   request,
@@ -98,4 +98,52 @@ test("docs themes, mobile menu and accessibility", async ({ page }) => {
     path: "../artifacts/website/docs-mobile.png",
     fullPage: true,
   });
+});
+
+test("JSON examples are highlighted without changing their contents", async ({
+  page,
+}) => {
+  const markdown = (
+    await readFile("content/docs/responses.md", "utf8")
+  ).replace(/\r\n?/g, "\n");
+  const source = Array.from(
+    markdown.matchAll(/```json\s*\n([\s\S]*?)```/g),
+    (match) => match[1],
+  );
+  await page.goto("./docs/responses/");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  const blocks = page.locator("pre code.language-json");
+  await expect(blocks).toHaveCount(source.length);
+  for (let i = 0; i < source.length; i++)
+    expect(await blocks.nth(i).textContent()).toBe(source[i]);
+  expect(JSON.parse((await blocks.first().textContent())!)).toMatchObject({
+    status: "completed",
+    diagnosticCount: 1,
+  });
+  for (const theme of ["light", "dark"]) {
+    if (theme === "dark")
+      await page.getByRole("button", { name: "Switch to dark theme" }).click();
+    const key = await blocks
+      .first()
+      .locator(".json-key")
+      .first()
+      .evaluate((node) => getComputedStyle(node).color);
+    const value = await blocks
+      .first()
+      .locator(".json-string")
+      .first()
+      .evaluate((node) => getComputedStyle(node).color);
+    expect(key).not.toBe(value);
+    await mkdir("../artifacts/website", { recursive: true });
+    await blocks.first().scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `../artifacts/website/json-${theme}.png` });
+    const results = await new AxeBuilder({ page })
+      .include(".docs-main")
+      .analyze();
+    expect(
+      results.violations.filter(
+        (v) => v.impact === "serious" || v.impact === "critical",
+      ),
+    ).toEqual([]);
+  }
 });
