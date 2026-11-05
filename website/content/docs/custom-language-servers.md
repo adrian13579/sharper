@@ -21,15 +21,99 @@ Create a JSON file outside your projects:
 }
 ```
 
-`.orbit` / `planet` are example extension and language-ID mappings. Replace them with your server's mappings. Add more entries to combine language analysis and custom enforcement on matching files. IDs must be unique and contain ASCII letters, digits, hyphens or underscores. One to 32 server profiles are accepted; four workspace/server contexts stay warm at once.
+Save the file as `servers.json` and pass its absolute path with `--lsp-config`. The filename is your choice. Use ordinary JSON with quoted keys; Sharper validates field names, types and mappings before starting services. A profile can contain 1–32 servers, and up to four workspace/server contexts stay warm at once.
 
-A bare command resolves on PATH. Relative executable paths resolve against the profile directory. Windows JSON paths need escaped backslashes, for example `"command": "C:\\tools\\rule-server.exe"`. Arguments are passed as literal separate strings; include every required flag, such as `--stdio`, explicitly. Use absolute file paths in arguments. Managed/script servers use an explicit runtime command and DLL/script argument. For script-based services, select the runtime executable directly.
+`.orbit` and `planet` are example extension and language-ID mappings. `ruleset` and `rules.strict` illustrate options a team-owned server might understand. Choose actual option names and values from your service's documentation.
 
-`languages` maps case-insensitive extensions to exact LSP IDs. Mappings, command and arguments are validated before startup. Optional initializationOptions/settings must be JSON objects. Optional `requireResultId: true` treats missing document result IDs as incomplete for servers that use them as recognition evidence. Enable this profile-specific requirement when your server uses result IDs as recognition evidence.
+### Server parameters
 
-Optional `navigation: false` disables a rule-only service for navigation. Optional `readyNotification` names an explicit server readiness notification; without it, initialization completes readiness and the server must make its own diagnostic request completion meaningful.
+Each entry in `servers` has these fields:
 
-Install servers separately and use trusted programs/configurations: external servers run with your user's permissions. Choose the profile explicitly at startup.
+| Field                   | Type / default                       | Purpose                                                                                                                                                                               |
+| ----------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                    | String; `"custom"`                   | Identifies this service in findings and status. Use a unique ID for every entry: 1–64 ASCII letters, digits, hyphens or underscores.                                                  |
+| `command`               | Required string                      | Executable to launch, such as `"node"` or an absolute path to your service. A bare name resolves on `PATH`; a relative executable path resolves against the profile file's directory. |
+| `arguments`             | Array of strings; `[]`               | Literal command-line arguments, in order. Include required flags and script paths explicitly.                                                                                         |
+| `languages`             | Required object                      | Maps file extensions to LSP language IDs. At least one mapping is required. These mappings select which files the service analyzes.                                                   |
+| `initializationOptions` | Object or `null`; `null`             | Service-specific startup options sent with the LSP `initialize` request.                                                                                                              |
+| `settings`              | Object or `null`; `null`             | Service-specific configuration sent after initialization and returned when the service requests configuration.                                                                        |
+| `navigation`            | Boolean; `true`                      | Makes this service eligible for supported symbol-navigation requests. Use `false` for a service dedicated to rule findings.                                                           |
+| `diagnostics`           | `"pull"` or `"typeScript"`; `"pull"` | Selects standard document-pull diagnostics or the explicit TypeScript compatibility adapter.                                                                                          |
+| `requireResultId`       | Boolean; `false`                     | With `"pull"`, require a diagnostic result ID as additional document-recognition evidence. Enable this when your service relies on that evidence.                                     |
+| `readyNotification`     | String or `null`; `null`             | Optional LSP notification method the service emits when its workspace is ready. With this set, Sharper waits for that notification within the request deadline.                       |
+
+### Commands and arguments
+
+Use one array element per argument, including values that contain spaces:
+
+```json
+{
+  "command": "node",
+  "arguments": [
+    "/opt/team tools/rule-server/server.js",
+    "--stdio",
+    "--log-level",
+    "warning"
+  ]
+}
+```
+
+This fragment belongs inside a server entry alongside its `id` and `languages`. `command` names the executable; `arguments` supplies its parameters. Include flags such as `--stdio` when your service requires them. Keep spaces inside a single string and use JSON escaping for Windows paths, such as `"C:\\tools\\rule-server.exe"`.
+
+Sharper starts services in the selected workspace directory and passes arguments literally. Use absolute paths for script or configuration arguments to keep them stable across workspaces. Choose an executable or an explicit script runtime, such as `node`, for the command. The `--lsp-config` option selects Sharper's profile; a service's own configuration-file flag belongs in its `arguments` array.
+
+### File mappings
+
+For example, a service that handles several source types could use:
+
+```json
+"languages": {
+  ".ts": "typescript",
+  ".tsx": "typescriptreact",
+  ".js": "javascript"
+}
+```
+
+Extension matching is case-insensitive; language IDs are passed exactly as written. Use a leading dot and an extension made of ASCII letters, digits, hyphens or underscores. Match the file's final extension: `.ts` also selects `example.d.ts`. Each extension appears once per server, while several server entries can map the same extension to combine language and rule feedback. Choose mappings supported by each service.
+
+### Initialization options and settings
+
+These objects serve different points in the connection lifecycle:
+
+- **`initializationOptions`:** Sharper passes this object unchanged in `initialize`. Use it for startup options defined by the service, such as workspace loading or feature selection.
+- **`settings`:** after `initialized`, Sharper sends a `workspace/didChangeConfiguration` notification containing this object. It also uses the object to answer `workspace/configuration` requests from the service.
+
+For an illustrative team-owned rule service:
+
+```json
+{
+  "initializationOptions": {
+    "ruleset": "team-architecture"
+  },
+  "settings": {
+    "rules": {
+      "strict": true,
+      "severity": "error"
+    }
+  }
+}
+```
+
+The service defines what `ruleset`, `strict` and `severity` mean. Sharper preserves their values, including nested objects, arrays, booleans and numbers. Keep the exact structure expected by your service.
+
+When a service requests configuration section `"rules"`, Sharper returns the nested `rules` object above. Section `"rules.strict"` returns `true`. A request with an empty or omitted section returns the entire settings value; a missing section returns `null`. Use nested objects for dotted section names.
+
+Omitting either field gives it the value `null`. Supplying `"settings": {}` sends an empty settings object after initialization. Restart the agent's MCP connection after changing profile values so new sessions use the updated configuration.
+
+### Diagnostic and readiness options
+
+Start with `"diagnostics": "pull"` for standard LSP document diagnostics. The `"typeScript"` mode is an explicit adapter for the supported synchronous syntax/semantic diagnostic commands; choose it for a service that exposes that interface. `requireResultId` applies to the standard pull mode. With it enabled, a report missing its result ID is treated as incomplete, so your agent can distinguish an unrecognized document from a completed check.
+
+Use `readyNotification` when your service documents a specific workspace-ready notification. Enter its exact method name, such as one supplied in the service's integration guide. With the default `null`, readiness follows completion of initialization. The service remains responsible for completing diagnostic requests once its analysis is available.
+
+With `navigation: true`, Sharper can route a navigation request to the first matching service that advertises the requested capability. With `false`, the service still contributes rule findings to checks.
+
+Install services with their own tooling and select trusted programs and profiles. These programs run with your user permissions. Sharper uses the explicitly selected profile and the workspace chosen for each tool call.
 
 ## Connect your agent
 
