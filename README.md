@@ -4,7 +4,6 @@
 
 [![Tests](https://github.com/adrian13579/sharper/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/adrian13579/sharper/actions/workflows/tests.yml)
 [![Build](https://github.com/adrian13579/sharper/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/adrian13579/sharper/actions/workflows/build.yml)
-[![Latest release](https://img.shields.io/github/v/release/adrian13579/sharper?include_prereleases&label=release)](https://github.com/adrian13579/sharper/releases)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
 **Rapid rule feedback for coding agents. Check, fix, verify after every edit.**
