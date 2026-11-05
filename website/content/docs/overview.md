@@ -2,6 +2,8 @@
 
 Sharper brings findings from your compiler, analyzers and custom LSP services into the agent's editing loop. Check affected code, fix violations and verify the result through one MCP interface, reusing warm local server sessions.
 
+The MCP interface provides `sharper_check` for current findings and `sharper_status` for service availability and diagnostic capabilities.
+
 ## Why early feedback matters
 
 A full build or test run can do much more work than is needed to catch a rule violation in the code an agent just edited. Sharper reuses warm LSP services to request focused findings, which can make repeated feedback cheaper and faster than running those broader checks after every edit.

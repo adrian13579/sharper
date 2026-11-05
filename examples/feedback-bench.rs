@@ -30,7 +30,6 @@ async fn main() -> Result<()> {
     let parameters = Args {
         workspace: Some(workspace.clone()),
         path,
-        ..Default::default()
     };
     let mut engine = Engine::new(Some(config.clone()), None);
     let start = Instant::now();

@@ -52,7 +52,7 @@ impl Session {
     async fn connect(profile: &Server, root: &Path) -> Result<Rpc> {
         let rpc = Rpc::spawn(profile, root)?;
         let result=rpc.request("initialize",json!({"processId":std::process::id(),"clientInfo":{"name":"Sharper","version":env!("CARGO_PKG_VERSION")},"rootUri":normalize::uri(root)?,"workspaceFolders":[{"uri":normalize::uri(root)?,"name":root.file_name().unwrap_or_default().to_string_lossy()}],"initializationOptions":profile.initialization_options,
-            "capabilities":{"general":{"positionEncodings":["utf-16"]},"workspace":{"configuration":true,"workspaceFolders":true,"diagnostics":{"refreshSupport":true},"didChangeWatchedFiles":{"dynamicRegistration":true}},"window":{"workDoneProgress":true},"textDocument":{"synchronization":{"dynamicRegistration":false},"diagnostic":{"dynamicRegistration":true,"relatedDocumentSupport":false},"definition":{"dynamicRegistration":true,"linkSupport":true},"implementation":{"dynamicRegistration":true,"linkSupport":true},"references":{"dynamicRegistration":true},"publishDiagnostics":{"versionSupport":true,"relatedInformation":true}}}})).await?;
+            "capabilities":{"general":{"positionEncodings":["utf-16"]},"workspace":{"configuration":true,"workspaceFolders":true,"diagnostics":{"refreshSupport":true},"didChangeWatchedFiles":{"dynamicRegistration":true}},"window":{"workDoneProgress":true},"textDocument":{"synchronization":{"dynamicRegistration":false},"diagnostic":{"dynamicRegistration":true,"relatedDocumentSupport":false},"publishDiagnostics":{"versionSupport":true,"relatedInformation":true}}}})).await?;
         let caps = result
             .get("capabilities")
             .filter(|v| v.is_object())
@@ -213,7 +213,7 @@ impl Session {
                     .meta
                     .lock()
                     .unwrap()
-                    .supports("textDocument/diagnostic", self.profile.language(p).unwrap())
+                    .diagnostics(self.profile.language(p).unwrap())
             }) {
                 return Err(uncertain(
                     "Server does not advertise document-pull diagnostics for every selected language; push-only feedback cannot verify",
@@ -351,72 +351,17 @@ impl Session {
         }
         Ok(normalize::ordered(findings))
     }
-    pub fn navigation_supported(&self, method: &str, path: &Path) -> bool {
-        self.profile.navigation
-            && self
-                .profile
-                .language(path)
-                .is_some_and(|lang| self.rpc.meta.lock().unwrap().supports(method, lang))
-    }
-    pub async fn navigate(
-        &mut self,
-        method: &str,
-        path: &Path,
-        line: u64,
-        character: u64,
-        include: bool,
-    ) -> Result<Vec<Value>> {
-        let (before, epoch) = self.prepare().await?;
-        let text = before
-            .0
-            .get(path)
-            .and_then(|v| v.text.as_ref())
-            .context("Source is outside synchronized boundary")?;
-        let normalized = text.replace("\r\n", "\n").replace('\r', "\n");
-        let lines: Vec<_> = normalized.split('\n').collect();
-        let text = lines
-            .get(usize::try_from(line)?)
-            .context("Line is outside source")?;
-        let length = text.encode_utf16().count() as u64;
-        ensure!(character <= length, "UTF-16 character is outside line");
-        ensure!(
-            self.navigation_supported(method, path),
-            "Navigation capability is unavailable"
-        );
-        let revision = self.rpc.meta.lock().unwrap().revision;
-        let mut params = json!({"textDocument":{"uri":normalize::uri(path)?},"position":{"line":line,"character":character}});
-        if method == "textDocument/references" {
-            params["context"] = json!({"includeDeclaration":include});
-        }
-        let locations = normalize::locations(&self.rpc.request(method, params).await?)?;
-        self.stable(&before, epoch).await?;
-        if revision != self.rpc.meta.lock().unwrap().revision {
-            return Err(uncertain("Navigation capabilities changed; recheck"));
-        }
-        Ok(locations)
-    }
     pub fn status(&self) -> Value {
         let m = self.rpc.meta.lock().unwrap();
         let languages: Vec<_> = self.profile.languages.values().collect();
-        let navigation: Vec<_> = ["definition", "implementation", "references"]
-            .into_iter()
-            .filter(|name| {
-                self.profile.navigation
-                    && languages
-                        .iter()
-                        .any(|lang| m.supports(&format!("textDocument/{name}"), lang))
-            })
-            .collect();
         let diagnostics = if self.profile.diagnostics == DiagnosticMode::TypeScript {
             m.capabilities["executeCommandProvider"]["commands"]
                 .as_array()
                 .is_some_and(|a| a.iter().any(|v| v == "typescript.tsserverRequest"))
         } else {
-            languages
-                .iter()
-                .all(|lang| m.supports("textDocument/diagnostic", lang))
+            languages.iter().all(|lang| m.diagnostics(lang))
         };
-        json!({"backend":self.profile.id,"available":self.rpc.available(),"workspaceState":if self.rpc.available()&&m.ready{"ready"}else{"failed"},"workspace":self.boundary.root,"diagnosticsAvailable":diagnostics,"lastError":m.error,"sessionStarts":self.starts,"processId":self.rpc.pid(),"serverName":m.server_name,"workspaceDiagnosticCapability":m.capabilities["diagnosticProvider"]["workspaceDiagnostics"]==true,"navigationCapabilities":navigation})
+        json!({"backend":self.profile.id,"available":self.rpc.available(),"workspaceState":if self.rpc.available()&&m.ready{"ready"}else{"failed"},"workspace":self.boundary.root,"diagnosticsAvailable":diagnostics,"lastError":m.error,"sessionStarts":self.starts,"processId":self.rpc.pid(),"serverName":m.server_name,"workspaceDiagnosticCapability":m.capabilities["diagnosticProvider"]["workspaceDiagnostics"]==true})
     }
     pub async fn close(&mut self) {
         let _ = tokio::time::timeout(std::time::Duration::from_millis(500), async {

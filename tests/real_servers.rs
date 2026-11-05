@@ -21,7 +21,6 @@ async fn check(engine: &mut Engine, root: &std::path::Path, path: &str) -> Resul
                 Args {
                     workspace: Some(root.to_string_lossy().into_owned()),
                     path: Some(path.into()),
-                    ..Default::default()
                 },
             ),
         )

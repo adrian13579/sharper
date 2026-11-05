@@ -8,13 +8,13 @@ Publish Sharper only through npm, for npm/npx consumers. Keep standalone binarie
 
 ## Product messaging
 
-Lead public messaging with rapid feedback on rule violations and the check, fix, verify workflow. Language-agnostic LSP connectivity enables that value; navigation is a supporting benefit. Keep implementation-language details out of the root README. Avoid unmeasured latency claims.
+Lead public messaging with rapid feedback on rule violations and the check, fix, verify workflow. Language-agnostic LSP connectivity enables that value. Keep implementation-language details out of the root README. Avoid unmeasured latency claims.
 
 ## Contracts and architecture
 
 - Establish lifecycle, synchronization and freshness behavior from current code and tests. External servers own language semantics and rules. Sharper owns transport, synchronization, normalization, cancellation and evidence.
 - Language support comes from explicit `--lsp-config` profiles, never hardcoded extension routing or repository-discovered executable configuration. Multiple matching servers contribute diagnostics. Do not add a rule engine, plugin registry, compiler workspace or unrestricted execute-command proxy.
-- Preserve the five MCP tool names. All source operations are read-only. Never apply workspace edits or install project dependencies. MCP stdout is newline-delimited JSON-RPC only; logs go to stderr.
+- Expose exactly two MCP tools: `sharper_check` and `sharper_status`. All source operations are read-only. Never apply workspace edits or install project dependencies. MCP stdout is newline-delimited JSON-RPC only; logs go to stderr.
 - Keep bounded warm sessions per workspace/server, evict/dispose contexts and stop child process groups/jobs on cancellation and shutdown. Initialization, queueing and analysis share a request deadline.
 - Treat each Git worktree as its own workspace. Keep nested checkouts out of the parent workspace's synchronization and freshness boundary; never collapse worktrees onto their shared Git directory.
 - Hash disk before/after checks. Watchers are hints and invalidate in-flight results conservatively. Never equate clean document diagnostics with a successful build/test run. Completion/freshness and findings are separate facts.

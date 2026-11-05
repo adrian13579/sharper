@@ -57,7 +57,6 @@ impl World {
         Args {
             workspace: Some(self.root.to_string_lossy().into_owned()),
             path: Some("example.orbit".into()),
-            ..Default::default()
         }
     }
     fn messages(&self) -> Vec<Value> {
@@ -130,11 +129,10 @@ async fn linked_worktrees_keep_feedback_processes_and_working_directories_separa
     )?;
     assert!(agent.join(".git").is_file());
     std::fs::write(agent.join("example.orbit"), "fixed")?;
-    // Reading mode.txt makes the fixture's capabilities evidence of its actual cwd.
-    std::fs::write(w.root.join("mode.txt"), "normal")?;
-    std::fs::write(agent.join("mode.txt"), "nav-unsupported")?;
-    let mut config = Config::load(&w.config)?;
-    config.servers[0].arguments.drain(..2);
+    // The fixture reads its name from the checkout to prove its actual cwd.
+    std::fs::write(w.root.join("server-name.txt"), "main checkout")?;
+    std::fs::write(agent.join("server-name.txt"), "agent checkout")?;
+    let config = Config::load(&w.config)?;
     let mut engine = Engine::new(Some(config), Some(w.root.clone()));
     let agent_args = Args {
         path: Some(agent.join("example.orbit").to_string_lossy().into_owned()),
@@ -155,13 +153,8 @@ async fn linked_worktrees_keep_feedback_processes_and_working_directories_separa
     assert_eq!(main_status["workspace"], json!(w.root));
     assert_eq!(agent_status["workspace"], json!(agent));
     assert_ne!(main_status["processId"], agent_status["processId"]);
-    assert!(
-        !main_status["navigationCapabilities"]
-            .as_array()
-            .unwrap()
-            .is_empty()
-    );
-    assert_eq!(agent_status["navigationCapabilities"], json!([]));
+    assert_eq!(main_status["serverName"], "main checkout");
+    assert_eq!(agent_status["serverName"], "agent checkout");
     std::fs::write(agent.join("example.orbit"), "violation")?;
     let changed = stable(&mut engine, agent_args.clone()).await;
     assert_eq!(changed["complete"], true, "{changed}");
@@ -191,6 +184,13 @@ async fn linked_worktrees_keep_feedback_processes_and_working_directories_separa
             .find(|m| m["params"]["rootUri"] == uri)
             .unwrap();
         assert_eq!(initialization["params"]["workspaceFolders"][0]["uri"], uri);
+        for removed in ["definition", "implementation", "references"] {
+            assert!(
+                initialization["params"]["capabilities"]["textDocument"]
+                    .get(removed)
+                    .is_none()
+            );
+        }
         assert_eq!(
             initialization["params"]["workspaceFolders"]
                 .as_array()
@@ -265,6 +265,7 @@ async fn multiple_servers_contribute_without_erasing_provenance() -> Result<()> 
     );
     let status = e.call("sharper_status", w.args()).await?;
     assert_eq!(status["available"], true);
+    assert!(status.get("navigationCapabilities").is_none());
     assert_eq!(status["sessions"].as_array().unwrap().len(), 2);
     for session in status["sessions"].as_array().unwrap() {
         assert_eq!(session["available"], true);
@@ -275,6 +276,7 @@ async fn multiple_servers_contribute_without_erasing_provenance() -> Result<()> 
             "solution",
             "diagnosticProviders",
             "lastError",
+            "navigationCapabilities",
         ] {
             assert!(session.get(omitted).is_none());
         }
@@ -385,52 +387,20 @@ async fn dynamic_pattern_selectors_do_not_claim_supported_analysis() -> Result<(
     Ok(())
 }
 #[tokio::test]
-async fn navigation_preserves_utf16_links_and_generated_uris() -> Result<()> {
-    let w = World::new("normal", 1);
-    std::fs::write(w.root.join("example.orbit"), "\u{1f600}hello\r\nworld")?;
-    let mut e = w.engine();
-    let mut args = w.args();
-    args.line = Some(0);
-    args.character = Some(2);
-    let r = e.call("sharper_definition", args.clone()).await?;
-    assert_eq!(r["complete"], true, "{r}");
-    assert!(r.get("limitations").is_none());
-    assert!(r.get("errors").is_none());
-    assert_eq!(r["locations"][0]["range"]["start"]["character"], 2);
-    let r = e.call("sharper_implementation", args.clone()).await?;
-    assert_eq!(r["complete"], true);
-    assert_eq!(r["locations"][0]["targetRange"]["start"]["character"], 0);
-    let r = e.call("sharper_references", args.clone()).await?;
-    assert_eq!(r["locationCount"], 1);
-    args.include_declaration = true;
-    let r = e.call("sharper_references", args).await?;
-    assert_eq!(r["locationCount"], 2);
-    assert!(
-        r["locations"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|v| v["uri"] == "custom://generated/example" && v["filePath"].is_null())
-    );
-    e.close().await;
-    Ok(())
-}
-#[tokio::test]
-async fn unsupported_or_invalid_navigation_is_never_empty_verified_success() -> Result<()> {
-    for (mode, expected) in [
-        ("nav-unsupported", "unsupported"),
-        ("bad-navigation", "failed"),
-    ] {
-        let w = World::new(mode, 1);
-        let mut e = w.engine();
-        let mut args = w.args();
-        args.line = Some(0);
-        args.character = Some(0);
-        let r = e.call("sharper_definition", args).await?;
-        assert_eq!(r["status"], expected);
-        assert_eq!(r["complete"], false);
-        e.close().await;
-    }
+async fn diagnostics_preserve_zero_based_utf16_ranges() -> Result<()> {
+    let w = World::new("utf16-ranges", 1);
+    std::fs::write(w.root.join("example.orbit"), "\u{1f600}violation\r\nworld")?;
+    let mut engine = w.engine();
+    let result = stable(&mut engine, w.args()).await;
+    assert_eq!(result["complete"], true, "{result}");
+    let diagnostic = &result["diagnostics"][0];
+    assert_eq!(diagnostic["startLine"], 0);
+    assert_eq!(diagnostic["startColumn"], 2);
+    assert_eq!(diagnostic["endLine"], 0);
+    assert_eq!(diagnostic["endColumn"], 11);
+    assert_eq!(diagnostic["relatedInformation"][0]["startColumn"], 2);
+    assert_eq!(diagnostic["relatedInformation"][0]["endColumn"], 11);
+    engine.close().await;
     Ok(())
 }
 #[tokio::test]
@@ -526,6 +496,8 @@ fn configuration_validation_is_language_agnostic_and_strict() {
         json!({"command":"ok","languages":{}}),
         json!({"command":"ok","languages":{".x":"x",".X":"x"}}),
         json!({"command":"ok","languages":{".x":"x"},"unknown":1}),
+        json!({"command":"ok","languages":{".x":"x"},"navigation":true}),
+        json!({"command":"ok","languages":{".x":"x"},"navigation":false}),
     ] {
         std::fs::write(&p, bad.to_string()).unwrap();
         assert!(Config::load(&p).is_err(), "{bad}");
@@ -579,14 +551,13 @@ async fn framing_limits_truncation_and_unicode_roundtrip() -> Result<()> {
     Ok(())
 }
 #[test]
-fn malformed_diagnostics_and_navigation_do_not_normalize_as_success() {
+fn malformed_diagnostics_do_not_normalize_as_success() {
     for item in [
         json!({"message":"x","range":{"start":{"line":-1,"character":0},"end":{"line":0,"character":1}}}),
         json!({"message":3,"range":{"start":{"line":0,"character":0},"end":{"line":0,"character":1}}}),
     ] {
         assert!(normalize::diagnostics(&json!([item]), "file:///tmp/x.orbit").is_err());
     }
-    assert!(normalize::locations(&json!(42)).is_err());
 }
 
 #[test]

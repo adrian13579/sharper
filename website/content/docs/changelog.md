@@ -4,6 +4,12 @@ Changes to Sharper's source and user-facing behavior. Check [npm](https://www.np
 
 ## Unreleased
 
+### Breaking changes
+
+- Sharper now exposes only `sharper_check` and `sharper_status`. Removed `sharper_definition`, `sharper_implementation` and `sharper_references`.
+- Removed the navigation-only `line`, `character` and `includeDeclaration` tool arguments and the `navigationCapabilities` status field.
+- Removed the `navigation` server-profile option. Delete that key from older profiles before restarting the MCP connection.
+
 ### Worktrees
 
 - Agent checkouts use separate language-server sessions, working directories and workspace roots, including linked Git worktrees.
@@ -13,7 +19,7 @@ Changes to Sharper's source and user-facing behavior. Check [npm](https://www.np
 
 - Theme-aware JSON syntax highlighting in documentation examples.
 
-- Tool response reference with examples and field descriptions for feedback, status, navigation and errors.
+- Tool response reference with examples and field descriptions for feedback, status and errors.
 
 - Searchable website documentation with sidebar navigation, section links and light/dark themes.
 - A concise landing page focused on rapid rule feedback, with live GitHub stars and total npm downloads.
@@ -30,7 +36,7 @@ Changes to Sharper's source and user-facing behavior. Check [npm](https://www.np
 
 ### Tool responses
 
-- Removed repeated limitations text from feedback, status and navigation results.
+- Removed repeated limitations text from feedback and status results.
 - Combined checks return compact per-service summaries alongside one findings array; single-service checks return the top-level result directly.
 - Empty error lists, unused status placeholders and absent optional server details are omitted.
 - Completion, freshness, findings and actionable errors remain explicit.

@@ -30,8 +30,7 @@ Install or build your enforcer separately. For example, a team-owned program cal
       "id": "architecture",
       "command": "/opt/team/bin/architecture-lsp",
       "arguments": ["--stdio"],
-      "languages": { ".py": "python" },
-      "navigation": false
+      "languages": { ".py": "python" }
     }
   ]
 }

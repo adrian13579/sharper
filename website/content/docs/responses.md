@@ -67,8 +67,7 @@ A completed check can contain error-severity findings, as in the example. `compl
 | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `completed`   | The operation finished with current, complete analysis.                                                                                                                                  |
 | `incomplete`  | Analysis returned partial or uncertain evidence, for example after an input change or an unavailable capability. A combined check uses this when any selected service fails to complete. |
-| `failed`      | A single-service analysis or navigation operation failed, for example because a service exited or returned malformed data.                                                               |
-| `unsupported` | A navigation request has no matching service advertising the requested operation.                                                                                                        |
+| `failed`      | A single-service analysis failed, for example because a service exited or returned malformed data.                                                                                       |
 | `cancelled`   | The client cancelled the request.                                                                                                                                                        |
 | `timedOut`    | The request deadline expired.                                                                                                                                                            |
 
@@ -117,7 +116,7 @@ Each entry contains the service ID (`backend`), its analysis outcome (`status`) 
 
 ## Status results
 
-`sharper_status` reports connection health and advertised capabilities:
+`sharper_status` reports connection health and advertised diagnostic capabilities:
 
 ```json
 {
@@ -129,8 +128,7 @@ Each entry contains the service ID (`backend`), its analysis outcome (`status`) 
   "sessionStarts": 1,
   "processId": 1234,
   "serverName": "Example language service",
-  "workspaceDiagnosticCapability": false,
-  "navigationCapabilities": ["definition", "references"]
+  "workspaceDiagnosticCapability": false
 }
 ```
 
@@ -146,62 +144,9 @@ Each entry contains the service ID (`backend`), its analysis outcome (`status`) 
 | `processId`                     | Optional operating-system process ID, present for a single live session when available.                                                                                                         |
 | `serverName`                    | Optional name supplied in the service's initialization response.                                                                                                                                |
 | `workspaceDiagnosticCapability` | Whether the service advertises LSP workspace-diagnostic support. In combined status, `true` when any selected service advertises it. Sharper's checks use document diagnostics.                 |
-| `navigationCapabilities`        | Enabled, advertised operations among `"definition"`, `"implementation"` and `"references"`. Combined status returns their union.                                                                |
 | `sessions`                      | Present for combined status: individual service status objects using these fields, with the shared `workspace` kept at the top level.                                                           |
 
 Use status to inspect connections and capabilities, and `sharper_check` to obtain current findings.
-
-## Navigation results
-
-The definition, implementation and references tools return the same shape, with a different `operation` value:
-
-```json
-{
-  "status": "completed",
-  "backend": "language-service",
-  "operation": "definition",
-  "requestedPath": "/work/app/src/example.orbit",
-  "position": { "line": 3, "character": 8 },
-  "complete": true,
-  "freshness": "verified",
-  "locationCount": 1,
-  "locations": [
-    {
-      "uri": "file:///work/app/src/shared.orbit",
-      "filePath": "/work/app/src/shared.orbit",
-      "range": {
-        "start": { "line": 0, "character": 0 },
-        "end": { "line": 0, "character": 7 }
-      }
-    }
-  ],
-  "durationMs": 4.1
-}
-```
-
-| Field                             | Meaning                                                                                                                                               |
-| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `status`, `complete`, `freshness` | Analysis outcome and evidence for the request, using the values described above.                                                                      |
-| `backend`                         | ID of the selected service. For an unsupported operation it can identify the last matching profile considered, or be `"auto"` when none was selected. |
-| `operation`                       | `"definition"`, `"implementation"` or `"references"`.                                                                                                 |
-| `requestedPath`                   | Normalized absolute source file path.                                                                                                                 |
-| `position`                        | Requested source position, as zero-based `line` and UTF-16 `character` offsets.                                                                       |
-| `locationCount`                   | Number of entries in `locations`.                                                                                                                     |
-| `locations`                       | Deterministically ordered target locations.                                                                                                           |
-| `errors`                          | Optional actionable error messages, omitted when empty.                                                                                               |
-| `durationMs`                      | Elapsed engine-operation time in milliseconds.                                                                                                        |
-
-Each location contains:
-
-| Location field         | Meaning                                                                                                                         |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `uri`                  | Original target URI from the service, including file or generated-resource URIs.                                                |
-| `filePath`             | Normalized absolute local path, or `null` when the URI has no representable local path.                                         |
-| `range`                | Target selection range: `start` and exclusive `end`, each with zero-based `line` and UTF-16 `character`.                        |
-| `targetRange`          | Optional broader target range, present for an LSP LocationLink. Its `range` above comes from the link's `targetSelectionRange`. |
-| `originSelectionRange` | Optional source range supplied by an LSP LocationLink.                                                                          |
-
-Freshness describes the reconciled source operation. The returned URI preserves the service's target, including external or generated locations.
 
 ## Cancellation, timeouts and invocation errors
 

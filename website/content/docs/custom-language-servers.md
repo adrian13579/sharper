@@ -37,7 +37,6 @@ Each entry in `servers` has these fields:
 | `languages`             | Required object                      | Maps file extensions to LSP language IDs. At least one mapping is required. These mappings select which files the service analyzes.                                                   |
 | `initializationOptions` | Object or `null`; `null`             | Service-specific startup options sent with the LSP `initialize` request.                                                                                                              |
 | `settings`              | Object or `null`; `null`             | Service-specific configuration sent after initialization and returned when the service requests configuration.                                                                        |
-| `navigation`            | Boolean; `true`                      | Makes this service eligible for supported symbol-navigation requests. Use `false` for a service dedicated to rule findings.                                                           |
 | `diagnostics`           | `"pull"` or `"typeScript"`; `"pull"` | Selects standard document-pull diagnostics or the explicit TypeScript compatibility adapter.                                                                                          |
 | `requireResultId`       | Boolean; `false`                     | With `"pull"`, require a diagnostic result ID as additional document-recognition evidence. Enable this when your service relies on that evidence.                                     |
 | `readyNotification`     | String or `null`; `null`             | Optional LSP notification method the service emits when its workspace is ready. With this set, Sharper waits for that notification within the request deadline.                       |
@@ -111,8 +110,6 @@ Start with `"diagnostics": "pull"` for standard LSP document diagnostics. The `"
 
 Use `readyNotification` when your service documents a specific workspace-ready notification. Enter its exact method name, such as one supplied in the service's integration guide. With the default `null`, readiness follows completion of initialization. The service remains responsible for completing diagnostic requests once its analysis is available.
 
-With `navigation: true`, Sharper can route a navigation request to the first matching service that advertises the requested capability. With `false`, the service still contributes rule findings to checks.
-
 Install services with their own tooling and select trusted programs and profiles. These programs run with your user permissions. Sharper uses the explicitly selected profile and the workspace chosen for each tool call.
 
 ## Connect your agent
@@ -169,7 +166,6 @@ Implement the relevant [LSP 3.17](https://microsoft.github.io/language-server-pr
 - Stdio JSON-RPC with Content-Length framing and protocol-only stdout.
 - initialize/initialized, UTF-16 positions, open/close and full or incremental changes.
 - `textDocument/diagnostic` with valid full reports, or unchanged reports matching a cached ID. Document pulls provide completion evidence for verified feedback.
-- Optional definition/implementation/reference capabilities. Use dynamic file/language selectors to scope capabilities.
 - Optional workspace/configuration and didChangeConfiguration using profile settings.
 - Cancellation, errors, refresh, capability changes and orderly shutdown.
 

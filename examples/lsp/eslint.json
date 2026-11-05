@@ -13,7 +13,6 @@
         ".js": "javascript",
         ".jsx": "javascriptreact"
       },
-      "navigation": false,
       "settings": {
         "validate": "on",
         "packageManager": "",

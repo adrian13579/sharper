@@ -230,7 +230,19 @@ async fn actual_mcp_stdio_lists_tools_and_returns_structured_agnostic_feedback()
         .send(json!({"jsonrpc":"2.0","id":2,"method":"tools/list"}))
         .await?;
     let tools = client.response(2).await?;
-    assert_eq!(tools["result"]["tools"].as_array().unwrap().len(), 5);
+    let listed = tools["result"]["tools"].as_array().unwrap();
+    assert_eq!(
+        listed
+            .iter()
+            .map(|tool| tool["name"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        ["sharper_check", "sharper_status"]
+    );
+    for tool in listed {
+        for removed in ["line", "character", "includeDeclaration"] {
+            assert!(tool["inputSchema"]["properties"].get(removed).is_none());
+        }
+    }
     let schema = &tools["result"]["tools"][0]["inputSchema"];
     assert!(schema["properties"].get("backend").is_none());
     let response = client
@@ -260,8 +272,38 @@ async fn actual_mcp_stdio_lists_tools_and_returns_structured_agnostic_feedback()
         "solution",
         "diagnosticProviders",
         "lastError",
+        "navigationCapabilities",
     ] {
         assert!(state.get(omitted).is_none(), "{state}");
+    }
+    client.close().await
+}
+#[tokio::test]
+async fn removed_tools_and_navigation_arguments_are_rejected() -> Result<()> {
+    let (_t, root, profile) = world("normal")?;
+    let mut client = Client::new(&profile, "20", vec![root]).await?;
+    let mut id = 2;
+    for name in [
+        "sharper_definition",
+        "sharper_implementation",
+        "sharper_references",
+    ] {
+        let response = client.call(id, name, json!({})).await?;
+        assert_eq!(response["error"]["code"], -32602, "{response}");
+        id += 1;
+    }
+    for name in ["sharper_check", "sharper_status"] {
+        for (field, value) in [
+            ("line", json!(0)),
+            ("character", json!(0)),
+            ("includeDeclaration", json!(true)),
+        ] {
+            let mut arguments = json!({});
+            arguments[field] = value;
+            let response = client.call(id, name, arguments).await?;
+            assert_eq!(response["error"]["code"], -32602, "{response}");
+            id += 1;
+        }
     }
     client.close().await
 }
@@ -280,7 +322,7 @@ async fn cancellation_stops_hung_analysis_and_session_can_recover() -> Result<()
     let r = c.response(3).await?;
     assert_eq!(r["result"]["structuredContent"]["status"], "cancelled");
     assert_eq!(r["result"]["structuredContent"]["freshness"], "uncertain");
-    for omitted in ["limitations", "diagnostics", "locations"] {
+    for omitted in ["limitations", "diagnostics"] {
         assert!(r["result"]["structuredContent"].get(omitted).is_none());
     }
     let status = c

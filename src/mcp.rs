@@ -60,34 +60,12 @@ pub fn tools() -> Value {
             "sharper_status",
             "Inspect configured language-server availability and capabilities. Health is not diagnostic verification.",
         ),
-        (
-            "sharper_definition",
-            "Find definitions through a configured server advertising this LSP capability. Positions are zero-based UTF-16. Read-only; external/generated targets may be returned.",
-        ),
-        (
-            "sharper_implementation",
-            "Find implementations through a configured LSP server. Positions are zero-based UTF-16. Read-only.",
-        ),
-        (
-            "sharper_references",
-            "Find references through a configured LSP server, optionally including declarations. Positions are zero-based UTF-16. Read-only.",
-        ),
     ] {
         let mut properties = json!({"workspace":{"type":"string","description":"Absolute repository or agent worktree directory. Each checkout has separate language-server sessions. Required unless an absolute source path, a single client root, or fallback workspace selects it."}});
-        let mut required = Vec::new();
-        if name != "sharper_status" {
+        if name == "sharper_check" {
             properties["path"] = json!({"type":"string","description":"Source file or directory, absolute or relative to workspace."});
         }
-        if !matches!(name, "sharper_check" | "sharper_status") {
-            required.extend(["path", "line", "character"]);
-            for key in ["line", "character"] {
-                properties[key] = json!({"type":"integer","minimum":0,"maximum":2147483647,"description":"Zero-based UTF-16 position."});
-            }
-        }
-        if name == "sharper_references" {
-            properties["includeDeclaration"] = json!({"type":"boolean","default":false});
-        }
-        tools.push(json!({"name":name,"description":description,"inputSchema":{"type":"object","properties":properties,"required":required,"additionalProperties":false},"outputSchema":{"type":"object"},"annotations":{"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}}));
+        tools.push(json!({"name":name,"description":description,"inputSchema":{"type":"object","properties":properties,"required":[],"additionalProperties":false},"outputSchema":{"type":"object"},"annotations":{"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}}));
     }
     json!({"tools":tools})
 }
@@ -274,15 +252,7 @@ pub async fn serve(engine: Engine, timeout: Duration) -> Result<()> {
                     send(&output, &error(id, -32602, "Tool name is required")).await?;
                     continue;
                 };
-                if ![
-                    "sharper_check",
-                    "sharper_status",
-                    "sharper_definition",
-                    "sharper_implementation",
-                    "sharper_references",
-                ]
-                .contains(&name)
-                {
+                if !["sharper_check", "sharper_status"].contains(&name) {
                     send(&output, &error(id, -32602, "Unknown tool")).await?;
                     continue;
                 }

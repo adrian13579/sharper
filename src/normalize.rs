@@ -59,50 +59,13 @@ pub fn ordered(mut values: Vec<Value>) -> Vec<Value> {
     values.sort_by_cached_key(|v| {
         (
             v["filePath"].as_str().unwrap_or("").to_owned(),
-            v["uri"].as_str().unwrap_or("").to_owned(),
-            v["startLine"]
-                .as_u64()
-                .or_else(|| v["range"]["start"]["line"].as_u64())
-                .unwrap_or(0),
-            v["startColumn"]
-                .as_u64()
-                .or_else(|| v["range"]["start"]["character"].as_u64())
-                .unwrap_or(0),
+            v["startLine"].as_u64().unwrap_or(0),
+            v["startColumn"].as_u64().unwrap_or(0),
+            v["endLine"].as_u64().unwrap_or(0),
+            v["endColumn"].as_u64().unwrap_or(0),
             v.to_string(),
         )
     });
     values.dedup();
     values
-}
-pub fn locations(value: &Value) -> Result<Vec<Value>> {
-    let values = match value {
-        Value::Null => vec![],
-        Value::Array(a) => a.iter().collect(),
-        Value::Object(_) => vec![value],
-        _ => anyhow::bail!("Invalid navigation result"),
-    };
-    let mut results = Vec::new();
-    for item in values {
-        let link = item.get("targetUri").is_some();
-        let u = item[if link { "targetUri" } else { "uri" }]
-            .as_str()
-            .context("Navigation URI is required")?;
-        Url::parse(u)?;
-        let r = range(
-            &item[if link {
-                "targetSelectionRange"
-            } else {
-                "range"
-            }],
-        )?;
-        let mut location = json!({"uri":u,"filePath":file(u),"range":r});
-        if link {
-            location["targetRange"] = range(&item["targetRange"])?;
-            if let Some(origin) = item.get("originSelectionRange") {
-                location["originSelectionRange"] = range(origin)?;
-            }
-        }
-        results.push(location);
-    }
-    Ok(ordered(results))
 }

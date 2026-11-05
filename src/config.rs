@@ -26,14 +26,9 @@ pub struct Server {
     pub diagnostics: DiagnosticMode,
     #[serde(default)]
     pub require_result_id: bool,
-    #[serde(default = "yes")]
-    pub navigation: bool,
 }
 fn default_id() -> String {
     "custom".into()
-}
-fn yes() -> bool {
-    true
 }
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]

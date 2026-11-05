@@ -92,7 +92,7 @@ async fn main() -> Result<()> {
                     assert_eq!(p["initializationOptions"]["marker"], "agnostic");
                     assert!(args.iter().any(|v| v == "space & $ literal"));
                 }
-                let mut caps = json!({"textDocumentSync":{"openClose":true,"change":if mode=="full"{1}else{2}},"diagnosticProvider":true,"definitionProvider":true,"implementationProvider":true,"referencesProvider":true});
+                let mut caps = json!({"textDocumentSync":{"openClose":true,"change":if mode=="full"{1}else{2}},"diagnosticProvider":true});
                 if mode == "utf8" {
                     caps["positionEncoding"] = json!("utf-8");
                 }
@@ -102,21 +102,14 @@ async fn main() -> Result<()> {
                 if mode == "push" || mode.starts_with("dynamic") {
                     caps.as_object_mut().unwrap().remove("diagnosticProvider");
                 }
-                if mode == "nav-unsupported" {
-                    for key in [
-                        "definitionProvider",
-                        "implementationProvider",
-                        "referencesProvider",
-                    ] {
-                        caps.as_object_mut().unwrap().remove(key);
-                    }
-                }
                 if mode == "typescript" {
                     caps["executeCommandProvider"] =
                         json!({"commands":["typescript.tsserverRequest"]});
                     caps.as_object_mut().unwrap().remove("diagnosticProvider");
                 }
-                write_lsp(&mut output,&json!({"jsonrpc":"2.0","id":id,"result":{"capabilities":caps,"serverInfo":{"name":"Unlisted language rules fixture"}}})).await?;
+                let server_name = std::fs::read_to_string("server-name.txt")
+                    .unwrap_or_else(|_| "Unlisted language rules fixture".into());
+                write_lsp(&mut output,&json!({"jsonrpc":"2.0","id":id,"result":{"capabilities":caps,"serverInfo":{"name":server_name}}})).await?;
             }
             "initialized" => {
                 if mode == "tree" {
@@ -205,30 +198,6 @@ async fn main() -> Result<()> {
                 }
                 report(&mut output, id, &documents, &mode, pulls).await?;
             }
-            "textDocument/definition"
-            | "textDocument/implementation"
-            | "textDocument/references" => {
-                let uri = &p["textDocument"]["uri"];
-                assert!(documents.contains_key(uri.as_str().unwrap()));
-                let range = json!({"start":{"line":0,"character":if mode=="bad-navigation"{-1}else{2}},"end":{"line":0,"character":3}});
-                let location = json!({"uri":uri,"range":range});
-                let result = if method == "textDocument/implementation" {
-                    json!([{"targetUri":uri,"targetRange":{"start":{"line":0,"character":0},"end":{"line":0,"character":5}},"targetSelectionRange":range,"originSelectionRange":{"start":{"line":0,"character":0},"end":{"line":0,"character":2}}}])
-                } else if method == "textDocument/references" {
-                    if p["context"]["includeDeclaration"] == true {
-                        json!([location,{"uri":"custom://generated/example","range":{"start":{"line":0,"character":0},"end":{"line":0,"character":1}}}])
-                    } else {
-                        json!([location, location])
-                    }
-                } else {
-                    location
-                };
-                write_lsp(
-                    &mut output,
-                    &json!({"jsonrpc":"2.0","id":id,"result":result}),
-                )
-                .await?;
-            }
             "workspace/executeCommand" => {
                 assert_eq!(p["command"], "typescript.tsserverRequest");
                 assert!(
@@ -263,8 +232,13 @@ async fn report(
     _pulls: u64,
 ) -> Result<()> {
     let (uri, doc) = documents.iter().next().unwrap();
+    let range = if mode == "utf16-ranges" {
+        json!({"start":{"line":0,"character":2},"end":{"line":0,"character":11}})
+    } else {
+        json!({"start":{"line":0,"character":0},"end":{"line":0,"character":1}})
+    };
     let items = if doc.0.contains("violation") || doc.0.contains("missing") {
-        json!([{"code":"RULE001","source":"planet-enforcer","message":"Configured rule violation","severity":if mode=="unknown-severity"{9}else{1},"range":{"start":{"line":0,"character":0},"end":{"line":0,"character":1}},"codeDescription":{"href":"https://example.invalid/rules/1"},"tags":[1,2],"data":{"opaque":[1,"kept"]},"relatedInformation":[{"message":"Related context","location":{"uri":uri,"range":{"start":{"line":0,"character":0},"end":{"line":0,"character":1}}}}]}])
+        json!([{"code":"RULE001","source":"planet-enforcer","message":"Configured rule violation","severity":if mode=="unknown-severity"{9}else{1},"range":range,"codeDescription":{"href":"https://example.invalid/rules/1"},"tags":[1,2],"data":{"opaque":[1,"kept"]},"relatedInformation":[{"message":"Related context","location":{"uri":uri,"range":range}}]}])
     } else {
         json!([])
     };

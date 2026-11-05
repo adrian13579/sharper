@@ -15,10 +15,10 @@ await writeFile(profile,JSON.stringify({servers:[{id:'unlisted-language',command
 const client=new Client({name:'sharper-sdk-qualification',version:'1'},{capabilities:{}});
 try {
  await client.connect(new StdioClientTransport({command:process.env.SHARPER_TEST_HOST||path.join(root,'target/debug',app),args:['mcp','--lsp-config',profile],stderr:'pipe'}));
- const {tools}=await client.listTools();assert.equal(tools.length,5);
+ const {tools}=await client.listTools();assert.deepEqual(tools.map(tool=>tool.name),['sharper_check','sharper_status']);
  const check=await client.callTool({name:'sharper_check',arguments:{workspace,path:'example.orbit'}});
  assert.equal(check.isError,false);assert.equal(check.structuredContent.complete,true);assert.equal(check.structuredContent.diagnostics[0].code,'RULE001');
- const definition=await client.callTool({name:'sharper_definition',arguments:{workspace,path:'example.orbit',line:0,character:0}});
- assert.equal(definition.structuredContent.complete,true);
- console.log('Official MCP SDK client: Rust handshake, tools, structured feedback and navigation passed.');
+ const status=await client.callTool({name:'sharper_status',arguments:{workspace}});
+ assert.equal(status.isError,false);assert.equal(status.structuredContent.available,true);assert.equal('navigationCapabilities' in status.structuredContent,false);
+ console.log('Official MCP SDK client: Rust handshake, two tools, structured feedback and language-server health passed.');
 } finally { await client.close(); }

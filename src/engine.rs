@@ -4,7 +4,7 @@ use crate::{
     normalize,
     workspace::{Boundary, contained, resolve},
 };
-use anyhow::{Context, Result, ensure};
+use anyhow::{Result, ensure};
 use serde::Deserialize;
 use serde_json::{Value, json};
 use std::{
@@ -17,10 +17,6 @@ use std::{
 pub struct Args {
     pub workspace: Option<String>,
     pub path: Option<String>,
-    pub line: Option<u64>,
-    pub character: Option<u64>,
-    #[serde(default)]
-    pub include_declaration: bool,
 }
 struct Entry {
     session: Session,
@@ -92,9 +88,6 @@ impl Engine {
         let result = match name {
             "sharper_check" => self.check(&root, &requested).await,
             "sharper_status" => self.status(&root).await,
-            "sharper_definition" | "sharper_implementation" | "sharper_references" => {
-                self.navigate(name, &root, &requested, &args).await
-            }
             _ => anyhow::bail!("Unknown tool {name}"),
         }?;
         Ok(compact_result(result))
@@ -208,7 +201,7 @@ impl Engine {
         }
         let mut states = Vec::new();
         for profile in profiles {
-            states.push(match self.session(&profile,root).await {Ok(session)=>session.status(),Err(error)=>json!({"backend":profile.id,"available":false,"workspaceState":"failed","workspace":root,"diagnosticsAvailable":false,"lastError":error.to_string(),"sessionStarts":0,"processId":null,"serverName":null,"workspaceDiagnosticCapability":false,"navigationCapabilities":[]})});
+            states.push(match self.session(&profile,root).await {Ok(session)=>session.status(),Err(error)=>json!({"backend":profile.id,"available":false,"workspaceState":"failed","workspace":root,"diagnosticsAvailable":false,"lastError":error.to_string(),"sessionStarts":0,"processId":null,"serverName":null,"workspaceDiagnosticCapability":false})});
         }
         if states.len() == 1 {
             return Ok(states.remove(0));
@@ -219,86 +212,8 @@ impl Engine {
             .iter()
             .filter_map(|s| s["lastError"].as_str())
             .collect();
-        let mut navigation: Vec<Value> = states
-            .iter()
-            .flat_map(|s| {
-                s["navigationCapabilities"]
-                    .as_array()
-                    .unwrap()
-                    .iter()
-                    .cloned()
-            })
-            .collect();
-        navigation.sort_by_key(Value::to_string);
-        navigation.dedup();
         Ok(
-            json!({"available":available,"workspaceState":if available{"ready"}else{"failed"},"workspace":root,"diagnosticsAvailable":diagnostics,"lastError":if errors.is_empty(){Value::Null}else{json!(errors.join("; "))},"sessionStarts":self.starts,"processId":null,"serverName":null,"workspaceDiagnosticCapability":states.iter().any(|s|s["workspaceDiagnosticCapability"]==true),"navigationCapabilities":navigation,"backend":"mixed","sessions":states}),
-        )
-    }
-    async fn navigate(
-        &mut self,
-        name: &str,
-        root: &Path,
-        path: &Path,
-        args: &Args,
-    ) -> Result<Value> {
-        ensure!(path.is_file(), "Navigation requires a source file");
-        let line = args.line.context("line is required")?;
-        let character = args.character.context("character is required")?;
-        ensure!(
-            line <= i32::MAX as u64 && character <= i32::MAX as u64,
-            "Position overflow"
-        );
-        let operation = name.strip_prefix("sharper_").unwrap();
-        let method = format!("textDocument/{operation}");
-        let profiles: Vec<_> = self
-            .profiles
-            .iter()
-            .filter(|p| p.supports(path) && p.navigation)
-            .cloned()
-            .collect();
-        let start = Instant::now();
-        let mut errors = Vec::new();
-        let mut locations = Vec::new();
-        let mut status = "unsupported";
-        let mut selected = String::from("auto");
-        for profile in profiles {
-            selected = profile.id.clone();
-            let outcome = match self.session(&profile, root).await {
-                Ok(session) => {
-                    if !session.navigation_supported(&method, path) {
-                        continue;
-                    }
-                    session
-                        .navigate(&method, path, line, character, args.include_declaration)
-                        .await
-                }
-                Err(error) => Err(error),
-            };
-            match outcome {
-                Ok(found) => {
-                    status = "completed";
-                    locations = found;
-                }
-                Err(error) => {
-                    status = if error.downcast_ref::<Incomplete>().is_some() {
-                        "incomplete"
-                    } else {
-                        "failed"
-                    };
-                    errors.push(format!("{error:#}"));
-                }
-            }
-            break;
-        }
-        if status == "unsupported" {
-            errors.push(
-                "No configured server advertises this navigation operation for the source file"
-                    .into(),
-            );
-        }
-        Ok(
-            json!({"status":status,"backend":selected,"operation":operation,"requestedPath":path,"position":{"line":line,"character":character},"complete":status=="completed","freshness":if status=="completed"{"verified"}else{"uncertain"},"locationCount":locations.len(),"locations":locations,"errors":errors,"durationMs":start.elapsed().as_secs_f64()*1000.0}),
+            json!({"available":available,"workspaceState":if available{"ready"}else{"failed"},"workspace":root,"diagnosticsAvailable":diagnostics,"lastError":if errors.is_empty(){Value::Null}else{json!(errors.join("; "))},"sessionStarts":self.starts,"processId":null,"serverName":null,"workspaceDiagnosticCapability":states.iter().any(|s|s["workspaceDiagnosticCapability"]==true),"backend":"mixed","sessions":states}),
         )
     }
 }

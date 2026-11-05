@@ -43,20 +43,13 @@ impl Default for Meta {
     }
 }
 impl Meta {
-    pub fn supports(&self, method: &str, language: &str) -> bool {
-        let field = match method {
-            "textDocument/diagnostic" => "diagnosticProvider",
-            "textDocument/definition" => "definitionProvider",
-            "textDocument/implementation" => "implementationProvider",
-            "textDocument/references" => "referencesProvider",
-            _ => return false,
-        };
-        let value = &self.capabilities[field];
+    pub fn diagnostics(&self, language: &str) -> bool {
+        let value = &self.capabilities["diagnosticProvider"];
         if value == &Value::Bool(true) || value.is_object() {
             return true;
         }
         self.registrations.values().any(|reg| {
-            reg["method"] == method
+            reg["method"] == "textDocument/diagnostic"
                 && selector(&reg["registerOptions"]["documentSelector"], language)
         })
     }
