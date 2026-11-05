@@ -16,6 +16,13 @@ Changes to Sharper's source and user-facing behavior. Check [npm](https://www.np
 - A custom architecture-enforcer example showing how a team-owned LSP service can return project-specific rule findings.
 - Contribution guidance centered on issue and pull request descriptions.
 
+### CLI
+
+- Guided setup now provides three clear steps, defaults, numbered agent choices and input validation with retries.
+- New profiles are reviewed before saving; Copilot setup offers CLI, VS Code or both destinations.
+- Help includes option descriptions and quick-start commands, with consistent plain-output support.
+- Cancelling guided setup exits gracefully with code `130`; declining registration keeps the profile ready for later use.
+
 ### Tool responses
 
 - Removed repeated limitations text from feedback, status and navigation results.
@@ -29,6 +36,8 @@ Changes to Sharper's source and user-facing behavior. Check [npm](https://www.np
 - Release automation assembles both platforms and publishes through npm trusted publishing.
 
 ### Fixes
+
+- Explicit agent configuration paths and XDG overrides work independently of a home-directory environment variable.
 
 - Workspace read events preserve analysis freshness; writes and watcher rescan events continue to invalidate affected checks.
 - Integration fixtures normalize temporary paths consistently across platforms.

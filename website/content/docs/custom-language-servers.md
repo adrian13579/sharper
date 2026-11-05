@@ -121,9 +121,15 @@ After saving `servers.json`, register it with your agent. Prepare language servi
 
 ### Guided setup
 
-Run `sharper setup` or bare `sharper` in an interactive terminal. Choose an existing profile or create one by entering a server command, literal JSON argument array and extension mappings. Choose where to save it, review the write, then select a client and confirm registration. Choose a new destination when creating a profile. Type q or close input to cancel.
+Run `sharper setup`, or enter `sharper` in an interactive terminal. The wizard guides you through three steps:
 
-Colors are disabled when output is redirected, with `--no-color`, or with NO_COLOR. Profiles and agent registrations remain after completed writes. Install servers with their native tooling, then use `sharper_status` and a scoped check to confirm your connection and expected findings.
+1. **Choose a profile.** Enter an existing `servers.json` path, or choose `new`. For a new profile, choose its destination, server command, JSON argument array and file mappings. Mappings accept `.py=python, .js=javascript` or a JSON object. Press Enter to use a displayed default.
+2. **Review the configuration.** Inspect the profile path, services and file mappings. New profiles show their JSON and ask for confirmation before saving.
+3. **Connect an agent.** Choose a number or enter Codex, Claude Code, OpenCode or Copilot. Copilot offers CLI, VS Code or both. Review your selection and confirm registration, or choose `0` to finish with the profile ready for later use.
+
+Invalid input is explained and retried at the same prompt. Paths pasted with surrounding double quotes are accepted. Type `q` or close input to cancel (exit code `130`); a profile already saved remains available. Declining agent registration finishes successfully with the profile ready.
+
+Use `--no-color` or `NO_COLOR` for plain help and setup output. Redirected setup output is plain automatically. After registration, restart your agent, then use `sharper_status` and check affected files after editing to confirm the connection and expected findings. Language services and project dependencies are prepared with their own tooling.
 
 ### Direct registration
 

@@ -369,3 +369,218 @@ async fn guided_setup_can_use_a_profile_without_installing_or_registering() -> R
     assert!(String::from_utf8_lossy(&output.stdout).contains("Configuration ready"));
     Ok(())
 }
+
+async fn wizard_output(
+    profile: Option<&std::path::Path>,
+    input: &str,
+    extra: &[&str],
+) -> Result<std::process::Output> {
+    let mut command = tokio::process::Command::new(env!("CARGO_BIN_EXE_sharper"));
+    command.args(["setup", "--no-color"]);
+    if let Some(profile) = profile {
+        command.arg("--lsp-config").arg(profile);
+    }
+    let mut child = command
+        .args(extra)
+        .kill_on_drop(true)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(input.as_bytes())
+        .await?;
+    Ok(timeout(Duration::from_secs(10), child.wait_with_output()).await??)
+}
+#[tokio::test]
+async fn cli_help_and_invalid_choices_have_clear_exit_codes() -> Result<()> {
+    for args in [
+        vec!["--no-color", "--help"],
+        vec!["setup", "--no-color", "--help"],
+    ] {
+        let output = tokio::process::Command::new(env!("CARGO_BIN_EXE_sharper"))
+            .args(args)
+            .output()
+            .await?;
+        assert!(output.status.success());
+        let text = String::from_utf8(output.stdout)?;
+        for option in ["--lsp-config", "--no-color"] {
+            assert!(text.contains(option), "{text}");
+        }
+        assert!(!text.contains('\x1b'));
+    }
+    let output = tokio::process::Command::new(env!("CARGO_BIN_EXE_sharper"))
+        .args(["setup", "copilot", "--client", "typo", "--no-color"])
+        .output()
+        .await?;
+    assert_eq!(output.status.code(), Some(2));
+    let error = String::from_utf8(output.stderr)?;
+    assert!(error.contains("vscode"), "{error}");
+    assert!(!error.contains('\x1b'));
+    let piped = tokio::process::Command::new(env!("CARGO_BIN_EXE_sharper"))
+        .env_remove("SHARPER_LSP_CONFIG")
+        .stdin(Stdio::null())
+        .output()
+        .await?;
+    assert!(piped.status.success());
+    assert!(
+        piped.stdout.is_empty(),
+        "Human output leaked into default MCP mode"
+    );
+    Ok(())
+}
+#[tokio::test]
+async fn guided_setup_recovers_from_invalid_values_and_saves_reviewed_profile() -> Result<()> {
+    let (temp, _, existing) = world("normal")?;
+    let fixture: Value = serde_json::from_slice(&std::fs::read(existing)?)?;
+    let destination = temp.path().join("profiles with spaces/servers.json");
+    let input = format!(
+        "new\n\"{}\"\n\"{}\"\nnot-an-array\n[]\nnot-a-mapping\norbit=planet\nmaybe\nyes\n0\n",
+        destination.display(),
+        fixture["command"].as_str().unwrap()
+    );
+    let output = wizard_output(None, &input, &[]).await?;
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let text = String::from_utf8(output.stdout)?;
+    for step in ["1/3", "2/3", "3/3"] {
+        assert!(text.contains(step), "{text}");
+    }
+    assert!(!text.contains('\x1b'));
+    let config = sharper::config::Config::load(&destination)?;
+    assert_eq!(
+        config.servers[0]
+            .languages
+            .get(".orbit")
+            .map(String::as_str),
+        Some("planet")
+    );
+    assert!(config.servers[0].arguments.is_empty());
+    Ok(())
+}
+#[tokio::test]
+async fn guided_setup_reviews_agent_choice_before_writing_configuration() -> Result<()> {
+    let (temp, _, profile) = world("normal")?;
+    let client = temp.path().join("client.json");
+    let original = "{ /* keep */ \"unrelated\": true }";
+    std::fs::write(&client, original)?;
+    let extra = ["--config", client.to_str().unwrap()];
+    let declined = wizard_output(Some(&profile), "unknown\n2\nno\n", &extra).await?;
+    assert!(declined.status.success());
+    assert_eq!(std::fs::read_to_string(&client)?, original);
+    let accepted = wizard_output(Some(&profile), "CLAUDE CODE\nyes\n", &extra).await?;
+    assert!(
+        accepted.status.success(),
+        "{}",
+        String::from_utf8_lossy(&accepted.stderr)
+    );
+    let text = std::fs::read_to_string(client)?;
+    assert!(text.contains("/* keep */"));
+    let data: Value = serde_json::from_str(&sharper::setup::strip_jsonc(&text)?)?;
+    assert!(data["mcpServers"]["sharper"].is_object());
+    assert_eq!(data["unrelated"], true);
+    Ok(())
+}
+#[tokio::test]
+async fn guided_setup_cancellation_and_eof_preserve_existing_files() -> Result<()> {
+    let (_temp, _, profile) = world("normal")?;
+    let original = std::fs::read(&profile)?;
+    for input in [
+        "q\n".to_owned(),
+        String::new(),
+        format!("new\n\"{}\"\nq\n", profile.display()),
+    ] {
+        let output = wizard_output(None, &input, &[]).await?;
+        assert_eq!(
+            output.status.code(),
+            Some(130),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(std::fs::read(&profile)?, original);
+        assert!(!String::from_utf8_lossy(&output.stderr).contains("error:"));
+    }
+    Ok(())
+}
+
+#[tokio::test]
+async fn guided_setup_respects_the_selected_copilot_destination() -> Result<()> {
+    let (temp, _, profile) = world("normal")?;
+    let cli = temp.path().join("copilot.json");
+    let vscode = temp.path().join("vscode.json");
+    let extra = [
+        "--copilot-config",
+        cli.to_str().unwrap(),
+        "--vscode-config",
+        vscode.to_str().unwrap(),
+    ];
+    let output = wizard_output(Some(&profile), "4\n2\nyes\n", &extra).await?;
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(!cli.exists());
+    let json: Value = serde_json::from_str(&std::fs::read_to_string(vscode)?)?;
+    assert!(json["servers"]["sharper"].is_object());
+    Ok(())
+}
+
+#[tokio::test]
+async fn explicit_setup_paths_work_without_home_environment() -> Result<()> {
+    let (temp, _, profile) = world("normal")?;
+    for agent in ["opencode", "copilot"] {
+        let config = temp.path().join(format!("{agent}.json"));
+        let vscode = temp.path().join("vscode-override.json");
+        let mut command = tokio::process::Command::new(env!("CARGO_BIN_EXE_sharper"));
+        command
+            .args(["setup", agent, "--lsp-config"])
+            .arg(&profile)
+            .arg("--no-color");
+        if agent == "copilot" {
+            command
+                .arg("--copilot-config")
+                .arg(&config)
+                .arg("--vscode-config")
+                .arg(&vscode);
+        } else {
+            command.arg("--config").arg(&config);
+        }
+        for variable in ["HOME", "USERPROFILE", "APPDATA", "XDG_CONFIG_HOME"] {
+            command.env_remove(variable);
+        }
+        let output = command.output().await?;
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(config.is_file());
+        if agent == "copilot" {
+            assert!(vscode.is_file());
+        }
+    }
+    let directory = temp.path().join("xdg-config");
+    let output = tokio::process::Command::new(env!("CARGO_BIN_EXE_sharper"))
+        .args(["setup", "opencode", "--lsp-config"])
+        .arg(profile)
+        .env_remove("HOME")
+        .env_remove("USERPROFILE")
+        .env_remove("OPENCODE_CONFIG")
+        .env("XDG_CONFIG_HOME", &directory)
+        .output()
+        .await?;
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(directory.join("opencode/opencode.json").is_file());
+    Ok(())
+}

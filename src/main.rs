@@ -1,5 +1,8 @@
 use anyhow::{Result, ensure};
-use clap::{Parser, Subcommand};
+use clap::{
+    ColorChoice, CommandFactory, FromArgMatches, Parser, Subcommand,
+    builder::styling::{AnsiColor, Styles},
+};
 use std::{
     io::{self, IsTerminal},
     path::PathBuf,
@@ -8,38 +11,63 @@ use std::{
 #[derive(Parser)]
 #[command(
     name = "sharper",
+    bin_name = "sharper",
     version,
-    about = "Fast, language-agnostic LSP feedback and rule verification for coding agents"
+    about = "Rapid rule feedback for coding agents",
+    styles = Styles::styled().header(AnsiColor::Cyan.on_default().bold()).usage(AnsiColor::Cyan.on_default().bold()).literal(AnsiColor::Green.on_default()),
+    after_help = "Quick start:\n  sharper setup\n  sharper setup claude --lsp-config /absolute/path/servers.json\n\nIn a terminal, sharper opens guided setup.\nGuide: https://adrian13579.github.io/sharper/docs/overview/"
 )]
 struct Cli {
     #[command(subcommand)]
     command: Option<Command>,
-    /// Explicit LSP server configuration; never loaded from a repository automatically.
-    #[arg(long, global = true, env = "SHARPER_LSP_CONFIG")]
+    /// Language-service profile to use for setup or MCP.
+    #[arg(
+        long,
+        global = true,
+        env = "SHARPER_LSP_CONFIG",
+        value_name = "SERVERS_JSON"
+    )]
     lsp_config: Option<PathBuf>,
-    #[arg(long, global = true, default_value = "120")]
+    /// Overall MCP request deadline in seconds (up to 3600).
+    #[arg(long, global = true, default_value = "120", value_name = "SECONDS")]
     timeout: f64,
-    /// Fallback workspace only. MCP tools normally select their workspace per call.
+    /// Fallback workspace when the agent does not supply one.
     #[arg(long, global = true)]
     workspace: Option<PathBuf>,
+    /// Use plain output, including help and setup prompts.
     #[arg(long, global = true)]
     no_color: bool,
 }
 #[derive(Subcommand)]
 enum Command {
+    /// Serve MCP requests over stdio for a connected agent.
     Mcp,
+    /// Connect language services and an agent; omit the agent for guided setup.
     Setup(sharper::setup::Options),
 }
 #[tokio::main(worker_threads = 2)]
 async fn main() {
     let result = run().await;
     if let Err(error) = result {
-        eprintln!("sharper: {error:#}");
+        if error.downcast_ref::<sharper::setup::Cancelled>().is_some() {
+            eprintln!("Setup cancelled.");
+            std::process::exit(130);
+        }
+        eprintln!("error: {error:#}");
         std::process::exit(2)
     }
 }
 async fn run() -> Result<()> {
-    let cli = Cli::parse();
+    let plain = std::env::var_os("NO_COLOR").is_some()
+        || std::env::args_os().any(|arg| arg == "--no-color");
+    let matches = Cli::command()
+        .color(if plain {
+            ColorChoice::Never
+        } else {
+            ColorChoice::Auto
+        })
+        .get_matches();
+    let cli = Cli::from_arg_matches(&matches)?;
     ensure!(
         cli.timeout.is_finite() && cli.timeout > 0.0 && cli.timeout <= 3600.0,
         "timeout must be a positive number of seconds up to 3600"

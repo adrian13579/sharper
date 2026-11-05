@@ -17,19 +17,36 @@ pub enum Agent {
 }
 #[derive(Clone, Debug, Args)]
 pub struct Options {
+    /// Agent to connect. Omit this to walk through setup.
     pub agent: Option<Agent>,
-    #[arg(long)]
+    /// Claude Code or OpenCode configuration file to update.
+    #[arg(long, value_name = "CLIENT_CONFIG")]
     pub config: Option<PathBuf>,
-    #[arg(long, default_value = "both")]
+    /// GitHub Copilot destination.
+    #[arg(long, default_value = "both", value_parser = ["cli", "vscode", "both"])]
     pub client: String,
-    #[arg(long)]
+    /// Override GitHub Copilot CLI configuration.
+    #[arg(long, value_name = "FILE")]
     pub copilot_config: Option<PathBuf>,
-    #[arg(long)]
+    /// Override VS Code MCP configuration.
+    #[arg(long, value_name = "FILE")]
     pub vscode_config: Option<PathBuf>,
-    #[arg(long, default_value = "codex")]
+    /// Codex CLI executable used for native registration.
+    #[arg(long, default_value = "codex", value_name = "EXECUTABLE")]
     pub codex_path: PathBuf,
-    #[arg(long)]
+    /// Override the Codex profile directory.
+    #[arg(long, value_name = "DIRECTORY")]
     pub codex_home: Option<PathBuf>,
+}
+impl Agent {
+    fn label(&self) -> &'static str {
+        match self {
+            Self::Codex => "Codex",
+            Self::Claude => "Claude Code",
+            Self::Opencode => "OpenCode",
+            Self::Copilot => "GitHub Copilot",
+        }
+    }
 }
 fn home() -> Result<PathBuf> {
     std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" })
@@ -37,9 +54,10 @@ fn home() -> Result<PathBuf> {
         .context("Cannot locate home directory; supply explicit configuration paths")
 }
 fn config_home() -> Result<PathBuf> {
-    Ok(std::env::var_os("XDG_CONFIG_HOME")
-        .map(PathBuf::from)
-        .unwrap_or(home()?.join(".config")))
+    match std::env::var_os("XDG_CONFIG_HOME") {
+        Some(path) => Ok(PathBuf::from(path)),
+        None => Ok(home()?.join(".config")),
+    }
 }
 fn appdata() -> Result<PathBuf> {
     if cfg!(windows) {
@@ -54,9 +72,12 @@ pub async fn run(options: Options, profile: Option<PathBuf>, no_color: bool) -> 
     if options.agent.is_none() {
         return wizard(options, profile, no_color).await;
     }
-    let profile=profile.context("Provide --lsp-config with your language-server configuration; run sharper setup for guidance")?;
+    let ui = Ui::new(no_color);
+    let agent_name = options.agent.as_ref().unwrap().label();
+    let profile=profile.context("Choose a language-service profile with --lsp-config <SERVERS_JSON>, or run sharper setup for guided configuration")?;
     let profile = absolute(&profile)?;
     Config::load(&profile)?;
+    ui.hint(&format!("Connecting {agent_name}..."));
     let executable = std::env::current_exe()?;
     let launch = vec![
         "mcp".to_owned(),
@@ -76,6 +97,9 @@ pub async fn run(options: Options, profile: Option<PathBuf>, no_color: bool) -> 
         if let Some(path) = &options.codex_home {
             command.env("CODEX_HOME", path);
         }
+        if no_color {
+            command.env("NO_COLOR", "1");
+        }
         let mut process = command
             .spawn()
             .context("Cannot launch Codex CLI; use --codex-path")?;
@@ -87,7 +111,8 @@ pub async fn run(options: Options, profile: Option<PathBuf>, no_color: bool) -> 
             }
         };
         ensure!(status.success(), "Codex registration failed ({status})");
-        println!("Configured Codex. Restart the MCP connection.");
+        ui.success("Connected Codex");
+        ui.next_steps();
         return Ok(());
     }
     let mut plans = Vec::new();
@@ -103,10 +128,13 @@ pub async fn run(options: Options, profile: Option<PathBuf>, no_color: bool) -> 
             plans.push(plan(&path, "mcpServers", false, &executable, &launch)?);
         }
         Agent::Opencode => {
-            let path = options
+            let path = match options
                 .config
                 .or_else(|| std::env::var_os("OPENCODE_CONFIG").map(PathBuf::from))
-                .unwrap_or(config_home()?.join("opencode/opencode.json"));
+            {
+                Some(path) => path,
+                None => config_home()?.join("opencode/opencode.json"),
+            };
             plans.push(plan(&path, "mcp", true, &executable, &launch)?);
         }
         Agent::Copilot => {
@@ -115,22 +143,26 @@ pub async fn run(options: Options, profile: Option<PathBuf>, no_color: bool) -> 
                 "client must be cli, vscode or both"
             );
             if options.client != "vscode" {
-                let path = options.copilot_config.unwrap_or(
-                    std::env::var_os("COPILOT_HOME")
-                        .map(PathBuf::from)
-                        .unwrap_or(home()?.join(".copilot"))
-                        .join("mcp-config.json"),
-                );
+                let path = match options.copilot_config {
+                    Some(path) => path,
+                    None => {
+                        let directory = match std::env::var_os("COPILOT_HOME") {
+                            Some(path) => PathBuf::from(path),
+                            None => home()?.join(".copilot"),
+                        };
+                        directory.join("mcp-config.json")
+                    }
+                };
                 plans.push(plan(&path, "mcpServers", false, &executable, &launch)?);
             }
             if options.client != "cli" {
-                let path = options
-                    .vscode_config
-                    .unwrap_or(if cfg!(target_os = "macos") {
+                let path = match options.vscode_config {
+                    Some(path) => path,
+                    None if cfg!(target_os = "macos") => {
                         home()?.join("Library/Application Support/Code/User/mcp.json")
-                    } else {
-                        appdata()?.join("Code/User/mcp.json")
-                    });
+                    }
+                    None => appdata()?.join("Code/User/mcp.json"),
+                };
                 plans.push(plan(&path, "servers", false, &executable, &launch)?);
             }
         }
@@ -142,9 +174,8 @@ pub async fn run(options: Options, profile: Option<PathBuf>, no_color: bool) -> 
     for plan in plans {
         plan.write()?;
     }
-    println!(
-        "Sharper is registered without a fixed workspace. Restart the client's MCP connection."
-    );
+    ui.success(&format!("Connected {agent_name}"));
+    ui.next_steps();
     Ok(())
 }
 struct Plan {
@@ -505,96 +536,285 @@ pub fn strip_jsonc(source: &str) -> Result<String> {
     }
     Ok(String::from_utf8(b)?)
 }
-fn prompt(message: &str) -> Result<String> {
-    print!("{message} ");
-    io::stdout().flush()?;
-    let mut line = String::new();
-    ensure!(
-        io::stdin().read_line(&mut line)? > 0,
-        "Setup cancelled (EOF)"
-    );
-    let value = line.trim().to_owned();
-    ensure!(value != "q", "Setup cancelled");
-    Ok(value)
+#[derive(Debug)]
+pub struct Cancelled;
+impl std::fmt::Display for Cancelled {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Setup cancelled")
+    }
+}
+impl std::error::Error for Cancelled {}
+
+struct Ui {
+    color: bool,
+}
+impl Ui {
+    fn new(no_color: bool) -> Self {
+        Self {
+            color: !no_color
+                && io::stdout().is_terminal()
+                && std::env::var_os("NO_COLOR").is_none(),
+        }
+    }
+    fn paint(&self, text: &str, code: &str) -> String {
+        if self.color {
+            format!("\x1b[{code}m{text}\x1b[0m")
+        } else {
+            text.into()
+        }
+    }
+    fn step(&self, number: u8, title: &str) {
+        println!("\n{}  {title}", self.paint(&format!("{number}/3"), "1;36"));
+    }
+    fn hint(&self, text: &str) {
+        println!("  {}", self.paint(text, "2"));
+    }
+    fn retry(&self, error: &anyhow::Error) {
+        println!("  {} {error:#}", self.paint("!", "33"));
+    }
+    fn success(&self, text: &str) {
+        println!("\n{} {text}", self.paint("[ok]", "32"));
+    }
+    fn next_steps(&self) {
+        println!(
+            "\nNext: restart your agent to load Sharper.\nAfter editing files, ask your agent to check the affected code."
+        );
+    }
+    fn read<T>(
+        &self,
+        label: &str,
+        default: Option<&str>,
+        mut parse: impl FnMut(&str) -> Result<T>,
+    ) -> Result<T> {
+        loop {
+            let suffix = default
+                .map(|value| format!(" [{value}]"))
+                .unwrap_or_default();
+            print!("  {label}{suffix} {} ", self.paint(">", "36"));
+            io::stdout().flush()?;
+            let mut line = String::new();
+            if io::stdin().read_line(&mut line)? == 0 {
+                return Err(Cancelled.into());
+            }
+            let value = line.trim();
+            if value.eq_ignore_ascii_case("q") {
+                return Err(Cancelled.into());
+            }
+            let value = if value.is_empty() {
+                default.unwrap_or("")
+            } else {
+                value
+            };
+            match parse(value) {
+                Ok(value) => return Ok(value),
+                Err(error) => self.retry(&error),
+            }
+        }
+    }
+    fn confirm(&self, label: &str) -> Result<bool> {
+        self.read(label, Some("n"), |value| {
+            match value.to_ascii_lowercase().as_str() {
+                "y" | "yes" => Ok(true),
+                "n" | "no" => Ok(false),
+                _ => bail!("Enter y or n, or q to cancel"),
+            }
+        })
+    }
+}
+fn input_path(value: &str) -> Result<PathBuf> {
+    let value = value
+        .strip_prefix('"')
+        .and_then(|value| value.strip_suffix('"'))
+        .unwrap_or(value);
+    ensure!(!value.trim().is_empty(), "Enter a file path");
+    absolute(Path::new(value))
+}
+fn mappings(value: &str) -> Result<std::collections::BTreeMap<String, String>> {
+    let data = if value.starts_with('{') {
+        format!("{{\"command\":\"server\",\"languages\":{value}}}")
+    } else {
+        let mut languages = std::collections::BTreeMap::new();
+        for pair in value.split(',') {
+            let (extension, language) = pair
+                .split_once('=')
+                .context("Use .ext=language mappings, for example .py=python, .js=javascript")?;
+            let extension = extension.trim().to_ascii_lowercase();
+            let extension = if extension.starts_with('.') {
+                extension
+            } else {
+                format!(".{extension}")
+            };
+            ensure!(
+                languages
+                    .insert(extension.clone(), language.trim())
+                    .is_none(),
+                "Duplicate extension {extension}"
+            );
+        }
+        json!({"command":"server","languages":languages}).to_string()
+    };
+    Ok(Config::parse(data.as_bytes(), &std::env::current_dir()?)?
+        .servers
+        .remove(0)
+        .languages)
+}
+fn summary(ui: &Ui, path: &Path, config: &Config) {
+    println!("  Profile: {}", path.display());
+    for server in &config.servers {
+        println!("  {}: {}", server.id, server.command);
+        ui.hint(
+            &server
+                .languages
+                .iter()
+                .map(|(extension, language)| format!("{extension} -> {language}"))
+                .collect::<Vec<_>>()
+                .join(", "),
+        );
+    }
 }
 async fn wizard(mut options: Options, profile: Option<PathBuf>, no_color: bool) -> Result<()> {
-    let color = !no_color && io::stdout().is_terminal() && std::env::var_os("NO_COLOR").is_none();
+    let ui = Ui::new(no_color);
     println!(
-        "{}SHARPER — connect your language servers and agents{}",
-        if color { "\x1b[35m" } else { "" },
-        if color { "\x1b[0m" } else { "" }
+        "\n{} {}",
+        ui.paint("Sharper", "1;36"),
+        env!("CARGO_PKG_VERSION")
     );
-    println!(
-        "Language-agnostic setup. Type q to cancel. Server installation follows its own instructions; Sharper never installs project dependencies."
-    );
+    println!("Rapid rule feedback for your coding agent.");
+    ui.hint("Choose your language services, then connect your agent. Type q to cancel.");
+    ui.step(1, "Choose a language-service profile");
+    let mut pending = None;
     let path = if let Some(path) = profile {
+        let path = absolute(&path)?;
         Config::load(&path)?;
-        absolute(&path)?
+        ui.hint("Using the supplied profile.");
+        path
     } else {
-        let input = prompt("Path to your LSP JSON configuration (or 'new' to create one):")?;
-        if input == "new" {
-            let command = prompt("Server executable or runtime command:")?;
-            let arguments: Vec<String> = serde_json::from_str(&prompt(
-                "Arguments as a JSON string array, e.g. [\"--stdio\"]:",
-            )?)?;
-            let languages: serde_json::Map<String, Value> = serde_json::from_str(&prompt(
-                "Extensions and language IDs as JSON, e.g. {\".py\":\"python\"}:",
-            )?)?;
-            let path = absolute(Path::new(&prompt(
-                "Where should the LSP configuration be saved?",
-            )?))?;
+        ui.hint("Enter an existing servers.json path, or choose new to create one.");
+        let selected = ui.read("Profile path or new", None, |value| {
+            if value.eq_ignore_ascii_case("new") {
+                return Ok(None);
+            }
+            let path = input_path(value)?;
+            Config::load(&path)?;
+            Ok(Some(path))
+        })?;
+        if let Some(path) = selected {
+            path
+        } else {
+            let suggested = config_home().ok().map(|path| {
+                path.join("sharper/servers.json")
+                    .to_string_lossy()
+                    .into_owned()
+            });
+            let path=ui.read("Save profile to",suggested.as_deref(),|value|{
+                let path=input_path(value)?;
+                ensure!(!path.exists(),"This file already exists. Choose another path, or use it as an existing profile");
+                Ok(path)
+            })?;
+            let command = ui.read("Server executable or runtime", None, |value| {
+                let value = value
+                    .strip_prefix('"')
+                    .and_then(|value| value.strip_suffix('"'))
+                    .unwrap_or(value);
+                Config::parse(
+                    json!({"command":value,"languages":{".example":"example"}})
+                        .to_string()
+                        .as_bytes(),
+                    path.parent().unwrap(),
+                )?;
+                Ok(value.to_owned())
+            })?;
+            ui.hint("Arguments are a JSON array, such as [\"--stdio\"] or [\"/path/server.js\", \"--stdio\"].");
+            let arguments: Vec<String> = ui.read("Server arguments", Some("[]"), |value| {
+                let parsed: Vec<String> = serde_json::from_str(value)
+                    .context("Enter a JSON array of strings, for example [\"--stdio\"]")?;
+                ensure!(
+                    !parsed.iter().any(|value| value.contains('\0')),
+                    "Arguments cannot contain NUL"
+                );
+                Ok(parsed)
+            })?;
+            ui.hint("Map file extensions to LSP language IDs. Example: .py=python, .js=javascript");
+            let languages = ui.read("File mappings", None, mappings)?;
             let data = serde_json::to_string_pretty(
                 &json!({"servers":[{"id":"rules","command":command,"arguments":arguments,"languages":languages}]}),
             )?;
-            Config::parse(
-                data.as_bytes(),
-                path.parent().context("Profile has no parent")?,
-            )?;
-            println!("{data}");
-            ensure!(
-                prompt(&format!("Write {}? [y/N]", path.display()))?.eq_ignore_ascii_case("y"),
-                "Setup cancelled"
-            );
-            ensure!(
-                !path.exists(),
-                "Configuration exists; choose a new file or edit it manually"
-            );
-            if let Some(parent) = path.parent() {
-                std::fs::create_dir_all(parent)?;
-            }
-            let mut created = std::fs::OpenOptions::new()
-                .write(true)
-                .create_new(true)
-                .open(&path)?;
-            created.write_all(data.as_bytes())?;
-            created.sync_all()?;
-            path
-        } else {
-            let path = absolute(Path::new(&input))?;
-            Config::load(&path)?;
+            pending = Some(data);
             path
         }
     };
-    let agent = prompt("Client: codex, claude, opencode, copilot (or 'none' to finish):")?;
-    if agent == "none" {
-        println!(
-            "Configuration ready. MCP launch: sharper mcp --lsp-config {}",
-            path.display()
-        );
+    ui.step(2, "Review your configuration");
+    if let Some(data) = pending {
+        let config = Config::parse(
+            data.as_bytes(),
+            path.parent().context("Profile has no parent")?,
+        )?;
+        summary(&ui, &path, &config);
+        println!("\n{data}\n");
+        if !ui.confirm("Save this profile? (y/n)")? {
+            return Err(Cancelled.into());
+        }
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)
+            .context("Could not create the profile; choose a new destination")?;
+        file.write_all(data.as_bytes())?;
+        file.sync_all()?;
+        ui.success("Profile saved");
+    } else {
+        summary(&ui, &path, &Config::load(&path)?);
+    }
+    ui.step(3, "Connect your agent");
+    println!(
+        "  1  Codex\n  2  Claude Code\n  3  OpenCode\n  4  GitHub Copilot\n  0  Finish without registration"
+    );
+    let agent = ui.read("Agent number or name", Some("0"), |value| {
+        match value.to_ascii_lowercase().as_str() {
+            "1" | "codex" => Ok(Some(Agent::Codex)),
+            "2" | "claude" | "claude code" => Ok(Some(Agent::Claude)),
+            "3" | "opencode" | "open code" => Ok(Some(Agent::Opencode)),
+            "4" | "copilot" | "github copilot" => Ok(Some(Agent::Copilot)),
+            "0" | "none" | "skip" => Ok(None),
+            _ => bail!("Choose 1-4, enter an agent name, or choose 0 to finish"),
+        }
+    })?;
+    let Some(agent) = agent else {
+        ui.success("Configuration ready");
+        ui.hint(&format!("Profile: {}", path.display()));
+        ui.hint("Connect an agent later with sharper setup <agent> --lsp-config <profile>");
+        return Ok(());
+    };
+    if matches!(agent, Agent::Copilot) {
+        println!("  1  Copilot CLI\n  2  VS Code\n  3  Both");
+        options.client = ui.read(
+            "Copilot destination",
+            Some(&options.client),
+            |value| match value.to_ascii_lowercase().as_str() {
+                "1" | "cli" => Ok("cli".to_owned()),
+                "2" | "vscode" | "vs code" => Ok("vscode".to_owned()),
+                "3" | "both" => Ok("both".to_owned()),
+                _ => bail!("Choose cli, vscode or both (or 1, 2, 3)"),
+            },
+        )?;
+    }
+    println!(
+        "\n  Agent: {}\n  Profile: {}",
+        agent.label(),
+        path.display()
+    );
+    if matches!(agent, Agent::Copilot) {
+        ui.hint(&format!("Destination: {}", options.client));
+    }
+    if !ui.confirm("Register Sharper in this agent's user configuration? (y/n)")? {
+        ui.success("Configuration ready");
+        ui.hint("Your profile is available when you want to connect an agent.");
         return Ok(());
     }
-    options.agent = Some(match agent.as_str() {
-        "codex" => Agent::Codex,
-        "claude" => Agent::Claude,
-        "opencode" => Agent::Opencode,
-        "copilot" => Agent::Copilot,
-        _ => bail!("Unknown client"),
-    });
-    ensure!(
-        prompt("Register Sharper in the selected client's user configuration? [y/N]")?
-            .eq_ignore_ascii_case("y"),
-        "Setup cancelled"
-    );
+    options.agent = Some(agent);
     // Box breaks the finite run -> wizard -> run asynchronous recursion.
     Box::pin(run(options, Some(path), no_color)).await
 }
