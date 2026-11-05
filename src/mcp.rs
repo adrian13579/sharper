@@ -265,7 +265,7 @@ pub async fn serve(engine: Engine, timeout: Duration) -> Result<()> {
                 } else {
                     "2025-11-25"
                 };
-                json!({"protocolVersion":version,"serverInfo":server_info(),"capabilities":{"tools":{"listChanged":false}},"instructions":"Use sharper_check before and after meaningful edits. Pass workspace and affected scope. Inspect findings separately from analysis completion/freshness. Run builds/tests separately. Language support is configured through LSP profiles."})
+                json!({"protocolVersion":version,"serverInfo":server_info(),"capabilities":{"tools":{"listChanged":false}},"instructions":"Use sharper_check after editing files. Pass workspace and affected scope. Inspect findings separately from analysis completion/freshness. Run builds/tests separately. Language support is configured through LSP profiles."})
             }
             "ping" => json!({}),
             "tools/list" if initialized => tools(),

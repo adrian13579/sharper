@@ -35,11 +35,7 @@ Require `status: "completed"`, `complete: true` and `freshness: "verified"` befo
 
 Sharper returns findings for your agent to act on, together with evidence about the checked scope. Keep toolchains and external dependencies stable during a session, and restart after changing them. Use `sharper_status` to inspect server availability and capabilities.
 
-### Compact tool responses
-
-Check responses include `status`, `complete`, `freshness`, the checked scope and `diagnostics`. Findings retain their codes, severities, locations and service provenance. `errors` appears when there is an actionable error.
-
-Combined checks include a compact `backendResults` summary with each service's status and diagnostic count. The findings appear once in the top-level `diagnostics` array. A single-service check uses the top-level result directly. Status responses include available server details and omit optional values that are absent. Cancelled or timed-out requests return their status, uncertain freshness and the error message.
+See [Tool response format](responses.md) for JSON examples, field definitions and error handling.
 
 ## Agent guidance
 

@@ -13,6 +13,7 @@ export const entries = [
     title: "Custom architecture enforcer",
     group: "Examples",
   },
+  { slug: "responses", title: "Tool responses", group: "Reference" },
   { slug: "changelog", title: "Changelog", group: "Project" },
 ];
 export function getDocuments() {
