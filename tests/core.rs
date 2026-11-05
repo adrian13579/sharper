@@ -33,6 +33,7 @@ impl World {
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("work");
         std::fs::create_dir(&root).unwrap();
+        let root = sharper::workspace::clean(std::fs::canonicalize(root).unwrap());
         let audit = temp.path().join("audit.jsonl");
         let config = temp.path().join("servers.json");
         let servers:Vec<_>=(0..count).map(|i|json!({"id":format!("rules{i}"),"command":fixture(),"arguments":["--mode",mode,"--audit",audit,"space & $ literal"],"languages":{".orbit":"planet"},"initializationOptions":{"marker":"agnostic"},"settings":{"rules":{"enabled":true}},"readyNotification":"test/ready"})).collect();

@@ -24,6 +24,11 @@ Changes to Sharper's source and user-facing behavior. Check [npm](https://www.np
 - npm/npx is the public distribution channel, with Windows x64 and Linux x64 executables bundled in the package.
 - Release automation assembles both platforms and publishes through npm trusted publishing.
 
+### Fixes
+
+- Workspace read events preserve analysis freshness; writes and watcher rescan events continue to invalidate affected checks.
+- Integration fixtures normalize temporary paths consistently across platforms.
+
 ### Maintenance
 
 - Removed obsolete landing-page styles, legacy benchmark reports and stale test setup files.

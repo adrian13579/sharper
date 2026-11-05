@@ -28,6 +28,26 @@ fn ignored(path: &Path) -> bool {
     path.components()
         .any(|c| IGNORED.iter().any(|name| c.as_os_str() == *name))
 }
+fn invalidates(event: &notify::Event, root: &Path) -> bool {
+    use notify::event::{AccessKind, AccessMode, EventKind};
+    if event.need_rescan() {
+        return true;
+    }
+    // Linux reports opens and reads made by our own snapshots and language services.
+    if matches!(
+        event.kind,
+        EventKind::Access(
+            AccessKind::Read | AccessKind::Open(_) | AccessKind::Close(AccessMode::Read)
+        )
+    ) {
+        return false;
+    }
+    event.paths.is_empty()
+        || event
+            .paths
+            .iter()
+            .any(|path| !ignored(path.strip_prefix(root).unwrap_or(path)))
+}
 pub fn contained(root: &Path, path: &Path) -> bool {
     #[cfg(windows)]
     {
@@ -136,11 +156,7 @@ impl Boundary {
             notify::recommended_watcher(move |event: notify::Result<notify::Event>| {
                 if event
                     .as_ref()
-                    .map(|e| {
-                        e.paths
-                            .iter()
-                            .any(|p| !ignored(p.strip_prefix(&base).unwrap_or(p)))
-                    })
+                    .map(|e| invalidates(e, &base))
                     .unwrap_or(true)
                 {
                     counter.fetch_add(1, Ordering::SeqCst);
@@ -227,5 +243,55 @@ impl Snapshot {
             || self.0.iter().any(|(p, f)| {
                 !server.supports(p) && previous.0.get(p).is_none_or(|old| old.hash != f.hash)
             })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use notify::{
+        Event,
+        event::{AccessKind, AccessMode, CreateKind, EventKind, Flag, ModifyKind, RemoveKind},
+    };
+    #[test]
+    fn reading_inputs_preserves_freshness() {
+        let root = Path::new("workspace");
+        for kind in [
+            AccessKind::Read,
+            AccessKind::Open(AccessMode::Read),
+            AccessKind::Open(AccessMode::Any),
+            AccessKind::Close(AccessMode::Read),
+        ] {
+            let event = Event::new(EventKind::Access(kind)).add_path(root.join("source.orbit"));
+            assert!(!invalidates(&event, root));
+        }
+    }
+    #[test]
+    fn writes_and_uncertain_watcher_events_invalidate_inputs() {
+        let root = Path::new("workspace");
+        for kind in [
+            EventKind::Access(AccessKind::Close(AccessMode::Write)),
+            EventKind::Modify(ModifyKind::Any),
+            EventKind::Create(CreateKind::Any),
+            EventKind::Remove(RemoveKind::Any),
+            EventKind::Any,
+        ] {
+            assert!(invalidates(
+                &Event::new(kind).add_path(root.join("source.orbit")),
+                root
+            ));
+        }
+        assert!(invalidates(&Event::new(EventKind::Any), root));
+        assert!(invalidates(
+            &Event::new(EventKind::Access(AccessKind::Read)).set_flag(Flag::Rescan),
+            root
+        ));
+    }
+    #[test]
+    fn excluded_dependency_events_preserve_freshness() {
+        let root = Path::new("workspace");
+        let event = Event::new(EventKind::Modify(ModifyKind::Any))
+            .add_path(root.join("node_modules/dependency.js"));
+        assert!(!invalidates(&event, root));
     }
 }

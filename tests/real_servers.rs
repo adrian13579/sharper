@@ -82,32 +82,34 @@ async fn real_typescript_compatibility_adapter() -> Result<()> {
 #[tokio::test]
 #[ignore = "requires pinned ESLint server, ESLint and Node"]
 async fn real_eslint_standard_document_pull() -> Result<()> {
-    let root = tempfile::tempdir()?;
+    let temp = tempfile::tempdir()?;
+    let root = sharper::workspace::clean(std::fs::canonicalize(temp.path())?);
     let tools = tools()?;
-    let rules = root.path().join("eslint.config.mjs");
+    let rules = root.as_path().join("eslint.config.mjs");
     std::fs::write(
         &rules,
         "export default [{ files: ['**/*.js'], rules: { 'no-unused-vars': 'error' } }];",
     )?;
-    std::fs::write(root.path().join("example.js"), "const unused = 1;\n")?;
-    let cfg = root.path().join("lsp.json");
+    std::fs::write(root.as_path().join("example.js"), "const unused = 1;\n")?;
+    let cfg = root.as_path().join("lsp.json");
     std::fs::write(
         &cfg,
         serde_json::to_vec(
-            &json!({"servers":[{"id":"lint-rules","command":"node","arguments":[tools.join("node_modules/vscode-langservers-extracted/bin/vscode-eslint-language-server"),"--stdio"],"languages":{".js":"javascript"},"settings":{"validate":"on","packageManager":"","useESLintClass":true,"experimental":{"useFlatConfig":false},"codeActionOnSave":{"enable":false,"mode":"all"},"format":false,"problems":{"shortenToSingleLine":false},"options":{"overrideConfigFile":rules},"quiet":false,"onIgnoredFiles":"warn","rulesCustomizations":[],"run":"onType","nodePath":tools.join("node_modules"),"workingDirectory":{"directory":root.path()},"workspaceFolder":{"uri":sharper::normalize::uri(root.path())?,"name":"fixture"}}}]}),
+            &json!({"servers":[{"id":"lint-rules","command":"node","arguments":[tools.join("node_modules/vscode-langservers-extracted/bin/vscode-eslint-language-server"),"--stdio"],"languages":{".js":"javascript"},"settings":{"validate":"on","packageManager":"","useESLintClass":true,"experimental":{"useFlatConfig":false},"codeActionOnSave":{"enable":false,"mode":"all"},"format":false,"problems":{"shortenToSingleLine":false},"options":{"overrideConfigFile":rules},"quiet":false,"onIgnoredFiles":"warn","rulesCustomizations":[],"run":"onType","nodePath":tools.join("node_modules"),"workingDirectory":{"directory":root.as_path()},"workspaceFolder":{"uri":sharper::normalize::uri(root.as_path())?,"name":"fixture"}}}]}),
         )?,
     )?;
     let mut engine = Engine::new(Some(Config::load(&cfg)?), None);
-    let r = check(&mut engine, root.path(), "example.js").await?;
+    let r = check(&mut engine, root.as_path(), "example.js").await?;
     assert!(
         r["diagnostics"]
             .as_array()
             .unwrap()
             .iter()
-            .any(|d| d["code"] == "no-unused-vars")
+            .any(|d| d["code"] == "no-unused-vars"),
+        "{r}"
     );
-    std::fs::write(root.path().join("example.js"), "console.log(1);\n")?;
-    let fixed = check(&mut engine, root.path(), "example.js").await?;
+    std::fs::write(root.as_path().join("example.js"), "console.log(1);\n")?;
+    let fixed = check(&mut engine, root.as_path(), "example.js").await?;
     assert!(
         !fixed["diagnostics"]
             .as_array()
