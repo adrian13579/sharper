@@ -12,11 +12,6 @@ use std::{
     path::{Path, PathBuf},
     time::Instant,
 };
-pub const LIMITATIONS: &[&str] = &[
-    "Verification covers supported document analysis against stable reconciled workspace inputs, not a complete build, test run or proof that every rule executed.",
-    "LSP servers own rules, project loading and semantic meaning. External dependencies, installed toolchains and unsaved editor buffers are outside the freshness boundary; restart after dependency changes.",
-    "Workspace reconciliation excludes .git, node_modules, target, artifacts and .next. Symlinks and non-UTF-8 source documents are unsupported. Navigation may return external/generated targets without verifying them.",
-];
 #[derive(Clone, Default, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Args {
@@ -94,14 +89,15 @@ impl Engine {
             args.path.as_deref(),
             self.fallback.as_deref(),
         )?;
-        match name {
+        let result = match name {
             "sharper_check" => self.check(&root, &requested).await,
             "sharper_status" => self.status(&root).await,
             "sharper_definition" | "sharper_implementation" | "sharper_references" => {
                 self.navigate(name, &root, &requested, &args).await
             }
             _ => anyhow::bail!("Unknown tool {name}"),
-        }
+        }?;
+        Ok(compact_result(result))
     }
     async fn check(&mut self, root: &Path, requested: &Path) -> Result<Value> {
         let start = Instant::now();
@@ -158,7 +154,7 @@ impl Engine {
                     vec![format!("{error:#}")],
                 ),
             };
-            results.push(json!({"backend":profile.id,"status":status,"complete":status=="completed","freshness":if status=="completed"{"verified"}else{"uncertain"},"diagnostics":normalize::ordered(diagnostics),"errors":errors,"limitations":LIMITATIONS}));
+            results.push(json!({"backend":profile.id,"status":status,"complete":status=="completed","freshness":if status=="completed"{"verified"}else{"uncertain"},"diagnostics":normalize::ordered(diagnostics),"errors":errors}));
         }
         let mut errors = Vec::new();
         let after = boundary.snapshot(&self.profiles[0]).await?;
@@ -195,7 +191,7 @@ impl Engine {
             "mixed"
         };
         Ok(
-            json!({"status":status,"scope":scope,"requestedPath":requested,"complete":complete,"freshness":if complete{"verified"}else{"uncertain"},"diagnosticCount":diagnostics.len(),"diagnostics":diagnostics,"errors":errors,"limitations":LIMITATIONS,"durationMs":start.elapsed().as_secs_f64()*1000.0,"backend":backend,"backendResults":results}),
+            json!({"status":status,"scope":scope,"requestedPath":requested,"complete":complete,"freshness":if complete{"verified"}else{"uncertain"},"diagnosticCount":diagnostics.len(),"diagnostics":diagnostics,"errors":errors,"durationMs":start.elapsed().as_secs_f64()*1000.0,"backend":backend,"backendResults":results}),
         )
     }
     async fn status(&mut self, root: &Path) -> Result<Value> {
@@ -212,7 +208,7 @@ impl Engine {
         }
         let mut states = Vec::new();
         for profile in profiles {
-            states.push(match self.session(&profile,root).await {Ok(session)=>session.status(),Err(error)=>json!({"backend":profile.id,"available":false,"workspaceState":"failed","workspace":root,"solution":null,"diagnosticsAvailable":false,"lastError":error.to_string(),"sessionStarts":0,"processId":null,"serverName":null,"diagnosticProviders":[],"workspaceDiagnosticCapability":false,"navigationCapabilities":[],"limitations":LIMITATIONS})});
+            states.push(match self.session(&profile,root).await {Ok(session)=>session.status(),Err(error)=>json!({"backend":profile.id,"available":false,"workspaceState":"failed","workspace":root,"diagnosticsAvailable":false,"lastError":error.to_string(),"sessionStarts":0,"processId":null,"serverName":null,"workspaceDiagnosticCapability":false,"navigationCapabilities":[]})});
         }
         if states.len() == 1 {
             return Ok(states.remove(0));
@@ -236,7 +232,7 @@ impl Engine {
         navigation.sort_by_key(Value::to_string);
         navigation.dedup();
         Ok(
-            json!({"available":available,"workspaceState":if available{"ready"}else{"failed"},"workspace":root,"solution":null,"diagnosticsAvailable":diagnostics,"lastError":if errors.is_empty(){Value::Null}else{json!(errors.join("; "))},"sessionStarts":self.starts,"processId":null,"serverName":null,"diagnosticProviders":[],"workspaceDiagnosticCapability":states.iter().any(|s|s["workspaceDiagnosticCapability"]==true),"navigationCapabilities":navigation,"limitations":LIMITATIONS,"backend":"mixed","sessions":states}),
+            json!({"available":available,"workspaceState":if available{"ready"}else{"failed"},"workspace":root,"diagnosticsAvailable":diagnostics,"lastError":if errors.is_empty(){Value::Null}else{json!(errors.join("; "))},"sessionStarts":self.starts,"processId":null,"serverName":null,"workspaceDiagnosticCapability":states.iter().any(|s|s["workspaceDiagnosticCapability"]==true),"navigationCapabilities":navigation,"backend":"mixed","sessions":states}),
         )
     }
     async fn navigate(
@@ -302,7 +298,42 @@ impl Engine {
             );
         }
         Ok(
-            json!({"status":status,"backend":selected,"operation":operation,"requestedPath":path,"position":{"line":line,"character":character},"complete":status=="completed","freshness":if status=="completed"{"verified"}else{"uncertain"},"locationCount":locations.len(),"locations":locations,"errors":errors,"limitations":LIMITATIONS,"durationMs":start.elapsed().as_secs_f64()*1000.0}),
+            json!({"status":status,"backend":selected,"operation":operation,"requestedPath":path,"position":{"line":line,"character":character},"complete":status=="completed","freshness":if status=="completed"{"verified"}else{"uncertain"},"locationCount":locations.len(),"locations":locations,"errors":errors,"durationMs":start.elapsed().as_secs_f64()*1000.0}),
         )
     }
+}
+
+fn compact_result(mut value: Value) -> Value {
+    let Some(result) = value.as_object_mut() else {
+        return value;
+    };
+    for key in ["lastError", "serverName", "processId"] {
+        if result.get(key).is_some_and(Value::is_null) {
+            result.remove(key);
+        }
+    }
+    if result
+        .get("errors")
+        .and_then(Value::as_array)
+        .is_some_and(Vec::is_empty)
+    {
+        result.remove("errors");
+    }
+    if let Some(Value::Array(backends)) = result.remove("backendResults")
+        && backends.len() > 1
+    {
+        let summaries: Vec<_> = backends.into_iter().map(|backend| {
+            json!({"backend":backend["backend"],"status":backend["status"],"diagnosticCount":backend["diagnostics"].as_array().map_or(0, Vec::len)})
+        }).collect();
+        result.insert("backendResults".into(), json!(summaries));
+    }
+    if let Some(Value::Array(sessions)) = result.get_mut("sessions") {
+        for session in sessions {
+            *session = compact_result(std::mem::take(session));
+            if let Some(state) = session.as_object_mut() {
+                state.remove("workspace");
+            }
+        }
+    }
+    value
 }

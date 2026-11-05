@@ -12,6 +12,13 @@ Changes to Sharper's source and user-facing behavior. Check [npm](https://www.np
 - A custom architecture-enforcer example showing how a team-owned LSP service can return project-specific rule findings.
 - Contribution guidance centered on issue and pull request descriptions.
 
+### Tool responses
+
+- Removed repeated limitations text from feedback, status and navigation results.
+- Combined checks return compact per-service summaries alongside one findings array; single-service checks return the top-level result directly.
+- Empty error lists, unused status placeholders and absent optional server details are omitted.
+- Completion, freshness, findings and actionable errors remain explicit.
+
 ### Distribution
 
 - npm/npx is the public distribution channel, with Windows x64 and Linux x64 executables bundled in the package.

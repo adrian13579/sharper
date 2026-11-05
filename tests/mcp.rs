@@ -137,6 +137,14 @@ async fn actual_mcp_stdio_lists_tools_and_returns_structured_agnostic_feedback()
         .await?;
     assert_eq!(response["result"]["isError"], false, "{response}");
     assert_eq!(response["result"]["structuredContent"]["complete"], true);
+    let compact = &response["result"]["structuredContent"];
+    assert!(compact.get("limitations").is_none());
+    assert!(compact.get("backendResults").is_none());
+    assert!(compact.get("errors").is_none());
+    assert_eq!(
+        serde_json::from_str::<Value>(response["result"]["content"][0]["text"].as_str().unwrap())?,
+        *compact
+    );
     assert_eq!(
         response["result"]["structuredContent"]["diagnosticCount"],
         1
@@ -145,6 +153,15 @@ async fn actual_mcp_stdio_lists_tools_and_returns_structured_agnostic_feedback()
         .call(4, "sharper_status", json!({"workspace":root}))
         .await?;
     assert_eq!(status["result"]["structuredContent"]["available"], true);
+    let state = &status["result"]["structuredContent"];
+    for omitted in [
+        "limitations",
+        "solution",
+        "diagnosticProviders",
+        "lastError",
+    ] {
+        assert!(state.get(omitted).is_none(), "{state}");
+    }
     client.close().await
 }
 #[tokio::test]
@@ -162,6 +179,9 @@ async fn cancellation_stops_hung_analysis_and_session_can_recover() -> Result<()
     let r = c.response(3).await?;
     assert_eq!(r["result"]["structuredContent"]["status"], "cancelled");
     assert_eq!(r["result"]["structuredContent"]["freshness"], "uncertain");
+    for omitted in ["limitations", "diagnostics", "locations"] {
+        assert!(r["result"]["structuredContent"].get(omitted).is_none());
+    }
     let status = c
         .call(4, "sharper_status", json!({"workspace":root}))
         .await?;

@@ -128,10 +128,33 @@ async fn multiple_servers_contribute_without_erasing_provenance() -> Result<()> 
     assert_eq!(r["diagnosticCount"], 2);
     assert_eq!(r["backend"], "mixed");
     assert_eq!(r["backendResults"].as_array().unwrap().len(), 2);
+    for backend in r["backendResults"].as_array().unwrap() {
+        assert_eq!(backend["status"], "completed");
+        assert_eq!(backend["diagnosticCount"], 1);
+        assert!(backend.get("diagnostics").is_none());
+        assert!(backend.get("limitations").is_none());
+    }
+    assert!(r.get("errors").is_none());
     assert_ne!(
         r["diagnostics"][0]["backend"],
         r["diagnostics"][1]["backend"]
     );
+    let status = e.call("sharper_status", w.args()).await?;
+    assert_eq!(status["available"], true);
+    assert_eq!(status["sessions"].as_array().unwrap().len(), 2);
+    for session in status["sessions"].as_array().unwrap() {
+        assert_eq!(session["available"], true);
+        assert!(session["processId"].is_number());
+        for omitted in [
+            "limitations",
+            "workspace",
+            "solution",
+            "diagnosticProviders",
+            "lastError",
+        ] {
+            assert!(session.get(omitted).is_none());
+        }
+    }
     e.close().await;
     Ok(())
 }
@@ -141,11 +164,11 @@ async fn native_names_are_not_required_for_configured_languages() -> Result<()> 
     let mut e = w.engine();
     let r = e.call("sharper_check", w.args()).await?;
     assert_eq!(r["complete"], true, "{r}");
-    assert!(
-        r["limitations"]
-            .to_string()
-            .contains("not a complete build")
-    );
+    assert!(r.get("limitations").is_none());
+    assert!(r.get("backendResults").is_none());
+    assert!(r.get("errors").is_none());
+    assert_eq!(r["freshness"], "verified");
+    assert_eq!(r["diagnostics"][0]["code"], "RULE001");
     e.close().await;
     Ok(())
 }
@@ -161,6 +184,13 @@ async fn failed_servers_prevent_combined_verification() -> Result<()> {
     assert_eq!(r["freshness"], "uncertain");
     assert_eq!(r["diagnosticCount"], 1);
     assert!(!r["errors"].as_array().unwrap().is_empty());
+    assert!(
+        r["backendResults"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|server| server["status"] == "failed" && server["diagnosticCount"] == 0)
+    );
     e.close().await;
     Ok(())
 }
@@ -240,6 +270,8 @@ async fn navigation_preserves_utf16_links_and_generated_uris() -> Result<()> {
     args.character = Some(2);
     let r = e.call("sharper_definition", args.clone()).await?;
     assert_eq!(r["complete"], true, "{r}");
+    assert!(r.get("limitations").is_none());
+    assert!(r.get("errors").is_none());
     assert_eq!(r["locations"][0]["range"]["start"]["character"], 2);
     let r = e.call("sharper_implementation", args.clone()).await?;
     assert_eq!(r["complete"], true);

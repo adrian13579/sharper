@@ -416,7 +416,7 @@ impl Session {
                 .iter()
                 .all(|lang| m.supports("textDocument/diagnostic", lang))
         };
-        json!({"backend":self.profile.id,"available":self.rpc.available(),"workspaceState":if self.rpc.available()&&m.ready{"ready"}else{"failed"},"workspace":self.boundary.root,"solution":null,"diagnosticsAvailable":diagnostics,"lastError":m.error,"sessionStarts":self.starts,"processId":self.rpc.pid(),"serverName":m.server_name,"diagnosticProviders":[],"workspaceDiagnosticCapability":m.capabilities["diagnosticProvider"]["workspaceDiagnostics"]==true,"navigationCapabilities":navigation,"limitations":crate::engine::LIMITATIONS})
+        json!({"backend":self.profile.id,"available":self.rpc.available(),"workspaceState":if self.rpc.available()&&m.ready{"ready"}else{"failed"},"workspace":self.boundary.root,"diagnosticsAvailable":diagnostics,"lastError":m.error,"sessionStarts":self.starts,"processId":self.rpc.pid(),"serverName":m.server_name,"workspaceDiagnosticCapability":m.capabilities["diagnosticProvider"]["workspaceDiagnostics"]==true,"navigationCapabilities":navigation})
     }
     pub async fn close(&mut self) {
         let _ = tokio::time::timeout(std::time::Duration::from_millis(500), async {

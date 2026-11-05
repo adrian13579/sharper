@@ -1,5 +1,5 @@
 use crate::{
-    engine::{Args, Engine, LIMITATIONS},
+    engine::{Args, Engine},
     framing::MAX_MESSAGE,
 };
 use anyhow::{Context, Result, ensure};
@@ -43,7 +43,7 @@ fn tool_error(message: String) -> Value {
 }
 fn stopped(status: &str) -> Value {
     tool_result(
-        json!({"status":status,"complete":false,"freshness":"uncertain","errors":[format!("Request {status}; no result is verified")],"diagnostics":[],"diagnosticCount":0,"locations":[],"locationCount":0,"limitations":LIMITATIONS}),
+        json!({"status":status,"complete":false,"freshness":"uncertain","errors":[format!("Request {status}; no result is verified")]}),
     )
 }
 fn server_info() -> Value {
@@ -54,7 +54,7 @@ pub fn tools() -> Value {
     for (name, description) in [
         (
             "sharper_check",
-            "Get fast diagnostic feedback and rule-verification evidence from configured LSP servers. Pass workspace and a file or directory path; omit path for supported workspace documents. Inspect complete, freshness, findings and limitations. Clean diagnostics do not replace builds/tests.",
+            "Get compiler and rule findings from configured LSP services. Pass workspace and a file or directory path; omit path for mapped workspace documents. Inspect complete, freshness and diagnostics.",
         ),
         (
             "sharper_status",
