@@ -54,7 +54,7 @@ Do not claim old .NET coverage, mutation or benchmark results apply to Rust. Pre
 
 Use a dedicated codex/ branch/worktree, preserve unrelated edits, do not hand-edit generated target/node_modules/build artifacts. Update documentation alongside public behavior. Make coherent Conventional Commits with imperative descriptions and a BREAKING CHANGE footer for contract changes.
 
-Consumer documentation lives in website/content/docs and is published under /docs/. Keep public copy focused on rapid rule feedback; omit implementation language and production-readiness pages. The canonical changelog is website/content/docs/changelog.md; add a matching version heading before a release. Release evidence is maintained in maintenance/release-readiness.json.
+Consumer documentation lives in website/content/docs and is published under /docs/. Keep public copy focused on rapid rule feedback; omit implementation language and production-readiness pages. The canonical changelog is website/content/docs/changelog.md; add a matching version heading before a release. Stable-release evidence is supplied through READINESS_PATH.
 
 ## CI responsibilities
 
