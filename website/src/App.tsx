@@ -1,16 +1,16 @@
 "use client";
 
-import { useLayoutEffect, useState } from "react";
+import { useState } from "react";
 import { Github, ThemeIcon } from "./Icons";
 import ProjectStats from "./ProjectStats";
+import { useTheme } from "./useTheme";
 
 const repository = "https://github.com/adrian13579/sharper";
 const docs = (file: string) =>
   `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/docs/${file}/`;
 const asset = (name: string) =>
   `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/brand/${name}`;
-type Theme = "light" | "dark";
-function Arrow({ diagonal = false }: { diagonal?: boolean }) {
+function Arrow() {
   return (
     <svg
       width="16"
@@ -21,38 +21,13 @@ function Arrow({ diagonal = false }: { diagonal?: boolean }) {
       strokeWidth="1.6"
       aria-hidden="true"
     >
-      <path d={diagonal ? "M6 18 18 6M6 6h12v12" : "M4 12h15m-6-6 6 6-6 6"} />
+      <path d="M4 12h15m-6-6 6 6-6 6" />
     </svg>
   );
 }
 export default function App() {
-  const [theme, setTheme] = useState<Theme>("light");
-  const [themeReady, setThemeReady] = useState(false);
-  useLayoutEffect(() => {
-    let preferred: Theme = window.matchMedia("(prefers-color-scheme: dark)")
-      .matches
-      ? "dark"
-      : "light";
-    try {
-      const stored = localStorage.getItem("sharper-theme");
-      if (stored === "light" || stored === "dark") preferred = stored;
-    } catch {
-      /* Storage is optional. */
-    }
-    setTheme(preferred);
-    setThemeReady(true);
-  }, []);
+  const { theme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
-  useLayoutEffect(() => {
-    if (!themeReady) return;
-    document.documentElement.dataset.theme = theme;
-    document.documentElement.style.colorScheme = theme;
-    try {
-      localStorage.setItem("sharper-theme", theme);
-    } catch {
-      /* Theme still works without storage. */
-    }
-  }, [theme, themeReady]);
   const logo = asset(`logo-${theme}.png`);
   return (
     <>
@@ -80,7 +55,7 @@ export default function App() {
             className="theme-toggle"
             type="button"
             aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
-            onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+            onClick={toggleTheme}
           >
             <ThemeIcon theme={theme} />
           </button>

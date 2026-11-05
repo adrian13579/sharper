@@ -11,9 +11,15 @@ test.beforeEach(async ({ page }) => {
     "https://api.github.com/repos/adrian13579/sharper",
     (route) => route.fulfill({ json: { stargazers_count: 42 } }),
   );
-  await page.route("https://api.npmjs.org/downloads/point/**", (route) =>
-    route.fulfill({ json: { downloads: 1234 } }),
+  await page.route("https://registry.npmjs.org/@adrian13579/sharper", (route) =>
+    route.fulfill({ json: { time: { created: "2026-01-01T00:00:00.000Z" } } }),
   );
+  await page.route("https://api.npmjs.org/downloads/point/**", (route) => {
+    const period = new URL(route.request().url()).pathname.split("/")[3];
+    const [start, end] =
+      period === "last-day" ? ["2026-11-03", "2026-11-03"] : period.split(":");
+    return route.fulfill({ json: { downloads: 1234, start, end } });
+  });
 });
 
 test("production base path, assets and documentation links load without errors", async ({
@@ -163,4 +169,67 @@ test("statistics handle unavailable providers without fabricated counts", async 
   await expect(
     stats.getByRole("link", { name: "GitHub stars", exact: true }),
   ).toHaveAttribute("title", /unavailable/);
+});
+
+test("download total includes the complete history without overlapping periods", async ({
+  page,
+}) => {
+  const periods: string[] = [];
+  await page.route("https://registry.npmjs.org/@adrian13579/sharper", (route) =>
+    route.fulfill({ json: { time: { created: "2024-01-01T00:00:00.000Z" } } }),
+  );
+  await page.route("https://api.npmjs.org/downloads/point/**", (route) => {
+    const period = new URL(route.request().url()).pathname.split("/")[3];
+    if (period === "last-day")
+      return route.fulfill({ json: { end: "2026-11-03" } });
+    periods.push(period);
+    const [start, end] = period.split(":");
+    return route.fulfill({ json: { downloads: 100, start, end } });
+  });
+  await page.goto("./");
+  await expect(
+    page.getByRole("link", { name: "Total npm downloads" }),
+  ).toContainText("300");
+  expect(periods.sort()).toEqual([
+    "2024-01-01:2024-12-30",
+    "2024-12-31:2025-12-30",
+    "2025-12-31:2026-11-03",
+  ]);
+});
+test("partial history is not displayed as a total", async ({ page }) => {
+  await page.route("https://api.npmjs.org/downloads/point/**", (route) =>
+    route.fulfill({
+      json: { downloads: 50, start: "2026-09-01", end: "2026-11-03" },
+    }),
+  );
+  await page.goto("./");
+  await expect(
+    page.getByRole("link", { name: "Total npm downloads" }),
+  ).toContainText("—");
+});
+test("landing and documentation share the accent palette in both themes", async ({
+  page,
+}) => {
+  await page.goto("./");
+  for (const theme of ["light", "dark"]) {
+    if (theme === "dark")
+      await page.getByRole("button", { name: "Switch to dark theme" }).click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+    const landing = await page
+      .locator(".hero-rule-link")
+      .evaluate((el) => getComputedStyle(el).color);
+    const button = await page
+      .locator(".hero .button")
+      .evaluate((el) => getComputedStyle(el).backgroundColor);
+    expect(button).toBe(landing);
+    await page.goto("./docs/overview/");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+    expect(
+      await page
+        .locator(".docs-article a")
+        .first()
+        .evaluate((el) => getComputedStyle(el).color),
+    ).toBe(landing);
+    await page.goto("./");
+  }
 });

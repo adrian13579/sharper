@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Github, ThemeIcon } from "./Icons";
+import { useTheme } from "./useTheme";
 type Document = { slug: string; title: string; group: string; content: string };
 const base = process.env.NEXT_PUBLIC_BASE_PATH || "";
 const href = (slug: string) => `${base}/docs/${slug}/`;
@@ -27,24 +28,8 @@ export default function Docs({
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
-  const [dark, setDark] = useState(false);
-  useEffect(() => {
-    let theme = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    try {
-      const saved = localStorage.getItem("sharper-theme");
-      if (saved) theme = saved === "dark";
-    } catch {}
-    setDark(theme);
-    document.documentElement.dataset.theme = theme ? "dark" : "light";
-  }, []);
-  function toggle() {
-    const next = !dark;
-    setDark(next);
-    document.documentElement.dataset.theme = next ? "dark" : "light";
-    try {
-      localStorage.setItem("sharper-theme", next ? "dark" : "light");
-    } catch {}
-  }
+  const { theme, toggleTheme } = useTheme();
+  const dark = theme === "dark";
   const index = documents.findIndex((doc) => doc.slug === slug);
   const doc = documents[index];
   const sections = Array.from(doc.content.matchAll(/^## (.+)$/gm), (m) => m[1]);
@@ -81,7 +66,7 @@ export default function Docs({
           </a>
           <button
             className="theme-toggle"
-            onClick={toggle}
+            onClick={toggleTheme}
             aria-label={`Switch to ${dark ? "light" : "dark"} theme`}
           >
             <ThemeIcon theme={dark ? "dark" : "light"} />

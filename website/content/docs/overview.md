@@ -30,14 +30,6 @@ A custom service could check project-specific constraints. For an illustration, 
 4. **Fix:** correct introduced violations using their codes, severities and locations, then check again.
 5. **Verify:** confirm current, completed analysis, inspect remaining findings.
 
-For example, pass this to `sharper_check`:
-
-```json
-{ "workspace": "/work/app", "path": "src" }
-```
-
-Omitting `path` covers mapped source documents across the workspace. Every matching configured service contributes feedback.
-
 ## Read the result
 
 Require `status: "completed"`, `complete: true` and `freshness: "verified"` before treating analysis as current. These fields describe analysis completion and freshness. Read diagnostics and severities to assess rule compliance. For a partial, stale, failed or cancelled request, address the reported condition and check again.

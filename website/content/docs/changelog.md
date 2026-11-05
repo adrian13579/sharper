@@ -7,7 +7,7 @@ Changes to Sharper's source and user-facing behavior. Check [npm](https://www.np
 ### Documentation and website
 
 - Searchable website documentation with sidebar navigation, section links and light/dark themes.
-- A concise landing page focused on rapid rule feedback, with live GitHub stars and monthly npm downloads.
+- A concise landing page focused on rapid rule feedback, with live GitHub stars and total npm downloads.
 - Unified server-profile and agent configuration instructions.
 - A custom architecture-enforcer example showing how a team-owned LSP service can return project-specific rule findings.
 - Contribution guidance centered on issue and pull request descriptions.
@@ -16,6 +16,11 @@ Changes to Sharper's source and user-facing behavior. Check [npm](https://www.np
 
 - npm/npx is the public distribution channel, with Windows x64 and Linux x64 executables bundled in the package.
 - Release automation assembles both platforms and publishes through npm trusted publishing.
+
+### Maintenance
+
+- Removed obsolete landing-page styles, legacy benchmark reports and stale test setup files.
+- Reduced unused runtime dependencies and consolidated website theme handling.
 
 ## 0.3.0-prealpha.1
 

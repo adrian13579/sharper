@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { totalDownloads } from "./lib/downloads";
 const format = new Intl.NumberFormat("en", {
   notation: "compact",
   maximumFractionDigits: 1,
@@ -30,11 +31,11 @@ export default function ProjectStats() {
         "stargazers_count",
         setStars,
       ),
-      load(
-        "https://api.npmjs.org/downloads/point/last-month/@adrian13579/sharper",
-        "downloads",
-        setDownloads,
-      ),
+      totalDownloads(controller.signal)
+        .then((value) => {
+          if (active) setDownloads(value);
+        })
+        .catch(() => {}),
     ]).finally(() => clearTimeout(timer));
     return () => {
       active = false;
@@ -70,11 +71,11 @@ export default function ProjectStats() {
       <span className="stats-divider" aria-hidden="true" />
       <a
         href="https://www.npmjs.com/package/@adrian13579/sharper"
-        aria-label="npm downloads per month"
+        aria-label="Total npm downloads"
         title={
           downloads === null
             ? "npm count currently unavailable"
-            : `${downloads.toLocaleString("en")} downloads in the last month`
+            : `${downloads.toLocaleString("en")} total npm downloads`
         }
       >
         <svg
@@ -89,7 +90,7 @@ export default function ProjectStats() {
           <path d="M12 3v12m-4-4 4 4 4-4M4 17v4h16v-4" />
         </svg>
         <strong>{downloads === null ? "—" : format.format(downloads)}</strong>
-        <span>downloads / month</span>
+        <span>total downloads</span>
       </a>
     </div>
   );

@@ -9,6 +9,7 @@ test("docs navigation, full text search, anchors and every page work", async ({
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     "Rapid rule feedback for your agent",
   );
+  await expect(page.locator(".docs-article pre")).toHaveCount(0);
   const nav = page.getByRole("navigation", { name: "Documentation sections" });
   const links = await nav
     .getByRole("link")
