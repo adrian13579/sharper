@@ -12,6 +12,14 @@ test("docs navigation, full text search, anchors and every page work", async ({
     .getByRole("link")
     .evaluateAll((nodes) => nodes.map((node) => node.getAttribute("href")!));
   expect(links.length).toBeGreaterThan(0);
+  expect(links.slice(0, 3)).toEqual([
+    "/sharper/docs/overview/",
+    "/sharper/docs/npm/",
+    "/sharper/docs/custom-language-servers/",
+  ]);
+  expect(links.indexOf("/sharper/docs/responses/")).toBeLessThan(
+    links.indexOf("/sharper/docs/architecture-rules/"),
+  );
   for (const link of links) {
     const response = await request.get(link);
     expect(response.status()).toBe(200);
@@ -59,6 +67,24 @@ test("docs navigation, full text search, anchors and every page work", async ({
   await page.goto("./docs/overview/");
   await page.getByRole("searchbox").fill("no-such-rule-xyz");
   await expect(page.getByRole("status")).toHaveText("0 results");
+  await page.getByRole("searchbox").fill("");
+  for (let i = 0; i < links.length; i++) {
+    await expect(
+      page.locator(".docs-nav-group a[aria-current=page]"),
+    ).toHaveAttribute("href", links[i]);
+    const pagination = page.getByRole("navigation", {
+      name: "Page navigation",
+    });
+    const previous = pagination.getByRole("link", { name: /^Previous / });
+    if (i === 0) await expect(previous).toHaveCount(0);
+    else await expect(previous).toHaveAttribute("href", links[i - 1]);
+    const next = pagination.getByRole("link", { name: /^Next / });
+    if (i < links.length - 1) {
+      await expect(next).toHaveAttribute("href", links[i + 1]);
+      await next.click();
+      await expect(page).toHaveURL(new URL(links[i + 1], page.url()).href);
+    } else await expect(next).toHaveCount(0);
+  }
 });
 test("docs themes, mobile menu and accessibility", async ({ page }) => {
   await page.goto("./docs/overview/");

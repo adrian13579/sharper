@@ -8,12 +8,12 @@ export const entries = [
     title: "Server & agent setup",
     group: "Configuration",
   },
+  { slug: "responses", title: "Tool responses", group: "Reference" },
   {
     slug: "architecture-rules",
     title: "Custom architecture enforcer",
     group: "Examples",
   },
-  { slug: "responses", title: "Tool responses", group: "Reference" },
   { slug: "changelog", title: "Changelog", group: "Project" },
 ];
 export function getDocuments() {

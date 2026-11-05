@@ -51,7 +51,7 @@ test("production base path, assets and documentation links load without errors",
 
   await expect(
     page.getByRole("link", { name: "Get started", exact: true }),
-  ).toHaveAttribute("href", "/sharper/docs/npm/");
+  ).toHaveAttribute("href", "/sharper/docs/overview/");
   expect(
     await page
       .locator("img")
@@ -70,6 +70,8 @@ test("production base path, assets and documentation links load without errors",
     path: path.join(screenshots, "desktop-light.png"),
     fullPage: true,
   });
+  await page.getByRole("link", { name: "Get started", exact: true }).click();
+  await expect(page).toHaveURL(/docs\/overview\/$/);
 });
 
 test("theme persists and both desktop themes have no serious accessibility findings", async ({

@@ -93,7 +93,7 @@ export default function App() {
               .
             </p>
             <div className="hero-buttons">
-              <a className="button" href={docs("npm")}>
+              <a className="button" href={docs("overview")}>
                 Get started <Arrow />
               </a>
               <a className="text-link" href={repository}>
