@@ -24,11 +24,10 @@ A custom service could check project-specific constraints. For an illustration, 
 
 ## Workflow
 
-1. **Baseline:** check relevant files before editing to identify existing findings.
-2. **Edit:** use the agent's normal tools and write changes to disk.
-3. **Check:** call `sharper_check` on affected files or directories, including dependent code when shared interfaces change.
-4. **Fix:** correct introduced violations using their codes, severities and locations, then check again.
-5. **Verify:** confirm current, completed analysis, inspect remaining findings.
+1. **Edit:** use the agent's normal tools and write changes to disk.
+2. **Check:** after editing, call `sharper_check` on affected files or directories, including dependent code when shared interfaces change.
+3. **Fix:** correct introduced violations using their codes, severities and locations, then check again.
+4. **Verify:** confirm current, completed analysis, inspect remaining findings.
 
 ## Read the result
 
@@ -46,4 +45,4 @@ Combined checks include a compact `backendResults` summary with each service's s
 
 Add a short instruction to your project's agent guidance:
 
-> Establish a baseline before editing. Check affected code after changes, fix introduced violations, and recheck. Before finishing, confirm analysis is completed and current, and report remaining findings.
+> After editing files, check the affected code, fix introduced violations, and recheck. Before finishing, confirm analysis is completed and current, and report remaining findings.
