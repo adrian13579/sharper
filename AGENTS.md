@@ -55,3 +55,7 @@ Do not claim old .NET coverage, mutation or benchmark results apply to Rust. Pre
 Use a dedicated codex/ branch/worktree, preserve unrelated edits, do not hand-edit generated target/node_modules/build artifacts. Update documentation alongside public behavior. Make coherent Conventional Commits with imperative descriptions and a BREAKING CHANGE footer for contract changes.
 
 Consumer documentation lives in website/content/docs and is published under /docs/. Keep public copy focused on rapid rule feedback; omit implementation language and production-readiness pages. The canonical changelog is website/content/docs/changelog.md; add a matching version heading before a release. Release evidence is maintained in maintenance/release-readiness.json.
+
+## CI responsibilities
+
+Build validates optimized Windows/Linux executables with the official MCP SDK and installed npm package. Tests runs runtime/MCP behavior and real-server integrations on both platforms; formatting and platform-independent Node tests run once. Release reuses those workflows for the selected tag and publishes a complete npm package only after validation succeeds. Website checks and Pages deployment run independently for website inputs. Keep these checks focused and avoid rerunning the entire MCP suite against an executable already covered by the release smoke checks.

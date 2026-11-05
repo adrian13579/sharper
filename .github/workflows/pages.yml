@@ -30,6 +30,7 @@ concurrency:
 
 jobs:
   build:
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -59,6 +60,7 @@ jobs:
           path: website/out
 
   deploy:
+    timeout-minutes: 10
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest

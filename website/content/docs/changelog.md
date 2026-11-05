@@ -31,6 +31,9 @@ Changes to Sharper's source and user-facing behavior. Check [npm](https://www.np
 
 ### Maintenance
 
+- CI separates release packaging from behavioral tests, reuses those checks for releases, and skips runtime jobs for documentation-only changes.
+- Website tests focus on navigation, search, themes, statistics and accessibility rather than retired page copy.
+
 - Removed obsolete landing-page styles, legacy benchmark reports and stale test setup files.
 - Reduced unused runtime dependencies and consolidated website theme handling.
 
